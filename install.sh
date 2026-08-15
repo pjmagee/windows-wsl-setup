@@ -22,7 +22,17 @@ install_apt() {
   log "apt packages"
   mapfile -t pkgs < <(grep -vE '^\s*(#|$)' "$ROOT/packages/apt.txt")
   sudo apt-get update -y
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"
+  # Skip packages not in this Ubuntu release (e.g. wslu dropped from 26.04).
+  local available=()
+  local p
+  for p in "${pkgs[@]}"; do
+    if apt-cache show "$p" >/dev/null 2>&1; then
+      available+=("$p")
+    else
+      echo "skip missing package: $p"
+    fi
+  done
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${available[@]}"
   if have fdfind && ! have fd; then
     mkdir -p "$HOME/.local/bin"
     ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"

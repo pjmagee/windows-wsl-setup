@@ -1,5 +1,5 @@
 # System packages for a WSL Ubuntu workstation.
-# Versions come from Ubuntu 24.04; language runtimes are NOT installed from here.
+# Language runtimes (Node, Go, Rust, pinned Python) are NOT installed from here.
 build-essential
 pkg-config
 libssl-dev
@@ -22,7 +22,7 @@ pulseaudio-utils
 alsa-utils
 libasound2-plugins
 x11-apps
-wslu
+libicu-dev
 python3
 python3-venv
 python3-pip

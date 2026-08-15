@@ -33,7 +33,7 @@ Then open a new Ubuntu tab so `PATH` picks up rustup/fnm/uv.
 | `bun` | bun.sh | |
 | `dotnet` | Microsoft `dotnet-install.sh` → `~/.dotnet` | SDK 10 |
 | `go` | official tarball → `~/.local/go` | |
-| `python3.14` | `uv python install 3.14` | Ubuntu 24.04 apt is 3.12 |
+| `python3.14` | `uv python install 3.14` | Ubuntu 26.04 apt `python3` is already 3.14 |
 | `rustc` / `cargo` | rustup stable | |
 | `op` | existing `~/.local/bin/op`, else 1Password apt | Linux `op` does **not** get Windows Hello |
 | `claude` | `claude.ai/install.sh` | |
@@ -49,6 +49,6 @@ Then open a new Ubuntu tab so `PATH` picks up rustup/fnm/uv.
 
 ## Useful extras this script adds
 
-`build-essential`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`, `htop`, `shellcheck`, `wslu`, `pulseaudio-utils` (for diagnosing WSLg audio).
+`build-essential`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`, `htop`, `shellcheck`, `libicu-dev`, `pulseaudio-utils` (for diagnosing WSLg audio).
 
 You already have `dagger`, `kubectl` (from Docker Desktop), and `oh-my-posh` in `~/.local/bin`. Add them to `install.sh` if you want them on the next machine.
