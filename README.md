@@ -2,13 +2,17 @@
 
 Idempotent bootstrap for a **WSL 2 Ubuntu 26.04** development machine.
 
-It installs a Linux toolchain *inside* the distro so Windows copies on `PATH` are not used. Safe to re-run.
+This repo is the source of truth for the toolchain. Clone it on a **clean Windows host** (a work laptop with no winget / UniGetUI copies of these CLIs) and you still get every tool. Nothing here depends on Windows interop versions of `az`, `gcloud`, `aws`, Node, Git, etc.
 
-## Requirements
+Safe to re-run.
+
+## Requirements (Windows host only)
+
+The host OS does **not** need the developer CLIs. It only needs:
 
 - Windows 11 with WSL 2
 - Ubuntu **26.04 LTS** (`wsl --install Ubuntu-26.04`)
-- `sudo` (passwordless is convenient)
+- `sudo` inside the distro (passwordless is convenient)
 - [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (needed for `docker` / Dagger)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
@@ -56,6 +60,7 @@ code .
 | Azure Developer CLI (`azd`) | official `install-azd.sh` |
 | Google Cloud CLI (`gcloud`) | official `google-cloud-cli` apt repo |
 | saml2aws | latest GitHub release → `~/.local/bin` |
+| AWS CLI v2 (`aws`) | official Linux installer → `/usr/local/bin/aws` |
 | Cloudflare CLI (`cf`) | npm `cf@latest` (current Cloudflare CLI) |
 | Wrangler | npm `wrangler@latest` (Workers / Pages) |
 | cloudflared | official Cloudflare apt repo |
@@ -88,7 +93,9 @@ WSL kernel / WSLg: `wsl --update` from Windows.
 ## Design
 
 - Ubuntu **26.04 only**.
-- Linux binaries are prepended on `PATH` so WSL interop does not pick `*.exe`.
+- Built for a work laptop whose Windows host has **no** interop copies of these tools.
+- `install.sh` ignores Windows binaries on `PATH` (`/mnt/c/...`, `*.exe`) and installs Linux ones.
+- Linux binaries are prepended on `PATH` so WSL interop cannot win even if the host later grows winget packages.
 - Language runtimes come from upstream installers, not stale `apt` packages.
 - Edit [`packages/apt.txt`](packages/apt.txt) to add system packages.
 

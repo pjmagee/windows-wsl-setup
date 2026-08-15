@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent Ubuntu 26.04 WSL workstation bootstrap.
+# Installs native Linux tools only. Does not use Windows interop copies.
 # Safe to re-run. Does not install Linux VS Code, Discord, or Oh My Posh.
 set -euo pipefail
 
@@ -10,10 +11,14 @@ export PATH="$HOME/.local/bin:$HOME/.atuin/bin:$HOME/.opencode/bin:$HOME/.bun/bi
 
 log() { printf '\n==> %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+# True only for a native Linux binary. Windows copies on the WSL interop
+# PATH (/mnt/c/..., *.exe) must not count — work laptops will not have them.
 is_linux_bin() {
   have "$1" || return 1
-  case "$(command -v "$1")" in
-    /mnt/c/*|/mnt/d/*) return 1 ;;
+  local p
+  p="$(command -v "$1")"
+  case "$p" in
+    /mnt/[a-z]/*|/mnt/[A-Z]/*|*.exe) return 1 ;;
     *) return 0 ;;
   esac
 }
@@ -54,13 +59,14 @@ ensure_bashrc() {
     mv "$tmp" "$bashrc"
   fi
 
-  if ! grep -q '>>> wsl-linux-path >>>' "$bashrc"; then
-    log "adding Linux-first PATH to ~/.bashrc"
-    local tmp
-    tmp="$(mktemp)"
-    cat >"$tmp" <<'EOF'
-# Linux toolchains must precede the Windows PATH that WSL appends.
+  local path_block tmp stripped
+  path_block="$(mktemp)"
+  tmp="$(mktemp)"
+  stripped="$(mktemp)"
+  cat >"$path_block" <<'EOF'
 # >>> wsl-linux-path >>>
+# Linux toolchains must precede the Windows PATH that WSL appends.
+# Do not rely on winget / UniGetUI / Windows copies of these CLIs.
 export PATH="$HOME/.local/bin:$HOME/.atuin/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.grok/bin:$PATH"
 if [ -d "$HOME/.local/share/fnm" ]; then
   export PATH="$HOME/.local/share/fnm:$PATH"
@@ -69,9 +75,16 @@ fi
 # <<< wsl-linux-path <<<
 
 EOF
-    cat "$bashrc" >>"$tmp"
-    mv "$tmp" "$bashrc"
-  fi
+  awk '
+    />>> wsl-linux-path >>>/ {skip=1; next}
+    /<<< wsl-linux-path <<</ {skip=0; next}
+    /^# Linux toolchains must precede the Windows PATH/ {next}
+    !skip {print}
+  ' "$bashrc" >"$stripped"
+  log "refreshing Linux-first PATH in ~/.bashrc"
+  cat "$path_block" "$stripped" >"$tmp"
+  mv "$tmp" "$bashrc"
+  rm -f "$path_block" "$stripped"
 
   if ! grep -q '>>> wsl-shell >>>' "$bashrc"; then
     log "adding starship / zoxide / atuin / fzf to ~/.bashrc"
@@ -94,7 +107,7 @@ remove_oh_my_posh() {
 
 install_uv_python() {
   log "uv + Python 3.14"
-  if ! have uv; then
+  if ! is_linux_bin uv; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
   fi
@@ -107,7 +120,7 @@ install_uv_python() {
 
 install_rust() {
   log "rustup"
-  if ! have rustup; then
+  if ! is_linux_bin rustup; then
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
   fi
   # shellcheck disable=SC1091
@@ -127,7 +140,7 @@ install_bun() {
 
 install_fnm_node() {
   log "fnm + Node LTS"
-  if [ ! -x "$HOME/.local/share/fnm/fnm" ] && ! have fnm; then
+  if [ ! -x "$HOME/.local/share/fnm/fnm" ] && ! is_linux_bin fnm; then
     curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$HOME/.local/share/fnm" --skip-shell
   fi
   export PATH="$HOME/.local/share/fnm:$PATH"
@@ -248,7 +261,7 @@ install_gh() {
 
 install_claude() {
   log "claude code"
-  if ! have claude; then
+  if ! is_linux_bin claude; then
     curl -fsSL https://claude.ai/install.sh | bash
   fi
 }
@@ -262,7 +275,7 @@ install_grok() {
 
 install_op() {
   log "1Password CLI (op)"
-  if [ -x "$HOME/.local/bin/op" ] || have op; then
+  if is_linux_bin op; then
     return 0
   fi
   need_sudo
@@ -361,12 +374,30 @@ install_saml2aws() {
   rm -rf "$tmp"
 }
 
+install_aws() {
+  log "AWS CLI v2"
+  if is_linux_bin aws; then
+    return 0
+  fi
+  need_sudo
+  local tmp
+  tmp="$(mktemp -d)"
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmp/awscliv2.zip"
+  unzip -q "$tmp/awscliv2.zip" -d "$tmp"
+  if [ -x /usr/local/bin/aws ]; then
+    sudo "$tmp/aws/install" --update
+  else
+    sudo "$tmp/aws/install"
+  fi
+  rm -rf "$tmp"
+}
+
 install_cloudflare() {
   log "Cloudflare CLI (cf, wrangler, cloudflared)"
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
-  if ! have npm; then
-    echo "npm is required for the Cloudflare CLIs (install_fnm_node first)" >&2
+  if ! is_linux_bin npm; then
+    echo "Linux npm is required for the Cloudflare CLIs (install_fnm_node first)" >&2
     return 1
   fi
   if ! is_linux_bin cf; then
@@ -395,7 +426,11 @@ print_summary() {
   printf 'git        %s\n' "$(git --version 2>/dev/null || echo missing)"
   printf 'gh         %s\n' "$(gh --version 2>/dev/null | head -n1 || echo missing)"
   printf 'pwsh       %s\n' "$(pwsh --version 2>/dev/null || echo missing)"
-  printf 'docker     %s\n' "$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'start Docker Desktop')"
+  if is_linux_bin docker; then
+    printf 'docker     %s\n' "$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'installed, daemon not running')"
+  else
+    printf 'docker     %s\n' "missing — Docker Desktop on Windows + enable this distro"
+  fi
   printf 'node       %s\n' "$(node --version 2>/dev/null || echo missing)"
   printf 'bun        %s\n' "$(bun --version 2>/dev/null || echo missing)"
   printf 'go         %s\n' "$(go version 2>/dev/null || echo missing)"
@@ -415,6 +450,7 @@ print_summary() {
   printf 'azd        %s\n' "$(azd version 2>/dev/null | head -n1 || echo missing)"
   printf 'gcloud     %s\n' "$(gcloud --version 2>/dev/null | head -n1 || echo missing)"
   printf 'saml2aws   %s\n' "$(saml2aws --version 2>&1 || echo missing)"
+  printf 'aws        %s\n' "$(aws --version 2>/dev/null || echo missing)"
   printf 'cf         %s\n' "$(cf --version 2>/dev/null || echo missing)"
   printf 'wrangler   %s\n' "$(wrangler --version 2>/dev/null || echo missing)"
   printf 'cloudflared %s\n' "$(cloudflared --version 2>/dev/null || echo missing)"
@@ -446,6 +482,7 @@ main() {
   install_azd
   install_gcloud
   install_saml2aws
+  install_aws
   install_cloudflare
   [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
   export PATH="$HOME/.local/share/fnm:$PATH"
