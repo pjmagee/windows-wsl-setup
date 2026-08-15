@@ -421,6 +421,55 @@ install_cloudflare() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
 }
 
+# Electron's Chromium sandbox fails under WSL. Compass also rejects unknown
+# Chromium flags unless --ignore-additional-command-line-flags is set.
+ensure_compass_wsl_wrapper() {
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+  cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
+#!/usr/bin/env bash
+exec /usr/bin/mongodb-compass --no-sandbox --ignore-additional-command-line-flags --ozone-platform=x11 "$@"
+EOF
+  chmod +x "$HOME/.local/bin/mongodb-compass"
+  ln -sfn "$HOME/.local/bin/mongodb-compass" "$HOME/.local/bin/compass"
+  cat >"$HOME/.local/share/applications/mongodb-compass.desktop" <<EOF
+[Desktop Entry]
+Name=MongoDB Compass
+Comment=The MongoDB GUI
+Exec=$HOME/.local/bin/mongodb-compass %U
+Terminal=false
+Type=Application
+Icon=mongodb-compass
+Categories=Development;Database;
+StartupWMClass=MongoDB Compass
+EOF
+}
+
+install_compass() {
+  log "MongoDB Compass (Linux GUI via WSLg)"
+  need_sudo
+  local ver installed tmp deb
+  ver="$(curl -fsSL https://api.github.com/repos/mongodb-js/compass/releases/latest | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p' | head -n1)"
+  if [ -z "$ver" ]; then
+    echo "could not resolve latest MongoDB Compass release" >&2
+    return 1
+  fi
+  installed="$(dpkg-query -W -f='${Version}' mongodb-compass 2>/dev/null || true)"
+  case "$installed" in
+    "$ver"|"$ver"-*)
+      ensure_compass_wsl_wrapper
+      return 0
+      ;;
+  esac
+  tmp="$(mktemp -d)"
+  deb="$tmp/mongodb-compass_${ver}_amd64.deb"
+  if ! curl -fsSL "https://downloads.mongodb.com/compass/mongodb-compass_${ver}_amd64.deb" -o "$deb"; then
+    curl -fsSL "https://github.com/mongodb-js/compass/releases/download/v${ver}/mongodb-compass_${ver}_amd64.deb" -o "$deb"
+  fi
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$deb"
+  rm -rf "$tmp"
+  ensure_compass_wsl_wrapper
+}
+
 print_summary() {
   log "versions"
   printf 'git        %s\n' "$(git --version 2>/dev/null || echo missing)"
@@ -454,6 +503,7 @@ print_summary() {
   printf 'cf         %s\n' "$(cf --version 2>/dev/null || echo missing)"
   printf 'wrangler   %s\n' "$(wrangler --version 2>/dev/null || echo missing)"
   printf 'cloudflared %s\n' "$(cloudflared --version 2>/dev/null || echo missing)"
+  printf 'compass    %s\n' "$(dpkg-query -W -f='${Version}' mongodb-compass 2>/dev/null || echo missing)"
   printf 'oh-my-posh %s\n' "$(command -v oh-my-posh >/dev/null && echo 'STILL PRESENT (should be Windows-only)' || echo 'not in WSL (ok)')"
 }
 
@@ -484,6 +534,7 @@ main() {
   install_saml2aws
   install_aws
   install_cloudflare
+  install_compass
   [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
@@ -491,6 +542,7 @@ main() {
   echo
   echo "Prompt in WSL is Starship. Oh My Posh stays on Windows only."
   echo "VS Code stays on Windows. From a Linux path:  code ."
+  echo "MongoDB Compass is a Linux GUI:  compass    (window appears on Windows via WSLg)"
 }
 
 main "$@"

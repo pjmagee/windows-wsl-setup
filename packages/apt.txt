@@ -25,6 +25,8 @@ alsa-utils
 libasound2-plugins
 x11-apps
 wl-clipboard
+dbus-x11
+xdg-utils
 libicu-dev
 python3
 python3-venv

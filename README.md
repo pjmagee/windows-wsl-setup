@@ -64,6 +64,19 @@ code .
 | Cloudflare CLI (`cf`) | npm `cf@latest` (current Cloudflare CLI) |
 | Wrangler | npm `wrangler@latest` (Workers / Pages) |
 | cloudflared | official Cloudflare apt repo |
+| MongoDB Compass | official Linux `.deb` + WSLg wrapper (`compass`) |
+
+**Linux GUIs (WSLg)**
+
+MongoDB Compass is the **Linux** app. From Ubuntu:
+
+```bash
+compass
+# or
+mongodb-compass
+```
+
+WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in `.wslconfig` (the Windows 11 default).
 
 **Keep on Windows**
 
