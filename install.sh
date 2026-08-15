@@ -73,8 +73,9 @@ if [ -d "$HOME/.local/share/fnm" ]; then
   eval "$(fnm env --shell bash 2>/dev/null)" || true
 fi
 # Linux GUI/CLI "open this URL" should hit the Windows default browser.
-export BROWSER=wslview
-export GH_BROWSER=wslview
+# Ubuntu 26.04 dropped wslu/wslview (discontinued upstream).
+export BROWSER="$HOME/.local/bin/wsl-open"
+export GH_BROWSER="$HOME/.local/bin/wsl-open"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
 # <<< wsl-linux-path <<<
 
@@ -109,25 +110,26 @@ remove_oh_my_posh() {
   rm -f "$HOME/.local/bin/oh-my-posh"
 }
 
-install_wslu() {
-  log "wslu (wslview → Windows browser)"
-  need_sudo
-  if ! is_linux_bin wslview; then
-    if ! apt-cache show wslu >/dev/null 2>&1; then
-      if ! ls /etc/apt/sources.list.d/*wslu* >/dev/null 2>&1; then
-        sudo add-apt-repository -y ppa:wslutilities/wslu || true
-      fi
-      # Ubuntu 26.04 (resolute) has no wslu package or PPA suite yet.
-      # Official PPA latest is noble (24.04).
-      sudo sed -i 's/resolute/noble/g' /etc/apt/sources.list.d/*wslu* 2>/dev/null || true
-      sudo apt-get update -y
-    fi
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y wslu
-  fi
-  # Drop the old custom xdg-open shim; wslview is www-browser now.
-  rm -f "$HOME/.local/bin/xdg-open"
-  mkdir -p "$HOME/.local/bin"
+install_wsl_open() {
+  log "wsl-open (Windows default browser)"
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   install -m 0755 "$ROOT/scripts/wsl-open" "$HOME/.local/bin/wsl-open"
+  rm -f "$HOME/.local/bin/xdg-open"
+  cat >"$HOME/.local/share/applications/wsl-open.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Windows Browser
+Comment=Open links in the Windows default browser
+Exec=$HOME/.local/bin/wsl-open %u
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/mailto;x-scheme-handler/ftp;
+EOF
+  if have xdg-mime; then
+    xdg-mime default wsl-open.desktop x-scheme-handler/http || true
+    xdg-mime default wsl-open.desktop x-scheme-handler/https || true
+    xdg-mime default wsl-open.desktop x-scheme-handler/mailto || true
+  fi
 }
 
 install_uv_python() {
@@ -461,7 +463,7 @@ export ELECTRON_OZONE_PLATFORM_HINT=x11
 export GDK_BACKEND=x11
 export XDG_SESSION_TYPE=x11
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
-export BROWSER="${BROWSER:-wslview}"
+export BROWSER="${BROWSER:-$HOME/.local/bin/wsl-open}"
 export NODE_NO_WARNINGS=1
 unset WAYLAND_DISPLAY
 export DISPLAY="${DISPLAY:-:0}"
@@ -564,7 +566,7 @@ main() {
   remove_oh_my_posh
   ensure_bashrc
   install_apt
-  install_wslu
+  install_wsl_open
   install_uv_python
   install_rust
   install_bun

@@ -1,3 +1,43 @@
 #!/usr/bin/env bash
-# Compatibility name. wslu's wslview is the real opener.
-exec wslview "$@"
+# Open http(s)/mailto in the Windows default browser.
+# Ubuntu 26.04 dropped wslu; do not call wslview.
+set -euo pipefail
+
+usage() { echo "usage: wsl-open <url-or-file>" >&2; exit 1; }
+[ $# -ge 1 ] || usage
+
+target="$1"
+
+is_web() {
+  case "$1" in
+    http://*|https://*|mailto:*|ftp://*|www.*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+win_start() {
+  local url="$1"
+  if [ -x /mnt/c/Windows/System32/rundll32.exe ]; then
+    /mnt/c/Windows/System32/rundll32.exe url.dll,FileProtocolHandler "$url"
+    return 0
+  fi
+  if command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "" "$url" >/dev/null 2>&1
+    return 0
+  fi
+  echo "wsl-open: Windows interop not available for: $url" >&2
+  return 1
+}
+
+if is_web "$target"; then
+  [ "${target#www.}" = "$target" ] || target="https://$target"
+  win_start "$target"
+  exit $?
+fi
+
+if [ -e "$target" ]; then
+  win_start "$(wslpath -w "$target")"
+  exit $?
+fi
+
+win_start "$target"
