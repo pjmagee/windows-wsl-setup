@@ -79,7 +79,7 @@ mongodb-compass
 
 WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in `.wslconfig` (the Windows 11 default).
 
-The wrapper forces X11 + software rendering. WSLg's GPU path leaves Electron 41 (Compass) as a blank or half-drawn window.
+The 4080 is available in WSL for CUDA (`nvidia-smi`). GUI OpenGL is Mesa `GALLIUM_DRIVER=d3d12` → D3D12 → the Windows NVIDIA driver — not proprietary Linux GL. Electron 41 does not map a Compass window on that path, so the wrapper uses SwiftShader. WSLg then remotes that bitmap to Windows.
 
 The wrapper hides Electron/xdg noise (`StartTransientUnit`, `unknown desktop environment`, Node `punycode`).
 

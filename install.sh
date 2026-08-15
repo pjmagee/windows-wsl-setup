@@ -456,26 +456,30 @@ ensure_compass_wsl_wrapper() {
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
 #!/usr/bin/env bash
-# WSLg + Electron 41: hardware GL/WebGPU leaves a blank window.
-# Force X11 and SwiftShader. CHROME_DESKTOP must not contain spaces.
+# Electron 41 + Mesa D3D12 (the WSL path to the NVIDIA GPU) never maps a
+# window. CUDA still uses the 4080; this GUI has to paint with SwiftShader.
+# A leftover Compass process without a real window eats later launches.
+if pgrep -f '/usr/lib/mongodb-compass/MongoDB Compass' >/dev/null 2>&1; then
+  if ! xwininfo -root -tree 2>/dev/null | grep -q '"MongoDB Compass"'; then
+    pkill -f '/usr/lib/mongodb-compass/MongoDB Compass' >/dev/null 2>&1 || true
+    sleep 1
+  fi
+fi
 export CHROME_DESKTOP=mongodb-compass.desktop
 export ELECTRON_OZONE_PLATFORM_HINT=x11
 export GDK_BACKEND=x11
 export XDG_SESSION_TYPE=x11
-export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
 export BROWSER="${BROWSER:-$HOME/.local/bin/wsl-open}"
 export NODE_NO_WARNINGS=1
 unset WAYLAND_DISPLAY
+unset GALLIUM_DRIVER
+unset LIBGL_ALWAYS_SOFTWARE
 export DISPLAY="${DISPLAY:-:0}"
 exec /usr/bin/mongodb-compass \
   --no-sandbox \
-  --no-installURLHandlers \
   --ignore-additional-command-line-flags \
   --ozone-platform=x11 \
   --disable-gpu \
-  --disable-gpu-compositing \
-  --disable-gpu-sandbox \
-  --in-process-gpu \
   --enable-unsafe-swiftshader \
   "$@" 2> >(grep -v --line-buffered -E 'StartTransientUnit|unknown desktop environment|DEP0040|punycode|trace-deprecation' >&2)
 EOF
