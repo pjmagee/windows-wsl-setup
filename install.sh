@@ -72,6 +72,10 @@ if [ -d "$HOME/.local/share/fnm" ]; then
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
 fi
+# Linux GUI/CLI "open this URL" should hit the Windows default browser.
+export BROWSER="$HOME/.local/bin/wsl-open"
+export GH_BROWSER="$HOME/.local/bin/wsl-open"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
 # <<< wsl-linux-path <<<
 
 EOF
@@ -103,6 +107,28 @@ EOF
 remove_oh_my_posh() {
   log "ensuring Oh My Posh is not installed in WSL"
   rm -f "$HOME/.local/bin/oh-my-posh"
+}
+
+install_wsl_open() {
+  log "wsl-open (Windows browser for Linux links)"
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+  install -m 0755 "$ROOT/scripts/wsl-open" "$HOME/.local/bin/wsl-open"
+  ln -sfn "$HOME/.local/bin/wsl-open" "$HOME/.local/bin/xdg-open"
+  cat >"$HOME/.local/share/applications/wsl-open.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Windows Browser
+Comment=Open links in the Windows default browser
+Exec=$HOME/.local/bin/wsl-open %u
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/mailto;x-scheme-handler/ftp;
+EOF
+  if have xdg-mime; then
+    xdg-mime default wsl-open.desktop x-scheme-handler/http || true
+    xdg-mime default wsl-open.desktop x-scheme-handler/https || true
+    xdg-mime default wsl-open.desktop x-scheme-handler/mailto || true
+  fi
 }
 
 install_uv_python() {
@@ -435,10 +461,14 @@ export CHROME_DESKTOP=mongodb-compass.desktop
 export ELECTRON_OZONE_PLATFORM_HINT=x11
 export GDK_BACKEND=x11
 export XDG_SESSION_TYPE=x11
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
+export BROWSER="${BROWSER:-$HOME/.local/bin/wsl-open}"
+export NODE_NO_WARNINGS=1
 unset WAYLAND_DISPLAY
 export DISPLAY="${DISPLAY:-:0}"
 exec /usr/bin/mongodb-compass \
   --no-sandbox \
+  --no-installURLHandlers \
   --ignore-additional-command-line-flags \
   --ozone-platform=x11 \
   --disable-gpu \
@@ -446,7 +476,7 @@ exec /usr/bin/mongodb-compass \
   --disable-gpu-sandbox \
   --in-process-gpu \
   --enable-unsafe-swiftshader \
-  "$@" 2> >(grep -v --line-buffered 'StartTransientUnit' >&2)
+  "$@" 2> >(grep -v --line-buffered -E 'StartTransientUnit|unknown desktop environment|DEP0040|punycode|trace-deprecation' >&2)
 EOF
   chmod +x "$HOME/.local/bin/mongodb-compass"
   ln -sfn "$HOME/.local/bin/mongodb-compass" "$HOME/.local/bin/compass"
@@ -535,6 +565,7 @@ main() {
   remove_oh_my_posh
   ensure_bashrc
   install_apt
+  install_wsl_open
   install_uv_python
   install_rust
   install_bun

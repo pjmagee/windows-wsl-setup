@@ -65,6 +65,7 @@ code .
 | Wrangler | npm `wrangler@latest` (Workers / Pages) |
 | cloudflared | official Cloudflare apt repo |
 | MongoDB Compass | official Linux `.deb` + WSLg wrapper (`compass`) |
+| `wsl-open` | opens Linux `http`/`https` links in the Windows default browser |
 
 **Linux GUIs (WSLg)**
 
@@ -80,7 +81,17 @@ WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in 
 
 The wrapper forces X11 + software rendering. WSLg's GPU path leaves Electron 41 (Compass) as a blank or half-drawn window.
 
-Electron may print a `StartTransientUnit` / `app-MongoDB Compass-….scope` D-Bus line. That is a known Chromium bug (a space in the app name). The wrapper hides it.
+The wrapper hides Electron/xdg noise (`StartTransientUnit`, `unknown desktop environment`, Node `punycode`).
+
+**Browser links**
+
+Linux apps have no real desktop browser. `wsl-open` (also installed as `xdg-open` on `PATH`, and `BROWSER`) opens `http` / `https` / `mailto` in the **Windows** default browser:
+
+```bash
+wsl-open https://example.com
+```
+
+Clicks inside Compass, `gh auth login`, `az login`, and similar go through the same helper.
 
 **Keep on Windows**
 
