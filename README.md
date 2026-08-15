@@ -1,15 +1,15 @@
 # wsl-setup
 
-Idempotent bootstrap for a **WSL 2 Ubuntu** development machine.
+Idempotent bootstrap for a **WSL 2 Ubuntu 26.04** development machine.
 
-It installs a Linux toolchain *inside* the distro (so tools are not the Windows copies on `PATH`) and is safe to re-run.
+It installs a Linux toolchain *inside* the distro so Windows copies on `PATH` are not used. Safe to re-run.
 
 ## Requirements
 
 - Windows 11 with WSL 2
-- An Ubuntu distro (`Ubuntu-24.04` or `Ubuntu-26.04`)
+- Ubuntu **26.04 LTS** (`wsl --install Ubuntu-26.04`)
 - `sudo` (passwordless is convenient)
-- [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (optional, but needed for `docker` / Dagger)
+- [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (needed for `docker` / Dagger)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
 ## Install
@@ -21,9 +21,9 @@ cd ~/code/wsl-setup
 ./install.sh
 ```
 
-Open a new Ubuntu tab so `~/.bashrc` picks up `PATH` and Oh My Posh.
+Open a new Ubuntu tab so `~/.bashrc` loads.
 
-Put project checkouts on the **Linux** disk (`~/code/...`), not under `/mnt/c` or `/mnt/d`. Then:
+Keep repositories on the **Linux** disk (`~/code/...`), not `/mnt/c` or `/mnt/d`:
 
 ```bash
 cd ~/code/your-repo
@@ -32,37 +32,41 @@ code .
 
 ## What it installs
 
-| Tool | Source | Notes |
-|---|---|---|
-| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) | compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, ICU, PulseAudio utils |
-| Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) | not the Windows `node.exe` |
-| bun | [bun.sh](https://bun.sh) | |
-| Go | official tarball → `~/.local/go` | |
-| .NET SDK 10 | Microsoft `dotnet-install.sh` → `~/.dotnet` | |
-| Python 3.14 | [uv](https://docs.astral.sh/uv/) | also a `python3.14` shim |
-| Rust | rustup (stable) | |
-| GitHub CLI | official Linux release | run `gh auth login` once |
-| Dagger | official Linux installer → `~/.local/bin/dagger` | **not** the Windows binary |
-| Oh My Posh | official installer | inits from `~/.bashrc`; use a Nerd Font in Windows Terminal |
-| 1Password CLI (`op`) | 1Password apt repo | Linux `op` does not use Windows Hello |
-| Claude Code | official installer | |
-| Grok Build | official installer | |
+| Tool | Source |
+|---|---|
+| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, ICU |
+| Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) |
+| bun | [bun.sh](https://bun.sh) |
+| Go | official tarball → `~/.local/go` |
+| .NET SDK 10 | Microsoft `dotnet-install.sh` → `~/.dotnet` |
+| Python 3.14 | [uv](https://docs.astral.sh/uv/) |
+| Rust | rustup (stable) |
+| PowerShell 7 | Microsoft apt repo, or GitHub tarball if that repo is missing |
+| GitHub CLI | official Linux release (`gh auth login` once) |
+| Dagger | official **Linux** installer → `~/.local/bin/dagger` |
+| Starship | official installer (WSL prompt) |
+| zoxide | official installer (`z` jump) |
+| fzf | Ubuntu apt + bash keybindings |
+| atuin | official installer (shell history) |
+| OpenCode | [opencode.ai](https://opencode.ai/docs/) install script |
+| 1Password CLI (`op`) | 1Password apt repo (no Windows Hello) |
+| Claude Code | official installer |
+| Grok Build | official installer |
 
-**Not installed here** (keep these on Windows):
+**Keep on Windows**
 
-- VS Code / Cursor / JetBrains UI — use `code .` from a Linux path
-- Docker Engine — use Docker Desktop’s WSL integration
+- VS Code / Cursor / JetBrains UI — `code .` from a Linux path
+- Docker Engine — Docker Desktop WSL integration
+- Oh My Posh — Windows Terminal / PowerShell only
 - Discord, browsers, 1Password desktop, games
 
 ## Updates
-
-Re-run the script at any time:
 
 ```bash
 cd ~/code/wsl-setup && git pull && ./install.sh
 ```
 
-Or update layers yourself:
+Or by layer:
 
 ```bash
 sudo apt update && sudo apt full-upgrade
@@ -72,13 +76,14 @@ fnm install --lts
 uv python install 3.14
 ```
 
-WSL itself (kernel / WSLg) is updated from Windows: `wsl --update`.
+WSL kernel / WSLg: `wsl --update` from Windows.
 
 ## Design
 
-- Linux binaries are prepended on `PATH` so WSL interop does not pick `*.exe` from Windows.
+- Ubuntu **26.04 only**.
+- Linux binaries are prepended on `PATH` so WSL interop does not pick `*.exe`.
 - Language runtimes come from upstream installers, not stale `apt` packages.
-- `packages/apt.txt` is the only list to edit for extra system packages. Unknown names are skipped (so the same file works on 24.04 and 26.04).
+- Edit [`packages/apt.txt`](packages/apt.txt) to add system packages.
 
 ## License
 

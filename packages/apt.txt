@@ -1,5 +1,7 @@
-# System packages for a WSL Ubuntu workstation.
-# Language runtimes (Node, Go, Rust, pinned Python) are NOT installed from here.
+# System packages for Ubuntu 26.04 WSL.
+# Language runtimes are installed by install.sh, not from here.
+apt-transport-https
+software-properties-common
 build-essential
 pkg-config
 libssl-dev
