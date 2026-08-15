@@ -276,6 +276,120 @@ install_op() {
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y 1password-cli
 }
 
+# Microsoft has no azure-cli suite for Ubuntu 26.04 (resolute) yet. Official
+# guidance is to use an earlier published suite; noble is the closest LTS.
+azure_cli_suite() {
+  local candidate
+  for candidate in "$(lsb_release -cs)" noble jammy; do
+    if curl -fsI "https://packages.microsoft.com/repos/azure-cli/dists/${candidate}/Release" >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+install_az() {
+  log "Azure CLI (az)"
+  if is_linux_bin az; then
+    return 0
+  fi
+  need_sudo
+  sudo mkdir -p /etc/apt/keyrings
+  if [ ! -f /etc/apt/keyrings/microsoft.gpg ]; then
+    curl -sLS https://packages.microsoft.com/keys/microsoft.asc \
+      | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg >/dev/null
+    sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
+  fi
+  local suite
+  if ! suite="$(azure_cli_suite)"; then
+    log "no azure-cli apt suite published; installing with uv tool"
+    uv tool install azure-cli
+    return 0
+  fi
+  printf 'Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\nSuites: %s\nComponents: main\nArchitectures: %s\nSigned-by: /etc/apt/keyrings/microsoft.gpg\n' \
+    "$suite" "$(dpkg --print-architecture)" \
+    | sudo tee /etc/apt/sources.list.d/azure-cli.sources >/dev/null
+  sudo apt-get update -y
+  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y azure-cli; then
+    log "azure-cli apt install failed; installing with uv tool"
+    uv tool install azure-cli
+  fi
+}
+
+install_azd() {
+  log "Azure Developer CLI (azd)"
+  if is_linux_bin azd; then
+    return 0
+  fi
+  need_sudo
+  curl -fsSL https://aka.ms/install-azd.sh | bash -s -- --no-telemetry
+}
+
+install_gcloud() {
+  log "Google Cloud CLI (gcloud)"
+  if is_linux_bin gcloud; then
+    return 0
+  fi
+  need_sudo
+  sudo mkdir -p /usr/share/keyrings
+  if [ ! -f /usr/share/keyrings/cloud.google.gpg ]; then
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+      | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+  fi
+  echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+    | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null
+  sudo apt-get update -y
+  sudo CLOUDSDK_SKIP_PY_COMPILATION=1 DEBIAN_FRONTEND=noninteractive apt-get install -y google-cloud-cli
+}
+
+install_saml2aws() {
+  log "saml2aws"
+  if is_linux_bin saml2aws; then
+    return 0
+  fi
+  local ver tmp
+  ver="$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p' | head -n1)"
+  if [ -z "$ver" ]; then
+    echo "could not resolve latest saml2aws release" >&2
+    return 1
+  fi
+  tmp="$(mktemp -d)"
+  curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v${ver}/saml2aws_${ver}_linux_amd64.tar.gz" -o "$tmp/s.tgz"
+  tar -xzf "$tmp/s.tgz" -C "$tmp"
+  install -m 0755 "$tmp/saml2aws" "$HOME/.local/bin/saml2aws"
+  rm -rf "$tmp"
+}
+
+install_cloudflare() {
+  log "Cloudflare CLI (cf, wrangler, cloudflared)"
+  export PATH="$HOME/.local/share/fnm:$PATH"
+  eval "$(fnm env --shell bash 2>/dev/null)" || true
+  if ! have npm; then
+    echo "npm is required for the Cloudflare CLIs (install_fnm_node first)" >&2
+    return 1
+  fi
+  if ! is_linux_bin cf; then
+    npm install -g cf@latest
+  fi
+  if ! is_linux_bin wrangler; then
+    npm install -g wrangler@latest
+  fi
+  if is_linux_bin cloudflared; then
+    return 0
+  fi
+  need_sudo
+  sudo mkdir -p --mode=0755 /usr/share/keyrings
+  if [ ! -f /usr/share/keyrings/cloudflare-main.gpg ]; then
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+      | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+  fi
+  echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" \
+    | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
+  sudo apt-get update -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+}
+
 print_summary() {
   log "versions"
   printf 'git        %s\n' "$(git --version 2>/dev/null || echo missing)"
@@ -297,6 +411,13 @@ print_summary() {
   printf 'opencode   %s\n' "$(opencode --version 2>/dev/null || echo missing)"
   printf 'claude     %s\n' "$(claude --version 2>/dev/null || echo missing)"
   printf 'grok       %s\n' "$(grok --version 2>/dev/null || echo missing)"
+  printf 'az         %s\n' "$(az version -o json 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["azure-cli"])' 2>/dev/null || echo missing)"
+  printf 'azd        %s\n' "$(azd version 2>/dev/null | head -n1 || echo missing)"
+  printf 'gcloud     %s\n' "$(gcloud --version 2>/dev/null | head -n1 || echo missing)"
+  printf 'saml2aws   %s\n' "$(saml2aws --version 2>&1 || echo missing)"
+  printf 'cf         %s\n' "$(cf --version 2>/dev/null || echo missing)"
+  printf 'wrangler   %s\n' "$(wrangler --version 2>/dev/null || echo missing)"
+  printf 'cloudflared %s\n' "$(cloudflared --version 2>/dev/null || echo missing)"
   printf 'oh-my-posh %s\n' "$(command -v oh-my-posh >/dev/null && echo 'STILL PRESENT (should be Windows-only)' || echo 'not in WSL (ok)')"
 }
 
@@ -321,6 +442,11 @@ main() {
   install_claude
   install_grok
   install_op
+  install_az
+  install_azd
+  install_gcloud
+  install_saml2aws
+  install_cloudflare
   [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true

@@ -52,6 +52,13 @@ code .
 | 1Password CLI (`op`) | 1Password apt repo (no Windows Hello) |
 | Claude Code | official installer |
 | Grok Build | official installer |
+| Azure CLI (`az`) | Microsoft azure-cli apt repo (`noble` fallback until 26.04 is published) |
+| Azure Developer CLI (`azd`) | official `install-azd.sh` |
+| Google Cloud CLI (`gcloud`) | official `google-cloud-cli` apt repo |
+| saml2aws | latest GitHub release → `~/.local/bin` |
+| Cloudflare CLI (`cf`) | npm `cf@latest` (current Cloudflare CLI) |
+| Wrangler | npm `wrangler@latest` (Workers / Pages) |
+| cloudflared | official Cloudflare apt repo |
 
 **Keep on Windows**
 
