@@ -4,11 +4,19 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export HOME="${HOME:-/home/magaoidh}"
+: "${HOME:=$(getent passwd "$(id -un)" | cut -d: -f6)}"
+export HOME
 export PATH="$HOME/.local/bin:$HOME/.bun/bin:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.grok/bin:$PATH"
 
 log() { printf '\n==> %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+is_linux_bin() {
+  have "$1" || return 1
+  case "$(command -v "$1")" in
+    /mnt/c/*|/mnt/d/*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
 
 need_sudo() {
   if ! sudo -n true 2>/dev/null; then
@@ -39,10 +47,35 @@ install_apt() {
   fi
 }
 
-ensure_bashrc_path() {
-  local marker=">>> wsl-linux-path >>>"
-  if ! grep -q "$marker" "$HOME/.bashrc" 2>/dev/null; then
-    log "note: $HOME/.bashrc is missing the Linux-first PATH block; not rewriting it"
+ensure_bashrc() {
+  local bashrc="$HOME/.bashrc"
+  [ -f "$bashrc" ] || return 0
+
+  if ! grep -q '>>> wsl-linux-path >>>' "$bashrc"; then
+    log "adding Linux-first PATH to ~/.bashrc"
+    local block tmp
+    tmp="$(mktemp)"
+    block='# Linux toolchains must precede the Windows PATH that WSL appends.
+# >>> wsl-linux-path >>>
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.grok/bin:$PATH"
+if [ -d "$HOME/.local/share/fnm" ]; then
+  export PATH="$HOME/.local/share/fnm:$PATH"
+  eval "$(fnm env --shell bash 2>/dev/null)" || true
+fi
+# <<< wsl-linux-path <<<
+'
+    printf '%s\n' "$block" | cat - "$bashrc" >"$tmp"
+    mv "$tmp" "$bashrc"
+  fi
+
+  if ! grep -q 'oh-my-posh init' "$bashrc"; then
+    log "adding Oh My Posh to ~/.bashrc"
+    cat >>"$bashrc" <<'EOF'
+
+# >>> oh-my-posh >>>
+command -v oh-my-posh >/dev/null && eval "$(oh-my-posh init bash)"
+# <<< oh-my-posh <<<
+EOF
   fi
 }
 
@@ -115,9 +148,25 @@ install_dotnet() {
   rm -f "$tmp"
 }
 
+install_dagger() {
+  log "dagger (Linux)"
+  if is_linux_bin dagger; then
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR="$HOME/.local/bin" sh
+}
+
+install_oh_my_posh() {
+  log "oh-my-posh"
+  if ! is_linux_bin oh-my-posh; then
+    curl -s https://ohmyposh.dev/install.sh | bash -s -- -d "$HOME/.local/bin"
+  fi
+}
+
 install_gh() {
   log "gh"
-  if have gh && [[ "$(command -v gh)" != /mnt/c/* ]]; then
+  if is_linux_bin gh; then
     return 0
   fi
   local tag ver tmp
@@ -175,6 +224,8 @@ print_summary() {
   printf 'python3.14 %s\n' "$(python3.14 --version 2>/dev/null || echo missing)"
   printf 'rustc    %s\n' "$(rustc --version 2>/dev/null || echo missing)"
   printf 'op       %s\n' "$(op --version 2>/dev/null || echo missing)"
+  printf 'dagger   %s\n' "$(dagger version 2>/dev/null | head -n1 || echo missing)"
+  printf 'oh-my-posh %s\n' "$(oh-my-posh --version 2>/dev/null || echo missing)"
   printf 'claude   %s\n' "$(claude --version 2>/dev/null || echo missing)"
   printf 'grok     %s\n' "$(grok --version 2>/dev/null || echo missing)"
   printf 'code     %s\n' "$(code --version 2>/dev/null | head -n1 || echo 'install VS Code on Windows')"
@@ -182,7 +233,7 @@ print_summary() {
 
 main() {
   mkdir -p "$HOME/.local/bin" "$HOME/code"
-  ensure_bashrc_path
+  ensure_bashrc
   install_apt
   install_uv_python
   install_rust
@@ -191,6 +242,8 @@ main() {
   install_go
   install_dotnet
   install_gh
+  install_dagger
+  install_oh_my_posh
   install_claude
   install_grok
   install_op

@@ -1,54 +1,85 @@
-# WSL Ubuntu workstation
+# wsl-setup
 
-Idempotent bootstrap for a fresh Ubuntu WSL distro. Re-run `./install.sh` any time.
+Idempotent bootstrap for a **WSL 2 Ubuntu** development machine.
 
-Ubuntu has **no winget**. Closest tools:
+It installs a Linux toolchain *inside* the distro (so tools are not the Windows copies on `PATH`) and is safe to re-run.
 
-| Need | Use |
-|---|---|
-| System libraries, `git`, `jq`, audio utils | `apt` (this repo's `packages/apt.txt`) |
-| Node / Python / Rust / Go versions | official installers or `uv` / `fnm` / `rustup` (this script) |
-| One command for lots of user CLIs | [Linux Homebrew](https://docs.brew.sh/Homebrew-on-Linux) + a `Brewfile` |
-| Pin every runtime in one place | [mise](https://mise.jdx.dev/) |
+## Requirements
 
-This repo uses **apt + official installers**. That matches how Claude, Grok, Bun, Go, and .NET actually want to be installed.
+- Windows 11 with WSL 2
+- An Ubuntu distro (`Ubuntu-24.04` or `Ubuntu-26.04`)
+- `sudo` (passwordless is convenient)
+- [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (optional, but needed for `docker` / Dagger)
+- [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
-## Fresh distro
+## Install
 
 ```bash
 sudo apt update && sudo apt install -y git curl
-git clone git@github.com:pjmagee/wsl-setup.git ~/code/wsl-setup
+git clone https://github.com/pjmagee/wsl-setup.git ~/code/wsl-setup
 cd ~/code/wsl-setup
 ./install.sh
 ```
 
-Then open a new Ubuntu tab so `PATH` picks up rustup/fnm/uv.
+Open a new Ubuntu tab so `~/.bashrc` picks up `PATH` and Oh My Posh.
+
+Put project checkouts on the **Linux** disk (`~/code/...`), not under `/mnt/c` or `/mnt/d`. Then:
+
+```bash
+cd ~/code/your-repo
+code .
+```
 
 ## What it installs
 
-| Wanted | How | Notes |
+| Tool | Source | Notes |
 |---|---|---|
-| `git` | apt | |
-| `gh` | GitHub release tarball | `gh auth login` still needed for the API |
-| `bun` | bun.sh | |
-| `dotnet` | Microsoft `dotnet-install.sh` → `~/.dotnet` | SDK 10 |
-| `go` | official tarball → `~/.local/go` | |
-| `python3.14` | `uv python install 3.14` | Ubuntu 26.04 apt `python3` is already 3.14 |
-| `rustc` / `cargo` | rustup stable | |
-| `op` | existing `~/.local/bin/op`, else 1Password apt | Linux `op` does **not** get Windows Hello |
-| `claude` | `claude.ai/install.sh` | |
-| `grok` | `x.ai/cli/install.sh` | |
-| `code` | **not installed here** | Windows VS Code + `code .` (Remote-WSL) |
-| `docker` | **not installed here** | Docker Desktop WSL integration |
+| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) | compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, ICU, PulseAudio utils |
+| Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) | not the Windows `node.exe` |
+| bun | [bun.sh](https://bun.sh) | |
+| Go | official tarball → `~/.local/go` | |
+| .NET SDK 10 | Microsoft `dotnet-install.sh` → `~/.dotnet` | |
+| Python 3.14 | [uv](https://docs.astral.sh/uv/) | also a `python3.14` shim |
+| Rust | rustup (stable) | |
+| GitHub CLI | official Linux release | run `gh auth login` once |
+| Dagger | official Linux installer → `~/.local/bin/dagger` | **not** the Windows binary |
+| Oh My Posh | official installer | inits from `~/.bashrc`; use a Nerd Font in Windows Terminal |
+| 1Password CLI (`op`) | 1Password apt repo | Linux `op` does not use Windows Hello |
+| Claude Code | official installer | |
+| Grok Build | official installer | |
 
-## Keep on Windows
+**Not installed here** (keep these on Windows):
 
-- VS Code / Cursor / JetBrains UI
-- Discord, browsers, Steam, 1Password desktop
-- Docker Desktop
+- VS Code / Cursor / JetBrains UI — use `code .` from a Linux path
+- Docker Engine — use Docker Desktop’s WSL integration
+- Discord, browsers, 1Password desktop, games
 
-## Useful extras this script adds
+## Updates
 
-`build-essential`, `ripgrep`, `fd`, `fzf`, `jq`, `tmux`, `htop`, `shellcheck`, `libicu-dev`, `pulseaudio-utils` (for diagnosing WSLg audio).
+Re-run the script at any time:
 
-You already have `dagger`, `kubectl` (from Docker Desktop), and `oh-my-posh` in `~/.local/bin`. Add them to `install.sh` if you want them on the next machine.
+```bash
+cd ~/code/wsl-setup && git pull && ./install.sh
+```
+
+Or update layers yourself:
+
+```bash
+sudo apt update && sudo apt full-upgrade
+bun upgrade
+rustup update
+fnm install --lts
+uv python install 3.14
+```
+
+WSL itself (kernel / WSLg) is updated from Windows: `wsl --update`.
+
+## Design
+
+- Linux binaries are prepended on `PATH` so WSL interop does not pick `*.exe` from Windows.
+- Language runtimes come from upstream installers, not stale `apt` packages.
+- `packages/apt.txt` is the only list to edit for extra system packages. Unknown names are skipped (so the same file works on 24.04 and 26.04).
+
+## License
+
+Use and fork as you like.
