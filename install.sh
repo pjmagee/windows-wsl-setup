@@ -429,11 +429,23 @@ ensure_compass_wsl_wrapper() {
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
 #!/usr/bin/env bash
+# WSLg + Electron 41: hardware GL/WebGPU leaves a blank window.
+# Force X11 and SwiftShader. CHROME_DESKTOP must not contain spaces.
 export CHROME_DESKTOP=mongodb-compass.desktop
+export ELECTRON_OZONE_PLATFORM_HINT=x11
+export GDK_BACKEND=x11
+export XDG_SESSION_TYPE=x11
+unset WAYLAND_DISPLAY
+export DISPLAY="${DISPLAY:-:0}"
 exec /usr/bin/mongodb-compass \
   --no-sandbox \
   --ignore-additional-command-line-flags \
   --ozone-platform=x11 \
+  --disable-gpu \
+  --disable-gpu-compositing \
+  --disable-gpu-sandbox \
+  --in-process-gpu \
+  --enable-unsafe-swiftshader \
   "$@" 2> >(grep -v --line-buffered 'StartTransientUnit' >&2)
 EOF
   chmod +x "$HOME/.local/bin/mongodb-compass"

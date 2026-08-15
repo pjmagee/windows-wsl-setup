@@ -78,7 +78,9 @@ mongodb-compass
 
 WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in `.wslconfig` (the Windows 11 default).
 
-Electron may print a `StartTransientUnit` / `app-MongoDB Compass-….scope` D-Bus line. That is a known Chromium bug (a space in the app name). The window still opens; the `compass` wrapper hides it.
+The wrapper forces X11 + software rendering. WSLg's GPU path leaves Electron 41 (Compass) as a blank or half-drawn window.
+
+Electron may print a `StartTransientUnit` / `app-MongoDB Compass-….scope` D-Bus line. That is a known Chromium bug (a space in the app name). The wrapper hides it.
 
 **Keep on Windows**
 

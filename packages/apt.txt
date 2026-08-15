@@ -27,6 +27,8 @@ x11-apps
 wl-clipboard
 dbus-x11
 xdg-utils
+fonts-liberation
+fonts-dejavu-core
 libicu-dev
 python3
 python3-venv
