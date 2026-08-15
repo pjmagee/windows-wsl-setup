@@ -65,7 +65,7 @@ code .
 | Wrangler | npm `wrangler@latest` (Workers / Pages) |
 | cloudflared | official Cloudflare apt repo |
 | MongoDB Compass | official Linux `.deb` + WSLg wrapper (`compass`) |
-| `wsl-open` | opens Linux `http`/`https` links in the Windows default browser |
+| wslu (`wslview`) | official PPA (`noble` on 26.04 — archive has no `wslu` yet) |
 
 **Linux GUIs (WSLg)**
 
@@ -85,13 +85,13 @@ The wrapper hides Electron/xdg noise (`StartTransientUnit`, `unknown desktop env
 
 **Browser links**
 
-Linux apps have no real desktop browser. `wsl-open` (also installed as `xdg-open` on `PATH`, and `BROWSER`) opens `http` / `https` / `mailto` in the **Windows** default browser:
+Ubuntu 26.04 does not ship `wslu` (`apt install wslu` 404s). The bootstrap installs it from the [official PPA](https://launchpad.net/~wslutilities/+archive/ubuntu/wslu) using the `noble` suite.
+
+`wslview` is registered as `www-browser` / `x-www-browser`, and `BROWSER` / `GH_BROWSER` point at it. Linux `http`/`https` links open in the **Windows** default browser:
 
 ```bash
-wsl-open https://example.com
+wslview https://example.com
 ```
-
-Clicks inside Compass, `gh auth login`, `az login`, and similar go through the same helper.
 
 **Keep on Windows**
 
