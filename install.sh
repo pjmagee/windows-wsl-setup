@@ -76,7 +76,6 @@ fi
 # Ubuntu 26.04 dropped wslu/wslview (discontinued upstream).
 export BROWSER="$HOME/.local/bin/wsl-open"
 export GH_BROWSER="$HOME/.local/bin/wsl-open"
-export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-XFCE}"
 # <<< wsl-linux-path <<<
 
 EOF
@@ -456,32 +455,38 @@ ensure_compass_wsl_wrapper() {
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
 #!/usr/bin/env bash
-# Electron 41 + Mesa D3D12 (the WSL path to the NVIDIA GPU) never maps a
-# window. CUDA still uses the 4080; this GUI has to paint with SwiftShader.
-# A leftover Compass process without a real window eats later launches.
-if pgrep -f '/usr/lib/mongodb-compass/MongoDB Compass' >/dev/null 2>&1; then
-  if ! xwininfo -root -tree 2>/dev/null | grep -q '"MongoDB Compass"'; then
-    pkill -f '/usr/lib/mongodb-compass/MongoDB Compass' >/dev/null 2>&1 || true
-    sleep 1
-  fi
+# Prefer the Windows Compass EXE. WSLg remoting of the Linux Electron app
+# is not a reliable Windows window (often "[WARN:COPY MODE]" with no UI).
+win_compass() {
+  local c
+  for c in \
+    "/mnt/c/Program Files/MongoDB Compass/MongoDBCompass.exe" \
+    "/mnt/c/Program Files (x86)/MongoDB Compass/MongoDBCompass.exe" \
+    "/mnt/c/Users/${USER}/AppData/Local/MongoDBCompass/MongoDBCompass.exe" \
+    "/mnt/c/Users/${USER}/AppData/Local/Programs/MongoDBCompass/MongoDBCompass.exe"
+  do
+    if [ -e "$c" ]; then
+      printf '%s\n' "$c"
+      return 0
+    fi
+  done
+  # Windows username may not match the Linux user.
+  local f
+  f="$(ls -1 /mnt/c/Users/*/AppData/Local/MongoDBCompass/MongoDBCompass.exe \
+           /mnt/c/Users/*/AppData/Local/Programs/MongoDBCompass/MongoDBCompass.exe \
+           2>/dev/null | head -n1)"
+  [ -n "$f" ] && printf '%s\n' "$f"
+}
+
+exe="$(win_compass || true)"
+if [ -n "$exe" ]; then
+  exec "$exe" "$@"
 fi
-export CHROME_DESKTOP=mongodb-compass.desktop
-export ELECTRON_OZONE_PLATFORM_HINT=x11
-export GDK_BACKEND=x11
-export XDG_SESSION_TYPE=x11
-export BROWSER="${BROWSER:-$HOME/.local/bin/wsl-open}"
-export NODE_NO_WARNINGS=1
-unset WAYLAND_DISPLAY
-unset GALLIUM_DRIVER
-unset LIBGL_ALWAYS_SOFTWARE
-export DISPLAY="${DISPLAY:-:0}"
-exec /usr/bin/mongodb-compass \
-  --no-sandbox \
-  --ignore-additional-command-line-flags \
-  --ozone-platform=x11 \
-  --disable-gpu \
-  --enable-unsafe-swiftshader \
-  "$@" 2> >(grep -v --line-buffered -E 'StartTransientUnit|unknown desktop environment|DEP0040|punycode|trace-deprecation' >&2)
+
+echo "compass: no Windows MongoDB Compass EXE found." >&2
+echo "Install it on Windows (winget install MongoDB.Compass.Full) and rerun." >&2
+echo "The Linux .deb via WSLg is not used: it does not show a usable Windows window." >&2
+exit 1
 EOF
   chmod +x "$HOME/.local/bin/mongodb-compass"
   ln -sfn "$HOME/.local/bin/mongodb-compass" "$HOME/.local/bin/compass"

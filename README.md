@@ -67,21 +67,17 @@ code .
 | MongoDB Compass | official Linux `.deb` + WSLg wrapper (`compass`) |
 | `wsl-open` | first-party helper: Linux `http`/`https` → Windows default browser |
 
-**Linux GUIs (WSLg)**
+**MongoDB Compass**
 
-MongoDB Compass is the **Linux** app. From Ubuntu:
+`compass` from Ubuntu starts the **Windows** install (`MongoDBCompass.exe`) so you get a native Windows window.
 
-```bash
-compass
-# or
-mongodb-compass
+The Linux `.deb` through WSLg is not used. Electron 41 remotes as a broken WSLg surface (`[WARN:COPY MODE]`), not a usable Compass UI.
+
+On a work laptop, install Compass on Windows once:
+
+```powershell
+winget install MongoDB.Compass.Full
 ```
-
-WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in `.wslconfig` (the Windows 11 default).
-
-The 4080 is available in WSL for CUDA (`nvidia-smi`). GUI OpenGL is Mesa `GALLIUM_DRIVER=d3d12` → D3D12 → the Windows NVIDIA driver — not proprietary Linux GL. Electron 41 does not map a Compass window on that path, so the wrapper uses SwiftShader. WSLg then remotes that bitmap to Windows.
-
-The wrapper hides Electron/xdg noise (`StartTransientUnit`, `unknown desktop environment`, Node `punycode`).
 
 **Browser links**
 
