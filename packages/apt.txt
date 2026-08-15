@@ -24,6 +24,7 @@ pulseaudio-utils
 alsa-utils
 libasound2-plugins
 x11-apps
+wl-clipboard
 libicu-dev
 python3
 python3-venv

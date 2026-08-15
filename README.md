@@ -34,7 +34,7 @@ code .
 
 | Tool | Source |
 |---|---|
-| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, ICU |
+| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, `wl-clipboard`, ICU |
 | Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) |
 | bun | [bun.sh](https://bun.sh) |
 | Go | official tarball → `~/.local/go` |
