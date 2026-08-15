@@ -78,6 +78,8 @@ mongodb-compass
 
 WSLg puts the window on the Windows desktop. Requires `guiApplications=true` in `.wslconfig` (the Windows 11 default).
 
+Electron may print a `StartTransientUnit` / `app-MongoDB Compass-….scope` D-Bus line. That is a known Chromium bug (a space in the app name). The window still opens; the `compass` wrapper hides it.
+
 **Keep on Windows**
 
 - VS Code / Cursor / JetBrains UI — `code .` from a Linux path

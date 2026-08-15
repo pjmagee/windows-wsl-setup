@@ -423,14 +423,25 @@ install_cloudflare() {
 
 # Electron's Chromium sandbox fails under WSL. Compass also rejects unknown
 # Chromium flags unless --ignore-additional-command-line-flags is set.
+# CHROME_DESKTOP must not contain spaces: Electron asks systemd for
+# app-${CHROME_DESKTOP}-${pid}.scope and "MongoDB Compass" is an invalid unit name.
 ensure_compass_wsl_wrapper() {
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
 #!/usr/bin/env bash
-exec /usr/bin/mongodb-compass --no-sandbox --ignore-additional-command-line-flags --ozone-platform=x11 "$@"
+export CHROME_DESKTOP=mongodb-compass.desktop
+exec /usr/bin/mongodb-compass \
+  --no-sandbox \
+  --ignore-additional-command-line-flags \
+  --ozone-platform=x11 \
+  "$@" 2> >(grep -v --line-buffered 'StartTransientUnit' >&2)
 EOF
   chmod +x "$HOME/.local/bin/mongodb-compass"
   ln -sfn "$HOME/.local/bin/mongodb-compass" "$HOME/.local/bin/compass"
+  if [ -w /usr/local/bin ] || sudo -n true 2>/dev/null; then
+    sudo ln -sfn "$HOME/.local/bin/mongodb-compass" /usr/local/bin/mongodb-compass
+    sudo ln -sfn "$HOME/.local/bin/mongodb-compass" /usr/local/bin/compass
+  fi
   cat >"$HOME/.local/share/applications/mongodb-compass.desktop" <<EOF
 [Desktop Entry]
 Name=MongoDB Compass
