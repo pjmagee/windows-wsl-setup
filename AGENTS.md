@@ -28,17 +28,17 @@ else { "unknown" }
 ```
 
 ```bash
-# bash
+# bash (Git Bash is not Linux — uname is MINGW*/MSYS* and this prints "windows")
 if [ -n "${WSL_DISTRO_NAME:-}" ]; then echo "wsl:$WSL_DISTRO_NAME"
 elif [ "$(uname -s)" = Linux ]; then echo "linux-not-wsl"
-else echo "unknown"; fi
+else echo "windows"; fi
 ```
 
 | You are | Do this |
 |---|---|
-| Windows PowerShell / cmd / Git Bash | **§1**. Never run `install.sh` here. |
+| Windows PowerShell / cmd / Git Bash | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
-| WSL, any other distro | Stop. This repo is **Ubuntu 26.04 only**. Do not fall back to 22.04/24.04. |
+| WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
 
 `uname -m` must be `x86_64`. `install.sh` fetches amd64 tarballs (Go, gh,
@@ -76,20 +76,22 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
 
 1. Upserts `guiApplications=true` in `%USERPROFILE%\.wslconfig` (does not
    clobber other keys).
-2. Installs WSL 2 + `Ubuntu-26.04` only if they are missing (`wsl --install`).
+2. `wsl --update` (best-effort) and prints `wsl -l -v`. Ubuntu 26.04's
+   `.wsl` image needs WSL **2.4.10+**. Does not unregister anything.
+3. Installs `Ubuntu-26.04` only if it is missing (`wsl --install`).
    If Ubuntu is brand new, the user completes the normal username/password
    prompt once ([Microsoft](https://learn.microsoft.com/en-us/windows/wsl/setup/environment#set-up-your-linux-username-and-password));
    after that WSL auto-signs-in. Then re-run this script.
-3. NOPASSWD sudo + `/etc/wsl.conf` `[user] default=` for the **existing**
+4. NOPASSWD sudo + `/etc/wsl.conf` `[user] default=` for the **existing**
    uid-1000 user, via [`windows/ensure-user.sh`](windows/ensure-user.sh)
    as root (`wsl -u root`).
-4. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
-5. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wsl-setup\bin`).
-6. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
-7. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
+5. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
+6. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wsl-setup\bin`).
+7. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
+8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
    `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
-8. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
-   `install.sh`.
+9. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
+   `install.sh`. If that fails, the host script **throws** (no fake `Done.`).
 
 If WSL was just enabled, Windows may ask for a **reboot**. Re-run the same
 command after login.
@@ -99,8 +101,30 @@ command after login.
 ```
 
 Do not install `Ubuntu`, `Ubuntu-22.04`, or `Ubuntu-24.04`.
+Do not `wsl --unregister` leftover distros unless the user asks.
 Do not invent a second toolchain installer.
 Do not write `%USERPROFILE%\.cloud-init\`.
+
+### 1.2a Leftover distros (24.04 / Store Ubuntu)
+
+A used work laptop often already has `Ubuntu-24.04`, Store `Ubuntu`,
+and/or `docker-desktop`. That is fine. This repo adds **Ubuntu-26.04**
+next to them.
+
+```powershell
+wsl.exe -l -v
+```
+
+| Rule | Why |
+|---|---|
+| Leave other distros installed | Unregistering deletes their disk. Unused 24.04 can sit there. |
+| Never `wsl --unregister` unless the user asked | Copilot must not "clean up" the old Ubuntu. |
+| Default becomes `Ubuntu-26.04` | Bare `wsl` / new Terminal **Ubuntu** tab hit 26.04. Old Store/Terminal profiles may still launch 24.04. |
+| `ubuntu` in **cmd** may still be Store `ubuntu.exe` | `PATHEXT` tries `.EXE` before `.CMD`, so `%USERPROFILE%\.wsl-setup\bin\ubuntu.cmd` loses to `ubuntu.exe`. PowerShell's `ubuntu` function and the fragment profiles are the 26.04 launchers. |
+| Docker Desktop WSL integration | Often still attached to 24.04. User must enable **Ubuntu-26.04** in Docker Desktop (leftover in §1.6). |
+
+Tell the user the old distro is still listed. Do not migrate files out of it
+unless they ask.
 
 ### 1.3 Passwordless sudo (required for install.sh)
 
@@ -124,7 +148,8 @@ After a **new** Terminal window:
 |---|---|
 | Open Windows Terminal | Ubuntu profile, cwd `~` (Linux home, not `/mnt/c`) |
 | Tab profile **Ubuntu** or **wsl** | Same |
-| `ubuntu` in PowerShell / cmd | `wsl.exe -d Ubuntu-26.04 ~` |
+| `ubuntu` in PowerShell (new session) | `wsl.exe -d Ubuntu-26.04 ~` |
+| `ubuntu` in cmd | 26.04 via `ubuntu.cmd`, unless Store `ubuntu.exe` wins (`PATHEXT`) |
 | `wsl` in PowerShell (new session) | `wsl.exe ~` (args still pass through) |
 | `wsl.exe -l` / `wsl --install` | Unchanged (call `wsl.exe` or pass args) |
 
@@ -141,7 +166,7 @@ Tell the user to reopen
 
 | Host app | Why |
 |---|---|
-| [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) + WSL integration for **Ubuntu-26.04** | `docker` / Dagger |
+| [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) + WSL integration for **Ubuntu-26.04** | `docker` / Dagger. If 24.04 was the old default, flip the integration checkbox — this repo does not do that. |
 | [VS Code](https://code.visualstudio.com/) + [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) | `code .` from a Linux path |
 | 1Password for Windows, signed in, **Use the SSH agent** on | SSH / Git |
 | Windows **OpenSSH Authentication Agent** service **off** | 1Password owns `\\.\pipe\openssh-ssh-agent` |
@@ -205,6 +230,8 @@ Updates later: `cd ~/code/wsl-setup && git pull && ./install.sh`
   [`install.sh`](install.sh) is the only toolchain installer.
 - **Do not add cloud-init.** The work laptop already exists; first-run
   user creation is the normal WSL prompt if Ubuntu is new.
+- **Do not unregister leftover distros.** Unused `Ubuntu-24.04` / Store
+  `Ubuntu` stay installed unless the user asks to remove them.
 - **Do not use `apt` for language runtimes** (Node, Go, Rust, .NET, modern Python).
   Those come from upstream installers in `install.sh`. System packages only in
   [`packages/apt.txt`](packages/apt.txt).
@@ -255,6 +282,7 @@ Do not leave placeholders for unrelated work.
 ## 6. File map
 
 ```
+.gitattributes             # LF for shell that runs in WSL
 install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
 packages/apt.txt           # apt packages (no language runtimes)
 scripts/wsl-open           # http(s)/mailto → Windows default browser
@@ -270,10 +298,13 @@ AGENTS.md                  # this playbook
 Definition of done for a work-laptop bootstrap:
 
 1. `wsl -d Ubuntu-26.04 -- echo ok` works; `wsl -l` default is `Ubuntu-26.04`.
+   Older distros may still be listed; that is OK.
 2. `sudo -n true` works inside the distro for the existing Linux user.
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
-   and **wsl** exist. `ubuntu` launches the same session.
+   and **wsl** exist. PowerShell `ubuntu` launches the same session.
 4. `~/code/wsl-setup` is a git checkout on the Linux disk.
 5. `./install.sh` finished; summary shows Linux versions and `sudo passwordless`.
+   Host bootstrap does not print `Done.` if `install.sh` failed.
 6. `1p-ssh` aliases → `ssh.exe`; `git-ssh` is `ssh.exe`.
-7. User knows the Windows leftovers (Docker, VS Code WSL, 1Password agent).
+7. User knows the Windows leftovers (Docker integration for **26.04**, VS Code
+   WSL, 1Password agent) and that unused 24.04 was left installed.

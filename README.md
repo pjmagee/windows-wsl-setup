@@ -20,7 +20,7 @@ The host OS does **not** need the developer CLIs. It only needs:
 - Ubuntu **26.04 LTS** (`wsl --install Ubuntu-26.04` if it is not already there)
 - `guiApplications=true` under `[wsl2]` in `%USERPROFILE%\.wslconfig` (Windows 11 default; this is WSLg)
 - Passwordless `sudo` inside the distro (`sudo -n` — `install.sh` will not prompt)
-- [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (needed for `docker` / Dagger)
+- [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for **Ubuntu-26.04** (needed for `docker` / Dagger; flip this if it still targets 24.04)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
 ## Install
@@ -35,7 +35,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\bootstrap.ps1
 
 Reboot if Windows asks, then run the same command again.
 
-`bootstrap.ps1` is for a work laptop that **already exists**. It installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh`. It does not use cloud-init.
+`bootstrap.ps1` is for a work laptop that **already exists**. It updates WSL if it can (26.04 wants WSL 2.4.10+), installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh`. It does not use cloud-init. It does **not** unregister leftover distros (`Ubuntu-24.04`, Store `Ubuntu`, `docker-desktop`).
+
+If `install.sh` fails, the host script exits with an error — it will not print `Done.`
+
+An old Store `ubuntu.exe` can still win over `ubuntu.cmd` in **cmd** (`PATHEXT` prefers `.EXE`). Use the new Windows Terminal **Ubuntu** profile, or PowerShell's `ubuntu` function. Point Docker Desktop's WSL integration at **Ubuntu-26.04** if it is still attached to 24.04.
 
 ### Already inside Ubuntu 26.04
 
@@ -56,7 +60,8 @@ After bootstrap, a **new** Windows Terminal window:
 
 - Default profile is **Ubuntu**, starting in the Linux home (`~`), not `/mnt/c`
 - Profiles **Ubuntu** and **wsl** are the same session
-- `ubuntu` (cmd / PowerShell) and a bare `wsl` (new PowerShell session) also land at `~`
+- `ubuntu` in PowerShell and a bare `wsl` (new PowerShell session) also land at `~`
+- `ubuntu` in **cmd** may still be Store `ubuntu.exe` (24.04) if that alias exists; use the Terminal profile
 
 Plain `wsl.exe` with no args still inherits the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the Terminal profile, or:
 

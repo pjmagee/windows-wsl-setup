@@ -5,12 +5,15 @@
 
 .DESCRIPTION
   Does not install the Linux toolchain (that is install.sh). This script:
+  - updates WSL if it can (Ubuntu-26.04 needs WSL 2.4.10+)
   - enables WSL 2 and Ubuntu-26.04 if they are missing
+  - leaves any other distro (Ubuntu-24.04, Store Ubuntu, docker-desktop) installed
   - NOPASSWD sudo for the user already on that distro (wsl -u root)
   - makes `wsl` and `ubuntu` open that distro at ~
   - points Windows Terminal at those profiles (Ubuntu is the default)
 
   Does not use cloud-init. Does not invent or lock a Linux user.
+  Does not wsl --unregister anything.
   If Ubuntu is brand new, finish the normal username/password prompt once
   (Microsoft: then it auto-signs-in), then re-run this script.
 
@@ -118,6 +121,17 @@ function Ensure-WslConfig {
     Set-IniValue -Path $path -Section 'wsl2' -Key 'guiApplications' -Value 'true'
 }
 
+function Write-InstalledDistros {
+    Write-Step "installed WSL distros (will not unregister any)"
+    $prev = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.Encoding]::Unicode
+        wsl.exe -l -v
+    } finally {
+        [Console]::OutputEncoding = $prev
+    }
+}
+
 function Ensure-WslFeature {
     Write-Step "WSL 2"
     $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
@@ -127,9 +141,29 @@ function Ensure-WslFeature {
         throw "WSL was just installed. Reboot Windows, then re-run windows/bootstrap.ps1."
     }
     try { wsl.exe --set-default-version 2 | Out-Null } catch { }
+
+    Write-Host "wsl --update (Ubuntu-26.04's .wsl image wants WSL 2.4.10+)."
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    wsl.exe --update
+    $ErrorActionPreference = $prev
+
     $ver = wsl.exe --version 2>&1 | Out-String
-    if ($ver -match 'must be updated|not supported|Windows Subsystem for Linux') {
-        Write-Host $ver
+    $ver = $ver -replace [char]0, ''
+    Write-Host $ver.Trim()
+    if ($ver -match 'WSL version:\s*(\d+)\.(\d+)\.(\d+)') {
+        $maj = [int]$Matches[1]
+        $min = [int]$Matches[2]
+        $pat = [int]$Matches[3]
+        $tooOld = $false
+        if ($maj -lt 2) { $tooOld = $true }
+        elseif ($maj -eq 2 -and $min -lt 4) { $tooOld = $true }
+        elseif ($maj -eq 2 -and $min -eq 4 -and $pat -lt 10) { $tooOld = $true }
+        if ($tooOld) {
+            Write-Warning "WSL $maj.$min.$pat is older than 2.4.10. Ubuntu-26.04 may be missing from wsl --list --online. Re-run elevated: wsl --update"
+        }
+    } elseif ($ver -match 'must be updated|not supported') {
+        Write-Warning $ver.Trim()
     }
 }
 
@@ -164,9 +198,13 @@ function Ensure-PasswordlessSudo {
     Write-Step "NOPASSWD sudo for existing user ($LinuxUser)"
     $script = Join-Path $PSScriptRoot 'ensure-user.sh'
     if (-not (Test-Path $script)) { throw "missing $script" }
-    Get-Content -LiteralPath $script -Raw | wsl.exe -d $Distro -u root -- bash -s -- $LinuxUser
+    $raw = Get-Content -LiteralPath $script -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) { throw "empty $script" }
+    # Windows checkouts may still be CRLF if .gitattributes was not applied.
+    $unix = $raw -replace "`r`n", "`n" -replace "`r", "`n"
+    $unix | wsl.exe -d $Distro -u root -- bash -s -- $LinuxUser
     if ($LASTEXITCODE -ne 0) {
-        throw "No Linux user on $Distro yet. Open Ubuntu once, create the username/password WSL asks for, then re-run bootstrap.ps1."
+        throw "ensure-user.sh failed on $Distro (no Linux user yet, or the script did not run). Open Ubuntu once, create the username/password WSL asks for, then re-run bootstrap.ps1."
     }
     wsl.exe --terminate $Distro 2>$null | Out-Null
     $who = (wsl.exe -d $Distro -- whoami 2>$null)
@@ -332,13 +370,14 @@ cd $linuxRepo
 "@
     wsl.exe -d $Distro --cd '~' -- bash -lc $setup
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "install.sh failed. Repo on Windows is at $winRoot — fix inside WSL and re-run ./install.sh"
+        throw "install.sh failed inside $Distro. Windows clone is $winRoot. Fix inside WSL and re-run ./install.sh (or re-run this script)."
     }
 }
 
 # --- main ---
 Ensure-WslConfig
 Ensure-WslFeature
+Write-InstalledDistros
 Ensure-Distro
 $linuxUser = Get-ExistingLinuxUser $Distro
 if (-not $linuxUser) {
@@ -361,11 +400,16 @@ Done.
 From Windows Terminal:
   - new tab defaults to Ubuntu at ~
   - profiles ``Ubuntu`` and ``wsl`` are the same session
-  - ``ubuntu`` (new terminals) and a bare ``wsl`` (cmd, after PATH refresh) also land at ~
+  - ``ubuntu`` in a new PowerShell session and a bare ``wsl`` (after PATH refresh) land at ~
+  - ``ubuntu`` in cmd may still be Store ubuntu.exe if that alias exists
 
 Open a new Windows Terminal window so the profile + PATH changes load.
 From a Linux path:  code .
 
-Host leftovers this script does not install: Docker Desktop, VS Code + WSL
-extension, 1Password for Windows (SSH agent).
+Other WSL distros (Ubuntu-24.04, Store Ubuntu, docker-desktop) were left
+installed. This script never unregisters them.
+
+Host leftovers this script does not install: Docker Desktop (enable WSL
+integration for Ubuntu-26.04 — it may still be pointed at 24.04), VS Code +
+WSL extension, 1Password for Windows (SSH agent).
 "@
