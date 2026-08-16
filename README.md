@@ -10,8 +10,9 @@ Safe to re-run.
 
 The host OS does **not** need the developer CLIs. It only needs:
 
-- Windows 11 with WSL 2
+- Windows 11 with WSL 2 (`wsl --version`)
 - Ubuntu **26.04 LTS** (`wsl --install Ubuntu-26.04`)
+- `guiApplications=true` under `[wsl2]` in `%USERPROFILE%\.wslconfig` (Windows 11 default; this is WSLg)
 - `sudo` inside the distro (passwordless is convenient)
 - [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (needed for `docker` / Dagger)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
@@ -38,7 +39,7 @@ code .
 
 | Tool | Source |
 |---|---|
-| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, `wl-clipboard`, ICU |
+| System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, `wl-clipboard`, ICU, fonts |
 | Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) |
 | bun | [bun.sh](https://bun.sh) |
 | Go | official tarball → `~/.local/go` |
@@ -61,33 +62,48 @@ code .
 | Google Cloud CLI (`gcloud`) | official `google-cloud-cli` apt repo |
 | saml2aws | latest GitHub release → `~/.local/bin` |
 | AWS CLI v2 (`aws`) | official Linux installer → `/usr/local/bin/aws` |
-| Cloudflare CLI (`cf`) | npm `cf@latest` (current Cloudflare CLI) |
-| Wrangler | npm `wrangler@latest` (Workers / Pages) |
+| Cloudflare CLI (`cf`) | npm `cf@latest` |
+| Wrangler | npm `wrangler@latest` |
 | cloudflared | official Cloudflare apt repo |
-| MongoDB Compass | official Linux `.deb` + WSLg wrapper (`compass`) |
-| `wsl-open` | first-party helper: Linux `http`/`https` → Windows default browser |
+| MongoDB Compass | official Linux `.deb`; `compass` launches it through WSLg |
+| `wsl-open` | [`scripts/wsl-open`](scripts/wsl-open) — Linux `http`/`https`/`mailto` → Windows default browser |
 
-**MongoDB Compass**
+## Linux GUIs (WSLg)
 
-`compass` launches the **Linux** package. WSLg should put it on the Windows desktop. The window title must be `MongoDB Compass`, not `[WARN: COPY MODE]`. If you see COPY MODE, run `wsl --shutdown` from Windows and open Ubuntu again.
+WSLg (`guiApplications=true`) remotes Linux windows onto the Windows desktop.
 
-The Windows EXE is optional:
+```bash
+xclock          # sanity check
+compass         # Linux MongoDB Compass
+```
+
+The window title must be the **app name**. `[WARN: COPY MODE]` means WSLg fell back to copying pixels over RDP instead of shared memory (slow, some apps do not paint). Fix:
+
+```powershell
+wsl --shutdown
+```
+
+Then open Ubuntu again and retry `xclock`. If COPY MODE persists, `wsl --update` from Windows and another shutdown.
+
+`compass` starts the **Linux** package (`/usr/bin/mongodb-compass`). The optional Windows EXE:
 
 ```bash
 COMPASS_WINDOWS=1 compass
 ```
 
-**Browser links**
+CUDA on the NVIDIA GPU works in WSL (`nvidia-smi`). Compass does **not** use that path for its UI (Electron 41 + Mesa D3D12 does not map a window). The wrapper uses software raster (SwiftShader); WSLg still displays it on Windows.
 
-Ubuntu 26.04 **removed** `wslu` / `wslview` from the archive (upstream discontinued, [LP #2131669](https://bugs.launchpad.net/ubuntu/+source/wslu/+bug/2131669)). This repo does not reinstall it.
+## Browser links
 
-`scripts/wsl-open` opens `http` / `https` / `mailto` in the **Windows** default browser. `BROWSER` and `GH_BROWSER` point at it.
+Ubuntu 26.04 **removed** `wslu` / `wslview` from the archive ([LP #2131669](https://bugs.launchpad.net/ubuntu/+source/wslu/+bug/2131669): discontinued upstream). This repo does not reinstall it.
+
+`wsl-open` is set as `BROWSER` and `GH_BROWSER`. Clicks from `gh`, `az login`, Compass, and similar open in the Windows default browser.
 
 ```bash
 wsl-open https://example.com
 ```
 
-**Keep on Windows**
+## Keep on Windows
 
 - VS Code / Cursor / JetBrains UI — `code .` from a Linux path
 - Docker Engine — Docker Desktop WSL integration
