@@ -61,6 +61,7 @@ code .
 | atuin | official installer (shell history) |
 | OpenCode | [opencode.ai](https://opencode.ai/docs/) install script |
 | 1Password CLI (`op`) | 1Password apt repo (no Windows Hello) |
+| 1Password SSH | `ssh` / `ssh-add` aliases → Windows `ssh.exe`; `git` `core.sshCommand=ssh.exe` |
 | Claude Code | official installer |
 | Grok Build | official installer |
 | Azure CLI (`az`) | Microsoft azure-cli apt repo (`noble` fallback until 26.04 is published) |
@@ -114,7 +115,37 @@ wsl-open https://example.com
 - VS Code / Cursor / JetBrains UI — `code .` from a Linux path
 - Docker Engine — Docker Desktop WSL integration
 - Oh My Posh — Windows Terminal / PowerShell only
-- Discord, browsers, 1Password desktop, games
+- Discord, browsers, 1Password desktop + SSH agent, games
+
+## 1Password SSH
+
+The 1Password SSH agent runs on **Windows**. WSL reaches it by calling Microsoft OpenSSH (`ssh.exe`), not Linux `ssh`.
+
+`install.sh` writes this to `~/.bash_aliases` and `~/.zshrc` (idempotent, marked block):
+
+```bash
+alias ssh='ssh.exe'
+alias ssh-add='ssh-add.exe'
+```
+
+and sets:
+
+```bash
+git config --global core.sshCommand ssh.exe
+```
+
+Requirements on the Windows host (not installed by this repo):
+
+- 1Password for Windows signed in, **Use the SSH agent** enabled
+- Windows **OpenSSH Authentication Agent** service disabled (1Password owns `\\.\pipe\openssh-ssh-agent`)
+- At least one SSH key in 1Password available to the agent
+
+SSH host config belongs in `%USERPROFILE%\.ssh\config`, not WSL `~/.ssh/config`. Commit signing is configured from the 1Password app (**Configure Commit Signing** → **Configure for WSL**).
+
+```bash
+ssh-add -l                 # lists 1Password keys
+ssh -T git@github.com      # should prompt 1Password, then authenticate
+```
 
 ## Updates
 

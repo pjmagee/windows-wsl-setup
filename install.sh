@@ -102,6 +102,81 @@ command -v fzf >/dev/null && eval "$(fzf --bash 2>/dev/null)" || true
 # <<< wsl-shell <<<
 EOF
   fi
+
+  if ! grep -q 'bash_aliases' "$bashrc"; then
+    cat >>"$bashrc" <<'EOF'
+
+if [ -f ~/.bash_aliases ]; then
+  . ~/.bash_aliases
+fi
+EOF
+  fi
+}
+
+# Replace or append a marked block. Safe to re-run.
+upsert_marked_block() {
+  local file="$1"
+  local begin="$2"
+  local end="$3"
+  local block="$4"
+  local tmp stripped
+  mkdir -p "$(dirname "$file")"
+  [ -f "$file" ] || : >"$file"
+  tmp="$(mktemp)"
+  stripped="$(mktemp)"
+  awk -v b="$begin" -v e="$end" '
+    index($0, b) {skip=1; next}
+    index($0, e) {skip=0; next}
+    !skip {print}
+  ' "$file" >"$stripped"
+  awk '{ lines[NR]=$0 } END { n=NR; while (n>0 && lines[n]=="") n--; for (i=1;i<=n;i++) print lines[i] }' \
+    "$stripped" >"$tmp"
+  mv "$tmp" "$stripped"
+  tmp="$(mktemp)"
+  {
+    cat "$stripped"
+    [ -s "$stripped" ] && printf '\n'
+    printf '%s\n' "$block"
+  } >"$tmp"
+  mv "$tmp" "$file"
+  rm -f "$stripped"
+}
+
+# Drop an older unmarked copy of the two aliases. No-op once the
+# marked block is present.
+strip_unmarked_1password_ssh() {
+  local file="$1"
+  local begin="$2"
+  [ -f "$file" ] || return 0
+  grep -q "$begin" "$file" && return 0
+  local tmp
+  tmp="$(mktemp)"
+  grep -vE "^alias ssh='ssh\\.exe'$|^alias ssh-add='ssh-add\\.exe'$|^# 1Password SSH agent|^# https://www.1password.dev/ssh/integrations/wsl$" \
+    "$file" >"$tmp" || true
+  mv "$tmp" "$file"
+}
+
+ensure_1password_ssh() {
+  log "1Password SSH agent (ssh.exe aliases)"
+  local begin='>>> wsl-1password-ssh >>>'
+  local end='<<< wsl-1password-ssh <<<'
+  local block
+  block="$(cat <<'EOF'
+# >>> wsl-1password-ssh >>>
+# 1Password SSH agent (WSL -> Windows). https://www.1password.dev/ssh/integrations/wsl
+alias ssh='ssh.exe'
+alias ssh-add='ssh-add.exe'
+# <<< wsl-1password-ssh <<<
+EOF
+)"
+  strip_unmarked_1password_ssh "$HOME/.bash_aliases" "$begin"
+  strip_unmarked_1password_ssh "$HOME/.zshrc" "$begin"
+  upsert_marked_block "$HOME/.bash_aliases" "$begin" "$end" "$block"
+  upsert_marked_block "$HOME/.zshrc" "$begin" "$end" "$block"
+
+  if have git; then
+    git config --global core.sshCommand ssh.exe
+  fi
 }
 
 remove_oh_my_posh() {
@@ -588,6 +663,12 @@ print_summary() {
   printf 'cloudflared %s\n' "$(cloudflared --version 2>/dev/null || echo missing)"
   printf 'compass    %s\n' "$(dpkg-query -W -f='${Version}' mongodb-compass 2>/dev/null || echo missing)"
   printf 'oh-my-posh %s\n' "$(command -v oh-my-posh >/dev/null && echo 'STILL PRESENT (should be Windows-only)' || echo 'not in WSL (ok)')"
+  if grep -q "alias ssh='ssh.exe'" "$HOME/.bash_aliases" 2>/dev/null; then
+    printf '1p-ssh     aliases -> ssh.exe\n'
+  else
+    printf '1p-ssh     aliases missing\n'
+  fi
+  printf 'git-ssh    %s\n' "$(git config --global --get core.sshCommand 2>/dev/null || echo unset)"
 }
 
 main() {
@@ -595,6 +676,7 @@ main() {
   remove_oh_my_posh
   ensure_bashrc
   install_apt
+  ensure_1password_ssh
   install_wsl_open
   install_uv_python
   install_rust
