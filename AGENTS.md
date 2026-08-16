@@ -48,9 +48,10 @@ saml2aws, AWS CLI, pwsh). Stop on ARM.
 
 ## 1. Windows-host playbook (work laptop)
 
-Goal: Ubuntu 26.04 exists, the default user is **passwordless**, `wsl` and
-`ubuntu` open that distro at `~` from Windows Terminal, this repo lives on
-the **Linux** disk, and `install.sh` has been run **inside** that distro.
+Goal: Ubuntu 26.04 exists on this **already-present** work laptop, `sudo -n`
+works for the user that is already on that distro, `wsl` and `ubuntu` open
+it at `~` from Windows Terminal, this repo lives on the **Linux** disk, and
+`install.sh` has been run **inside** that distro.
 
 ### 1.1 Preconditions
 
@@ -70,52 +71,44 @@ From the repo root in PowerShell (not Git Bash):
 powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\bootstrap.ps1
 ```
 
-That script is the host orchestrator. It:
+That script is the host orchestrator for a laptop that **already exists**.
+It does **not** use cloud-init and does **not** create or lock a Linux user.
 
 1. Upserts `guiApplications=true` in `%USERPROFILE%\.wslconfig` (does not
    clobber other keys).
-2. Writes Ubuntu cloud-init
-   (`%USERPROFILE%\.cloud-init\Ubuntu-26.04.user-data`) **before** first
-   launch so there is **no username/password OOBE prompt**.
-3. Installs WSL 2 + `Ubuntu-26.04` (`--no-launch` when the flag exists).
-4. Creates or reuses the default Linux user (sanitized `$env:USERNAME`, or
-   `-UserName`), **locks the password on new accounts**, and writes
-   NOPASSWD sudo + `/etc/wsl.conf` `[user] default=` via
-   [`windows/ensure-user.sh`](windows/ensure-user.sh) as **root**
-   (`wsl -u root` — no sudo password needed).
-5. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
-6. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wsl-setup\bin`).
-7. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe --cd ~`).
-8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
-   `wsl.exe -d Ubuntu-26.04 --cd ~`, and sets **Ubuntu** as
-   `defaultProfile`.
-9. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
+2. Installs WSL 2 + `Ubuntu-26.04` only if they are missing (`wsl --install`).
+   If Ubuntu is brand new, the user completes the normal username/password
+   prompt once ([Microsoft](https://learn.microsoft.com/en-us/windows/wsl/setup/environment#set-up-your-linux-username-and-password));
+   after that WSL auto-signs-in. Then re-run this script.
+3. NOPASSWD sudo + `/etc/wsl.conf` `[user] default=` for the **existing**
+   uid-1000 user, via [`windows/ensure-user.sh`](windows/ensure-user.sh)
+   as root (`wsl -u root`).
+4. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
+5. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wsl-setup\bin`).
+6. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
+7. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
+   `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
+8. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
    `install.sh`.
 
 If WSL was just enabled, Windows may ask for a **reboot**. Re-run the same
 command after login.
 
-Optional:
-
 ```powershell
-.\windows\bootstrap.ps1 -UserName magaoidh
 .\windows\bootstrap.ps1 -SkipLinuxInstall    # host + WSL only
 ```
 
 Do not install `Ubuntu`, `Ubuntu-22.04`, or `Ubuntu-24.04`.
 Do not invent a second toolchain installer.
+Do not write `%USERPROFILE%\.cloud-init\`.
 
-### 1.3 Passwordless (required)
+### 1.3 Passwordless sudo (required for install.sh)
 
 `install.sh` uses `sudo -n` and **exits** if sudo would prompt.
 
-New distros: cloud-init + `ensure-user.sh --create` (locked password,
-NOPASSWD). Existing distros: NOPASSWD for the uid-1000 user; password is
-left as-is.
-
-Do not wait for an interactive UNIX username/password dialog. If one
-appears, cloud-init was late — terminate the window and re-run
-`bootstrap.ps1`.
+WSL already auto-signs-in after first-run; that is not the same as
+NOPASSWD sudo. `ensure-user.sh` only adds sudoers for the existing user.
+It does not lock the password.
 
 Verify:
 
@@ -131,12 +124,12 @@ After a **new** Terminal window:
 |---|---|
 | Open Windows Terminal | Ubuntu profile, cwd `~` (Linux home, not `/mnt/c`) |
 | Tab profile **Ubuntu** or **wsl** | Same |
-| `ubuntu` in PowerShell / cmd | `wsl.exe -d Ubuntu-26.04 --cd ~` |
-| `wsl` in PowerShell (new session) | `wsl.exe --cd ~` (args still pass through) |
+| `ubuntu` in PowerShell / cmd | `wsl.exe -d Ubuntu-26.04 ~` |
+| `wsl` in PowerShell (new session) | `wsl.exe ~` (args still pass through) |
 | `wsl.exe -l` / `wsl --install` | Unchanged (call `wsl.exe` or pass args) |
 
 `wsl` from PowerShell **without** the profile function still starts on
-`/mnt/c/...` (9P, slow). Always `--cd "~"` or use the Terminal profile.
+`/mnt/c/...` (9P, slow). Always `wsl ~` or use the Terminal profile.
 
 ### 1.5 After bootstrap
 
@@ -162,7 +155,7 @@ Commit signing: 1Password app → **Configure Commit Signing** → **Configure f
 New Ubuntu tab (so `~/.bashrc` loads), or:
 
 ```powershell
-wsl -d Ubuntu-26.04 --cd "~" -- bash -lic 'command -v git; git config --global --get core.sshCommand; type ssh; sudo -n true && echo sudo-ok'
+wsl -d Ubuntu-26.04 ~ -- bash -lic 'command -v git; git config --global --get core.sshCommand; type ssh; sudo -n true && echo sudo-ok'
 ```
 
 Expect `core.sshCommand=ssh.exe`, `ssh` aliased to `ssh.exe`, `sudo-ok`.
@@ -208,8 +201,10 @@ Updates later: `cd ~/code/wsl-setup && git pull && ./install.sh`
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
 - **Do not move the Linux toolchain into PowerShell.**
   [`windows/bootstrap.ps1`](windows/bootstrap.ps1) is host-only (WSL,
-  cloud-init, Terminal, launchers). [`install.sh`](install.sh) is the only
-  toolchain installer.
+  Terminal, launchers, NOPASSWD for the existing user).
+  [`install.sh`](install.sh) is the only toolchain installer.
+- **Do not add cloud-init.** The work laptop already exists; first-run
+  user creation is the normal WSL prompt if Ubuntu is new.
 - **Do not use `apt` for language runtimes** (Node, Go, Rust, .NET, modern Python).
   Those come from upstream installers in `install.sh`. System packages only in
   [`packages/apt.txt`](packages/apt.txt).
@@ -266,7 +261,7 @@ scripts/wsl-open           # http(s)/mailto → Windows default browser
 starship.toml              # seed config (scan_timeout for /mnt/c)
 windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
-windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 --cd ~
+windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
 README.md                  # human docs
 AGENTS.md                  # this playbook
 .github/copilot-instructions.md
@@ -275,7 +270,7 @@ AGENTS.md                  # this playbook
 Definition of done for a work-laptop bootstrap:
 
 1. `wsl -d Ubuntu-26.04 -- echo ok` works; `wsl -l` default is `Ubuntu-26.04`.
-2. `sudo -n true` works inside the distro. New users have no login password.
+2. `sudo -n true` works inside the distro for the existing Linux user.
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
    and **wsl** exist. `ubuntu` launches the same session.
 4. `~/code/wsl-setup` is a git checkout on the Linux disk.

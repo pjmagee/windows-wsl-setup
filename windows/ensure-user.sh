@@ -1,53 +1,27 @@
 #!/usr/bin/env bash
 # Idempotent. Run as root inside Ubuntu-26.04.
-# Usage: ensure-user.sh <linux-user> [--create]
-#   default: configure an existing user (uid 1000 or the named account)
-#   --create: create the named user if missing, lock the password
+# Configures an existing user: NOPASSWD sudo + /etc/wsl.conf default=.
+# Does not create users or lock passwords.
+# Usage: ensure-user.sh [linux-user]
 set -euo pipefail
 
-u="${1:?usage: ensure-user.sh <linux-user> [--create]}"
-create=0
-[ "${2:-}" = "--create" ] && create=1
+u="${1:-}"
 
-if ! [[ "$u" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
-  echo "invalid linux username: $u" >&2
+if [ -n "$u" ] && ! id -u "$u" >/dev/null 2>&1; then
+  u=""
+fi
+if [ -z "$u" ] && getent passwd 1000 >/dev/null; then
+  u="$(getent passwd 1000 | cut -d: -f1)"
+fi
+if [ -z "$u" ] && [ -d /home ]; then
+  u="$(find /home -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | head -n1)"
+fi
+if [ -z "$u" ] || ! id -u "$u" >/dev/null 2>&1; then
+  echo "no linux user to configure — finish the WSL username/password prompt first" >&2
   exit 1
 fi
 
-if [ "$create" -eq 0 ] && ! id -u "$u" >/dev/null 2>&1; then
-  if getent passwd 1000 >/dev/null; then
-    u="$(getent passwd 1000 | cut -d: -f1)"
-  elif [ -d /home ] && [ -n "$(ls -A /home 2>/dev/null || true)" ]; then
-    u="$(find /home -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | head -n1)"
-  else
-    create=1
-  fi
-fi
-
-created=0
-if ! id -u "$u" >/dev/null 2>&1; then
-  if [ "$create" -eq 0 ]; then
-    echo "no linux user to configure" >&2
-    exit 1
-  fi
-  extra=()
-  for g in adm sudo dialout cdrom floppy audio dip video plugdev netdev; do
-    getent group "$g" >/dev/null && extra+=("$g")
-  done
-  if [ "${#extra[@]}" -gt 0 ]; then
-    IFS=,
-    useradd -m -s /bin/bash -G "${extra[*]}" "$u"
-    unset IFS
-  else
-    useradd -m -s /bin/bash "$u"
-  fi
-  created=1
-fi
-
 usermod -aG sudo,adm "$u" 2>/dev/null || true
-if [ "$created" -eq 1 ]; then
-  passwd -l "$u" >/dev/null
-fi
 
 printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$u" >"/etc/sudoers.d/90-${u}"
 chmod 440 "/etc/sudoers.d/90-${u}"

@@ -1,14 +1,18 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Windows-host bootstrap: passwordless Ubuntu 26.04 WSL + Windows Terminal.
+  Windows-host bootstrap for an existing work laptop: Ubuntu 26.04 + Terminal.
 
 .DESCRIPTION
   Does not install the Linux toolchain (that is install.sh). This script:
-  - enables WSL 2 and Ubuntu-26.04
-  - creates / configures a passwordless default user (no OOBE prompt)
+  - enables WSL 2 and Ubuntu-26.04 if they are missing
+  - NOPASSWD sudo for the user already on that distro (wsl -u root)
   - makes `wsl` and `ubuntu` open that distro at ~
   - points Windows Terminal at those profiles (Ubuntu is the default)
+
+  Does not use cloud-init. Does not invent or lock a Linux user.
+  If Ubuntu is brand new, finish the normal username/password prompt once
+  (Microsoft: then it auto-signs-in), then re-run this script.
 
   Re-run safe. Prefer a normal (non-admin) PowerShell unless wsl --install
   asks for elevation.
@@ -114,38 +118,6 @@ function Ensure-WslConfig {
     Set-IniValue -Path $path -Section 'wsl2' -Key 'guiApplications' -Value 'true'
 }
 
-function Ensure-CloudInit {
-    param([string] $LinuxUser)
-    Write-Step "cloud-init user-data for $Distro ($LinuxUser, passwordless)"
-    $dir = Join-Path $env:USERPROFILE '.cloud-init'
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-    $body = @"
-#cloud-config
-users:
-  - name: $LinuxUser
-    gecos: $LinuxUser
-    groups: [adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev]
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    lock_passwd: true
-write_files:
-  - path: /etc/wsl.conf
-    permissions: '0644'
-    content: |
-      [user]
-      default=$LinuxUser
-      [interop]
-      enabled=true
-  - path: /etc/sudoers.d/90-$LinuxUser
-    permissions: '0440'
-    content: |
-      $LinuxUser ALL=(ALL) NOPASSWD:ALL
-"@
-    foreach ($name in @("$Distro.user-data", "$Distro.userdata")) {
-        Set-Content -LiteralPath (Join-Path $dir $name) -Value $body -Encoding ASCII
-    }
-}
-
 function Ensure-WslFeature {
     Write-Step "WSL 2"
     $wsl = Get-Command wsl.exe -ErrorAction SilentlyContinue
@@ -170,10 +142,8 @@ function Ensure-Distro {
     if ($online -notmatch [regex]::Escape($Distro)) {
         throw "$Distro is not in ``wsl --list --online``. Refusing to install a different Ubuntu."
     }
-    Write-Step "install $Distro (--no-launch, cloud-init will provision)"
+    Write-Step "install $Distro (normal WSL install; complete the username/password prompt if it appears)"
     $attempts = @(
-        @('--install', $Distro, '--no-launch'),
-        @('--install', '-d', $Distro, '--no-launch'),
         @('--install', $Distro),
         @('--install', '-d', $Distro)
     )
@@ -189,25 +159,15 @@ function Ensure-Distro {
     }
 }
 
-function Wait-CloudInit {
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        wsl.exe -d $Distro -u root -- bash -lc 'command -v cloud-init >/dev/null && cloud-init status --wait || true'
-    } finally {
-        $ErrorActionPreference = $prev
-    }
-}
-
-function Ensure-PasswordlessUser {
-    param([string] $LinuxUser, [switch] $Create)
-    Write-Step "passwordless user ($LinuxUser)"
+function Ensure-PasswordlessSudo {
+    param([string] $LinuxUser)
+    Write-Step "NOPASSWD sudo for existing user ($LinuxUser)"
     $script = Join-Path $PSScriptRoot 'ensure-user.sh'
     if (-not (Test-Path $script)) { throw "missing $script" }
-    $args = @($LinuxUser)
-    if ($Create) { $args += '--create' }
-    Get-Content -LiteralPath $script -Raw | wsl.exe -d $Distro -u root -- bash -s -- @args
-    if ($LASTEXITCODE -ne 0) { throw "ensure-user.sh failed ($LASTEXITCODE)" }
+    Get-Content -LiteralPath $script -Raw | wsl.exe -d $Distro -u root -- bash -s -- $LinuxUser
+    if ($LASTEXITCODE -ne 0) {
+        throw "No Linux user on $Distro yet. Open Ubuntu once, create the username/password WSL asks for, then re-run bootstrap.ps1."
+    }
     wsl.exe --terminate $Distro 2>$null | Out-Null
     $who = (wsl.exe -d $Distro -- whoami 2>$null)
     $who = (("$who" -replace [char]0, '').Trim())
@@ -266,7 +226,7 @@ function Ensure-WindowsTerminal {
             @{
                 guid              = $UbuntuProfileGuid
                 name              = 'Ubuntu'
-                commandline       = "wsl.exe -d $Distro --cd ~"
+                commandline       = "wsl.exe -d $Distro ~"
                 startingDirectory = '~'
                 hidden            = $false
                 icon              = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
@@ -274,7 +234,7 @@ function Ensure-WindowsTerminal {
             @{
                 guid              = $WslProfileGuid
                 name              = 'wsl'
-                commandline       = "wsl.exe -d $Distro --cd ~"
+                commandline       = "wsl.exe -d $Distro ~"
                 startingDirectory = '~'
                 hidden            = $false
                 icon              = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
@@ -319,9 +279,9 @@ function Update-PsProfile {
     $block = @'
 # >>> wsl-setup >>>
 function wsl {
-    if ($args.Count -eq 0) { & wsl.exe --cd ~ } else { & wsl.exe @args }
+    if ($args.Count -eq 0) { & wsl.exe ~ } else { & wsl.exe @args }
 }
-function ubuntu { & wsl.exe -d Ubuntu-26.04 --cd ~ @args }
+function ubuntu { & wsl.exe -d Ubuntu-26.04 ~ @args }
 # <<< wsl-setup <<<
 '@
     $existing = ''
@@ -377,26 +337,17 @@ cd $linuxRepo
 }
 
 # --- main ---
-if (-not $UserName) { $UserName = $env:USERNAME }
-$linuxUser = Get-LinuxUserName $UserName
-
 Ensure-WslConfig
 Ensure-WslFeature
-$already = Test-WslDistro $Distro
-if (-not $already) {
-    Ensure-CloudInit -LinuxUser $linuxUser
-}
 Ensure-Distro
-if (-not $already) {
-    Wait-CloudInit
-    $existing = Get-ExistingLinuxUser $Distro
-    if ($existing) { $linuxUser = $existing }
-    Ensure-PasswordlessUser -LinuxUser $linuxUser -Create
-} else {
-    $existing = Get-ExistingLinuxUser $Distro
-    if ($existing) { $linuxUser = $existing }
-    Ensure-PasswordlessUser -LinuxUser $linuxUser
+$linuxUser = Get-ExistingLinuxUser $Distro
+if (-not $linuxUser) {
+    if ($UserName) { $linuxUser = Get-LinuxUserName $UserName }
 }
+if (-not $linuxUser) {
+    throw "No Linux user on $Distro. Open Ubuntu once, create the username/password WSL asks for, then re-run bootstrap.ps1."
+}
+Ensure-PasswordlessSudo -LinuxUser $linuxUser
 Ensure-DefaultDistro
 Ensure-UbuntuShim
 Ensure-PowerShellLaunchers
