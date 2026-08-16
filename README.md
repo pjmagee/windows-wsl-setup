@@ -69,14 +69,12 @@ code .
 
 **MongoDB Compass**
 
-`compass` from Ubuntu starts the **Windows** install (`MongoDBCompass.exe`) so you get a native Windows window.
+`compass` launches the **Linux** package. WSLg should put it on the Windows desktop. The window title must be `MongoDB Compass`, not `[WARN: COPY MODE]`. If you see COPY MODE, run `wsl --shutdown` from Windows and open Ubuntu again.
 
-The Linux `.deb` through WSLg is not used. Electron 41 remotes as a broken WSLg surface (`[WARN:COPY MODE]`), not a usable Compass UI.
+The Windows EXE is optional:
 
-On a work laptop, install Compass on Windows once:
-
-```powershell
-winget install MongoDB.Compass.Full
+```bash
+COMPASS_WINDOWS=1 compass
 ```
 
 **Browser links**

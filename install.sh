@@ -455,38 +455,54 @@ ensure_compass_wsl_wrapper() {
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   cat >"$HOME/.local/bin/mongodb-compass" <<'EOF'
 #!/usr/bin/env bash
-# Prefer the Windows Compass EXE. WSLg remoting of the Linux Electron app
-# is not a reliable Windows window (often "[WARN:COPY MODE]" with no UI).
+# Linux Compass via WSLg. COMPASS_WINDOWS=1 starts the Windows EXE instead.
 win_compass() {
-  local c
+  local c f
   for c in \
     "/mnt/c/Program Files/MongoDB Compass/MongoDBCompass.exe" \
-    "/mnt/c/Program Files (x86)/MongoDB Compass/MongoDBCompass.exe" \
-    "/mnt/c/Users/${USER}/AppData/Local/MongoDBCompass/MongoDBCompass.exe" \
-    "/mnt/c/Users/${USER}/AppData/Local/Programs/MongoDBCompass/MongoDBCompass.exe"
+    "/mnt/c/Program Files (x86)/MongoDB Compass/MongoDBCompass.exe"
   do
-    if [ -e "$c" ]; then
-      printf '%s\n' "$c"
-      return 0
-    fi
+    [ -e "$c" ] && { printf '%s\n' "$c"; return 0; }
   done
-  # Windows username may not match the Linux user.
-  local f
   f="$(ls -1 /mnt/c/Users/*/AppData/Local/MongoDBCompass/MongoDBCompass.exe \
            /mnt/c/Users/*/AppData/Local/Programs/MongoDBCompass/MongoDBCompass.exe \
            2>/dev/null | head -n1)"
   [ -n "$f" ] && printf '%s\n' "$f"
 }
 
-exe="$(win_compass || true)"
-if [ -n "$exe" ]; then
+if [ "${COMPASS_WINDOWS:-}" = 1 ]; then
+  exe="$(win_compass || true)"
+  if [ -z "$exe" ]; then
+    echo "compass: COMPASS_WINDOWS=1 but MongoDBCompass.exe was not found." >&2
+    exit 1
+  fi
   exec "$exe" "$@"
 fi
 
-echo "compass: no Windows MongoDB Compass EXE found." >&2
-echo "Install it on Windows (winget install MongoDB.Compass.Full) and rerun." >&2
-echo "The Linux .deb via WSLg is not used: it does not show a usable Windows window." >&2
-exit 1
+if [ ! -x /usr/bin/mongodb-compass ]; then
+  echo "compass: Linux mongodb-compass is not installed." >&2
+  exit 1
+fi
+
+# Electron 41 does not map a window on Mesa D3D12 (WSL NVIDIA GL).
+export CHROME_DESKTOP=mongodb-compass.desktop
+export ELECTRON_OZONE_PLATFORM_HINT=x11
+export GDK_BACKEND=x11
+export XDG_SESSION_TYPE=x11
+export BROWSER="${BROWSER:-$HOME/.local/bin/wsl-open}"
+export NODE_NO_WARNINGS=1
+unset WAYLAND_DISPLAY
+unset GALLIUM_DRIVER
+unset XDG_CURRENT_DESKTOP
+export DISPLAY="${DISPLAY:-:0}"
+exec /usr/bin/mongodb-compass \
+  --no-sandbox \
+  --no-installURLHandlers \
+  --ignore-additional-command-line-flags \
+  --ozone-platform=x11 \
+  --disable-gpu \
+  --enable-unsafe-swiftshader \
+  "$@" 2> >(grep -v --line-buffered -E 'StartTransientUnit|unknown desktop environment|default-url-scheme-handler|DEP0040|punycode|trace-deprecation' >&2)
 EOF
   chmod +x "$HOME/.local/bin/mongodb-compass"
   ln -sfn "$HOME/.local/bin/mongodb-compass" "$HOME/.local/bin/compass"
