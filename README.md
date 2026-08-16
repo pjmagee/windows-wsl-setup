@@ -6,18 +6,38 @@ This repo is the source of truth for the toolchain. Clone it on a **clean Window
 
 Safe to re-run.
 
+On a **new Windows 11 work laptop**, clone this repo, open it in VS Code, and ask Copilot:
+
+> Read AGENTS.md and set up WSL on this Windows 11 laptop from this repo.
+
+[`AGENTS.md`](AGENTS.md) is the agent playbook (Copilot at work; Grok or Claude at home).
+
 ## Requirements (Windows host only)
 
 The host OS does **not** need the developer CLIs. It only needs:
 
 - Windows 11 with WSL 2 (`wsl --version`)
-- Ubuntu **26.04 LTS** (`wsl --install Ubuntu-26.04`)
+- Ubuntu **26.04 LTS** (installed passwordless by [`windows/bootstrap.ps1`](windows/bootstrap.ps1))
 - `guiApplications=true` under `[wsl2]` in `%USERPROFILE%\.wslconfig` (Windows 11 default; this is WSLg)
-- `sudo` inside the distro (passwordless is convenient)
+- Passwordless `sudo` inside the distro (`sudo -n` — `install.sh` will not prompt)
 - [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for this distro (needed for `docker` / Dagger)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
 ## Install
+
+### From Windows (work laptop / first time)
+
+```powershell
+git clone https://github.com/pjmagee/wsl-setup.git
+cd wsl-setup
+powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\bootstrap.ps1
+```
+
+Reboot if Windows asks, then run the same command again.
+
+`bootstrap.ps1` installs Ubuntu 26.04 **without** a username/password prompt, enables NOPASSWD sudo, makes `wsl` and `ubuntu` open that distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh`.
+
+### Already inside Ubuntu 26.04
 
 ```bash
 sudo apt update && sudo apt install -y git curl
@@ -26,9 +46,19 @@ cd ~/code/wsl-setup
 ./install.sh
 ```
 
+`sudo -n` must already work. If it does not, run `windows/bootstrap.ps1` from Windows first.
+
 Open a new Ubuntu tab so `~/.bashrc` loads.
 
-`wsl` from PowerShell starts in the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the **Ubuntu 26.04** Windows Terminal profile, or from PowerShell (quote `~` so PowerShell does not expand it to `C:\Users\...`):
+## Windows Terminal
+
+After bootstrap, a **new** Windows Terminal window:
+
+- Default profile is **Ubuntu**, starting in the Linux home (`~`), not `/mnt/c`
+- Profiles **Ubuntu** and **wsl** are the same session
+- `ubuntu` (cmd / PowerShell) and a bare `wsl` (new PowerShell session) also land at `~`
+
+Plain `wsl.exe` with no args still inherits the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the Terminal profile, or:
 
 ```powershell
 wsl -d Ubuntu-26.04 --cd "~"
@@ -168,6 +198,7 @@ WSL kernel / WSLg: `wsl --update` from Windows.
 ## Design
 
 - Ubuntu **26.04 only**.
+- Passwordless WSL user + sudo (`windows/bootstrap.ps1` / `ensure-user.sh`).
 - Built for a work laptop whose Windows host has **no** interop copies of these tools.
 - `install.sh` ignores Windows binaries on `PATH` (`/mnt/c/...`, `*.exe`) and installs Linux ones.
 - Linux binaries are prepended on `PATH` so WSL interop cannot win even if the host later grows winget packages.

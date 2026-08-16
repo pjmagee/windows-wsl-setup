@@ -25,9 +25,45 @@ is_linux_bin() {
 
 need_sudo() {
   if ! sudo -n true 2>/dev/null; then
-    echo "sudo is required for apt packages. Enable NOPASSWD or run this in a TTY." >&2
+    echo "sudo is required and must be passwordless (sudo -n)." >&2
+    echo "From Windows:  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
+    echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh \"\$(id -un)\"" >&2
     exit 1
   fi
+}
+
+# Drop [user] / [interop] and rewrite them. Other sections stay.
+write_wsl_conf() {
+  local user_name="$1"
+  local conf=/etc/wsl.conf
+  local tmp
+  tmp="$(mktemp)"
+  if [ -f "$conf" ]; then
+    awk '
+      /^\[user\]/ {skip=1; next}
+      /^\[interop\]/ {skip=1; next}
+      /^\[/ {skip=0}
+      !skip {print}
+    ' "$conf" >"$tmp"
+  else
+    : >"$tmp"
+  fi
+  {
+    awk '{ lines[NR]=$0 } END { n=NR; while (n>0 && lines[n]=="") n--; for (i=1;i<=n;i++) print lines[i] }' "$tmp"
+    printf '\n[user]\ndefault=%s\n\n[interop]\nenabled=true\n' "$user_name"
+  } | sudo tee "$conf" >/dev/null
+  rm -f "$tmp"
+}
+
+ensure_passwordless_sudo() {
+  log "passwordless sudo + /etc/wsl.conf"
+  need_sudo
+  local u
+  u="$(id -un)"
+  printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$u" | sudo tee "/etc/sudoers.d/90-${u}" >/dev/null
+  sudo chmod 440 "/etc/sudoers.d/90-${u}"
+  sudo visudo -cf "/etc/sudoers.d/90-${u}" >/dev/null
+  write_wsl_conf "$u"
 }
 
 install_apt() {
@@ -669,6 +705,12 @@ print_summary() {
     printf '1p-ssh     aliases missing\n'
   fi
   printf 'git-ssh    %s\n' "$(git config --global --get core.sshCommand 2>/dev/null || echo unset)"
+  if sudo -n true 2>/dev/null; then
+    printf 'sudo       passwordless\n'
+  else
+    printf 'sudo       PASSWORD REQUIRED (run windows/bootstrap.ps1)\n'
+  fi
+  printf 'wsl.conf   default=%s\n' "$(awk -F= '/^\[user\]/{s=1;next} /^\[/{s=0} s&&$1=="default"{print $2}' /etc/wsl.conf 2>/dev/null || echo unset)"
 }
 
 main() {
@@ -676,6 +718,7 @@ main() {
   remove_oh_my_posh
   ensure_bashrc
   install_apt
+  ensure_passwordless_sudo
   ensure_1password_ssh
   install_wsl_open
   install_uv_python
