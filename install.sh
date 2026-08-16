@@ -245,6 +245,10 @@ install_starship() {
   if ! is_linux_bin starship; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
   fi
+  mkdir -p "$HOME/.config"
+  if [ ! -f "$HOME/.config/starship.toml" ]; then
+    install -m 0644 "$ROOT/starship.toml" "$HOME/.config/starship.toml"
+  fi
 }
 
 install_zoxide() {

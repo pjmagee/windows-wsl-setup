@@ -28,6 +28,12 @@ cd ~/code/wsl-setup
 
 Open a new Ubuntu tab so `~/.bashrc` loads.
 
+`wsl` from PowerShell starts in the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the **Ubuntu 26.04** Windows Terminal profile (`wsl.exe -d Ubuntu-26.04 --cd ~`) or:
+
+```powershell
+wsl ~
+```
+
 Keep repositories on the **Linux** disk (`~/code/...`), not `/mnt/c` or `/mnt/d`:
 
 ```bash
@@ -49,7 +55,7 @@ code .
 | PowerShell 7 | Microsoft apt repo, or GitHub tarball if that repo is missing |
 | GitHub CLI | official Linux release (`gh auth login` once) |
 | Dagger | official **Linux** installer → `~/.local/bin/dagger` |
-| Starship | official installer (WSL prompt) |
+| Starship | official installer + [`starship.toml`](starship.toml) (`scan_timeout` for `/mnt/c`) |
 | zoxide | official installer (`z` jump) |
 | fzf | Ubuntu apt + bash keybindings |
 | atuin | official installer (shell history) |

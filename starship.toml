@@ -1,0 +1,4 @@
+# `wsl` from Windows inherits C:\Users\... as /mnt/c (9P).
+# Starship's default scan_timeout is 30ms; a Windows home dir scan misses that.
+scan_timeout = 500
+command_timeout = 2000
