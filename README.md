@@ -28,10 +28,10 @@ cd ~/code/wsl-setup
 
 Open a new Ubuntu tab so `~/.bashrc` loads.
 
-`wsl` from PowerShell starts in the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the **Ubuntu 26.04** Windows Terminal profile (`wsl.exe -d Ubuntu-26.04 --cd ~`) or:
+`wsl` from PowerShell starts in the Windows cwd (`/mnt/c/Users/...`, 9P). That is slow; Starship may warn that directory scan timed out. Use the **Ubuntu 26.04** Windows Terminal profile, or from PowerShell (quote `~` so PowerShell does not expand it to `C:\Users\...`):
 
 ```powershell
-wsl ~
+wsl -d Ubuntu-26.04 --cd "~"
 ```
 
 Keep repositories on the **Linux** disk (`~/code/...`), not `/mnt/c` or `/mnt/d`:
