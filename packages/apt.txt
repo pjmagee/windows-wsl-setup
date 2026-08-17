@@ -30,6 +30,8 @@ xdg-utils
 fonts-liberation
 fonts-dejavu-core
 libicu-dev
+libsecret-1-0
+xz-utils
 python3
 python3-venv
 python3-pip

@@ -366,7 +366,7 @@ else
 fi
 chmod +x $linuxRepo/install.sh $linuxRepo/scripts/wsl-open $linuxRepo/windows/ensure-user.sh
 cd $linuxRepo
-./install.sh
+./install.sh work
 "@
     wsl.exe -d $Distro --cd '~' -- bash -lc $setup
     if ($LASTEXITCODE -ne 0) {

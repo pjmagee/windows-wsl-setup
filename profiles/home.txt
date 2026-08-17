@@ -1,0 +1,9 @@
+# Extra steps for the home profile (on top of universal).
+# These stay off work laptops.
+install_opencode
+install_claude
+install_grok
+install_devtunnel
+install_changie
+install_hugo
+install_stripe

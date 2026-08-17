@@ -35,9 +35,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\bootstrap.ps1
 
 Reboot if Windows asks, then run the same command again.
 
-`bootstrap.ps1` is for a work laptop that **already exists**. It updates WSL if it can (26.04 wants WSL 2.4.10+), installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh`. It does not use cloud-init. It does **not** unregister leftover distros (`Ubuntu-24.04`, Store `Ubuntu`, `docker-desktop`).
+`bootstrap.ps1` is for a work laptop that **already exists**. It updates WSL if it can (26.04 wants WSL 2.4.10+), installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh work` (Copilot CLI; no grok/claude/opencode/devtunnel/changie/hugo/stripe). It does not use cloud-init. It does **not** unregister leftover distros (`Ubuntu-24.04`, Store `Ubuntu`, `docker-desktop`).
 
-If `install.sh` fails, the host script exits with an error — it will not print `Done.`
+If a **required** host step fails (passwordless sudo, `wsl-open`), the host script exits with an error — it will not print `Done.` A blocked vendor domain skips that tool and the run continues; the summary lists what to retry.
 
 An old Store `ubuntu.exe` can still win over `ubuntu.cmd` in **cmd** (`PATHEXT` prefers `.EXE`). Use the new Windows Terminal **Ubuntu** profile, or PowerShell's `ubuntu` function. Point Docker Desktop's WSL integration at **Ubuntu-26.04** if it is still attached to 24.04.
 
@@ -47,10 +47,13 @@ An old Store `ubuntu.exe` can still win over `ubuntu.cmd` in **cmd** (`PATHEXT` 
 sudo apt update && sudo apt install -y git curl
 git clone https://github.com/pjmagee/wsl-setup.git ~/code/wsl-setup
 cd ~/code/wsl-setup
-./install.sh
+./install.sh work    # work laptop (Copilot)
+# ./install.sh home  # home machine (Grok / Claude)
 ```
 
 `sudo -n` must already work. If it does not, run `windows/bootstrap.ps1` from Windows first.
+
+The profile is saved in `~/.config/wsl-setup/profile`. Bare `./install.sh` reuses it.
 
 Open a new Ubuntu tab so `~/.bashrc` loads.
 
@@ -76,6 +79,18 @@ cd ~/code/your-repo
 code .
 ```
 
+## Profiles
+
+One installer, three profiles. Step lists live in [`profiles/`](profiles/) so agents can read them without parsing bash.
+
+| Profile | Command | What you get |
+|---|---|---|
+| **universal** | `./install.sh universal` | Shared toolchain only ([`profiles/universal.txt`](profiles/universal.txt)) |
+| **work** | `./install.sh work` | Universal + GitHub Copilot CLI. **Not** grok, claude, opencode, devtunnel, changie, hugo, stripe. `bootstrap.ps1` uses this. |
+| **home** | `./install.sh home` | Universal + grok, claude, opencode, devtunnel, changie, hugo, stripe |
+
+`install.sh work` also **removes** those home-only binaries if a previous full run left them behind.
+
 ## What it installs
 
 | Tool | Source |
@@ -85,7 +100,7 @@ code .
 | bun | [bun.sh](https://bun.sh) |
 | Go | official tarball → `~/.local/go` |
 | .NET SDK 10 | Microsoft `dotnet-install.sh` → `~/.dotnet` |
-| Python 3.14 | [uv](https://docs.astral.sh/uv/) |
+| Python 3.14 | [uv](https://docs.astral.sh/uv/) (official `install.sh`; `uv` CLI stays on PATH) |
 | Rust | rustup (stable) |
 | PowerShell 7 | Microsoft apt repo, or GitHub tarball if that repo is missing |
 | GitHub CLI | official Linux release (`gh auth login` once) |
@@ -94,11 +109,12 @@ code .
 | zoxide | official installer (`z` jump) |
 | fzf | Ubuntu apt + bash keybindings |
 | atuin | official installer (shell history) |
-| OpenCode | [opencode.ai](https://opencode.ai/docs/) install script |
+| OpenCode | [opencode.ai](https://opencode.ai/docs/) install script (**home** profile) |
 | 1Password CLI (`op`) | 1Password apt repo (no Windows Hello) |
 | 1Password SSH | `ssh` / `ssh-add` aliases → Windows `ssh.exe`; `git` `core.sshCommand=ssh.exe` |
-| Claude Code | official installer |
-| Grok Build | official installer |
+| Claude Code | official installer (**home** profile) |
+| GitHub Copilot CLI (`copilot`) | official `gh.io/copilot-install`, else GitHub tarball, else npm (**work** profile) |
+| Grok Build | official installer (**home** profile) |
 | Azure CLI (`az`) | Microsoft azure-cli apt repo (`noble` fallback until 26.04 is published) |
 | Azure Developer CLI (`azd`) | official `install-azd.sh` |
 | Google Cloud CLI (`gcloud`) | official `google-cloud-cli` apt repo |
@@ -108,6 +124,14 @@ code .
 | Wrangler | npm `wrangler@latest` |
 | cloudflared | official Cloudflare apt repo |
 | MongoDB Compass | official Linux `.deb`; `compass` launches it through WSLg |
+| Microsoft Dev Tunnels (`devtunnel`) | official Linux install script (**home** profile) |
+| changie | latest GitHub release → `~/.local/bin` (**home** profile) |
+| Helm | official `get-helm-4` script → `~/.local/bin` |
+| Hugo (extended) | official GitHub tarball → `~/.local/bin` (**home** profile) |
+| Stripe CLI | official Stripe apt repo (**home** profile) |
+| 7-Zip (`7zz`) | official Linux tarball → `~/.local/bin` (`7z` symlink) |
+| MongoDB Shell (`mongosh`) | official Linux tarball → `~/.local/opt/mongosh` |
+| Flux CD (`flux`) | official `fluxcd.io/install.sh` → `~/.local/bin` |
 | `wsl-open` | [`scripts/wsl-open`](scripts/wsl-open) — Linux `http`/`https`/`mailto` → Windows default browser |
 
 ## Linux GUIs (WSLg)
@@ -151,6 +175,7 @@ wsl-open https://example.com
 - Docker Engine — Docker Desktop WSL integration
 - Oh My Posh — Windows Terminal / PowerShell only
 - Discord, browsers, 1Password desktop + SSH agent, games
+- Python 3.14, [uv](https://docs.astral.sh/uv/), and [atuin](https://atuin.sh/) (host copies; the Linux ones still come from `install.sh`)
 
 ## 1Password SSH
 
@@ -185,7 +210,9 @@ ssh -T git@github.com      # should prompt 1Password, then authenticate
 ## Updates
 
 ```bash
-cd ~/code/wsl-setup && git pull && ./install.sh
+cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile
+# ./install.sh home
+# ./install.sh work
 ```
 
 Or by layer:
@@ -208,6 +235,8 @@ WSL kernel / WSLg: `wsl --update` from Windows.
 - `install.sh` ignores Windows binaries on `PATH` (`/mnt/c/...`, `*.exe`) and installs Linux ones.
 - Linux binaries are prepended on `PATH` so WSL interop cannot win even if the host later grows winget packages.
 - Language runtimes come from upstream installers, not stale `apt` packages.
+- Profiles split the toolchain: [`profiles/universal.txt`](profiles/universal.txt) is shared; [`profiles/work.txt`](profiles/work.txt) adds Copilot; [`profiles/home.txt`](profiles/home.txt) adds the home extras.
+- Optional tools are skipped when their host is blocked or the installer errors (`run_step`). Re-run `./install.sh` later. Curl and apt use short timeouts so a dead repo cannot hang the run.
 - Edit [`packages/apt.txt`](packages/apt.txt) to add system packages.
 
 ## License

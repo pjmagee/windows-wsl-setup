@@ -1,0 +1,4 @@
+# Extra steps for the work profile (on top of universal).
+# Copilot is the operator at work. Do not add grok, claude, opencode,
+# devtunnel, changie, hugo, or stripe here.
+install_copilot

@@ -2,6 +2,8 @@
 # Idempotent Ubuntu 26.04 WSL workstation bootstrap.
 # Installs native Linux tools only. Does not use Windows interop copies.
 # Safe to re-run. Does not install Linux VS Code, Discord, or Oh My Posh.
+# Optional toolchain steps continue after a blocked host or installer error.
+# Profiles: ./install.sh universal|work|home  (see profiles/).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,6 +32,130 @@ need_sudo() {
     echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh \"\$(id -un)\"" >&2
     exit 1
   fi
+}
+
+# Work laptops often block GitHub, Google, Stripe, etc. Fail fast instead of
+# hanging. Not exported — child installers still use system curl.
+curl() {
+  command curl \
+    --connect-timeout "${CURL_CONNECT_TIMEOUT:-15}" \
+    --max-time "${CURL_MAX_TIME:-180}" \
+    --retry "${CURL_RETRY:-2}" \
+    --retry-delay 1 \
+    --retry-connrefused \
+    "$@"
+}
+
+# Extra apt sources from a previous run can 404/timeout on a locked-down
+# network. Fetch what is reachable and keep going.
+apt_update() {
+  need_sudo
+  if ! sudo apt-get \
+    -o Acquire::Retries=2 \
+    -o Acquire::http::Timeout=20 \
+    -o Acquire::https::Timeout=20 \
+    update -y; then
+    log "apt-get update reported errors (a repo may be blocked); continuing"
+  fi
+}
+
+FAILED_STEPS=()
+
+# Run an optional installer. Required host steps are called directly and
+# still abort the script under set -e.
+run_step() {
+  local fn="$1"
+  if "$fn"; then
+    return 0
+  fi
+  echo "!! $fn failed (unreachable host or installer error); continuing" >&2
+  FAILED_STEPS+=("$fn")
+  return 0
+}
+
+# universal = shared base. work = universal + copilot (no home extras).
+# home = universal + grok/claude/opencode/devtunnel/changie/hugo/stripe.
+PROFILE=""
+PROFILE_STEPS=()
+PROFILE_STATE="$HOME/.config/wsl-setup/profile"
+
+usage() {
+  echo "usage: ./install.sh [universal|work|home]"
+  echo "  universal  shared toolchain (default if nothing saved)"
+  echo "  work       universal + Copilot CLI; drops home extras"
+  echo "  home       universal + grok, claude, opencode, devtunnel, changie, hugo, stripe"
+}
+
+read_step_file() {
+  local f="$1"
+  if [ ! -f "$f" ]; then
+    echo "missing profile file: $f" >&2
+    return 1
+  fi
+  tr -d '\r' <"$f" | grep -vE '^\s*(#|$)'
+}
+
+resolve_profile() {
+  local requested="${1:-${WSL_SETUP_PROFILE:-}}"
+  if [ -z "$requested" ] && [ -f "$PROFILE_STATE" ]; then
+    requested="$(tr -d '[:space:]' <"$PROFILE_STATE")"
+  fi
+  requested="${requested:-universal}"
+  case "$requested" in
+    universal|work|home) PROFILE="$requested" ;;
+    -h|--help|help) usage; exit 0 ;;
+    *)
+      echo "unknown profile: $requested" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+  mkdir -p "$(dirname "$PROFILE_STATE")"
+  printf '%s\n' "$PROFILE" >"$PROFILE_STATE"
+}
+
+collect_steps() {
+  local line extra
+  PROFILE_STEPS=()
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    PROFILE_STEPS+=("$line")
+  done < <(read_step_file "$ROOT/profiles/universal.txt")
+  extra="$ROOT/profiles/${PROFILE}.txt"
+  if [ "$PROFILE" != universal ] && [ -f "$extra" ]; then
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      PROFILE_STEPS+=("$line")
+    done < <(read_step_file "$extra")
+  fi
+}
+
+# Work laptops must not keep home-only CLIs from an earlier full run.
+prune_home_extras() {
+  log "pruning home-only tools (profile=$PROFILE)"
+  rm -f \
+    "$HOME/.local/bin/opencode" \
+    "$HOME/.opencode/bin/opencode" \
+    "$HOME/.local/bin/claude" \
+    "$HOME/.claude/bin/claude" \
+    "$HOME/.local/bin/grok" \
+    "$HOME/.grok/bin/grok" \
+    "$HOME/.local/bin/devtunnel" \
+    "$HOME/bin/devtunnel" \
+    "$HOME/.local/bin/changie" \
+    "$HOME/.local/bin/hugo"
+  if dpkg-query -W -f='${Status}' stripe 2>/dev/null | grep -q 'install ok installed'; then
+    need_sudo
+    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y stripe || true
+  fi
+  if [ -f /etc/apt/sources.list.d/stripe.list ]; then
+    need_sudo
+    sudo rm -f /etc/apt/sources.list.d/stripe.list
+  fi
+}
+
+prune_copilot() {
+  rm -f "$HOME/.local/bin/copilot"
 }
 
 # Drop [user] / [interop] and rewrite them. Other sections stay.
@@ -69,9 +195,18 @@ ensure_passwordless_sudo() {
 install_apt() {
   need_sudo
   log "apt packages"
-  mapfile -t pkgs < <(grep -vE '^\s*(#|$)' "$ROOT/packages/apt.txt")
-  sudo apt-get update -y
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"
+  mapfile -t pkgs < <(tr -d '\r' <"$ROOT/packages/apt.txt" | grep -vE '^\s*(#|$)')
+  apt_update
+  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"; then
+    log "batch apt install failed; trying packages one by one"
+    local pkg
+    for pkg in "${pkgs[@]}"; do
+      if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"; then
+        echo "!! apt package $pkg failed; continuing" >&2
+        FAILED_STEPS+=("apt:$pkg")
+      fi
+    done
+  fi
   if have fdfind && ! have fd; then
     mkdir -p "$HOME/.local/bin"
     ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"
@@ -331,7 +466,7 @@ install_pwsh() {
   deb="$(mktemp --suffix=.deb)"
   if curl -fsSL "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -o "$deb"; then
     sudo dpkg -i "$deb" || true
-    sudo apt-get update -y
+    apt_update
     if apt-cache show powershell >/dev/null 2>&1; then
       sudo DEBIAN_FRONTEND=noninteractive apt-get install -y powershell
       rm -f "$deb"
@@ -354,7 +489,7 @@ install_pwsh() {
 install_starship() {
   log "starship"
   if ! is_linux_bin starship; then
-    curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
+    curl -fsS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
   fi
   mkdir -p "$HOME/.config"
   if [ ! -f "$HOME/.config/starship.toml" ]; then
@@ -400,6 +535,42 @@ install_gh() {
   rm -rf "$tmp"
 }
 
+install_copilot() {
+  log "GitHub Copilot CLI"
+  if is_linux_bin copilot; then
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  # Official script. PREFIX defaults to ~/.local for a non-root user.
+  # gh.io 429s; fall back to the GitHub linux-x64 tarball, then npm.
+  if curl -fsSL https://gh.io/copilot-install | PREFIX="$HOME/.local" bash; then
+    is_linux_bin copilot && return 0
+  fi
+  local tag tmp bin
+  tag="$(curl -fsSL https://api.github.com/repos/github/copilot-cli/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
+  if [ -n "$tag" ]; then
+    tmp="$(mktemp -d)"
+    if curl -fsSL "https://github.com/github/copilot-cli/releases/download/${tag}/copilot-linux-x64.tar.gz" -o "$tmp/copilot.tgz"; then
+      tar -xzf "$tmp/copilot.tgz" -C "$tmp"
+      bin="$(find "$tmp" -type f -name copilot | head -n1)"
+      if [ -n "$bin" ]; then
+        install -m 0755 "$bin" "$HOME/.local/bin/copilot"
+        rm -rf "$tmp"
+        return 0
+      fi
+    fi
+    rm -rf "$tmp"
+  fi
+  export PATH="$HOME/.local/share/fnm:$PATH"
+  eval "$(fnm env --shell bash 2>/dev/null)" || true
+  if is_linux_bin npm; then
+    npm install -g @github/copilot
+    return 0
+  fi
+  echo "could not install GitHub Copilot CLI" >&2
+  return 1
+}
+
 install_claude() {
   log "claude code"
   if ! is_linux_bin claude; then
@@ -421,12 +592,12 @@ install_op() {
   fi
   need_sudo
   if [ ! -f /usr/share/keyrings/1password-archive-keyring.gpg ]; then
-    curl -sS https://downloads.1password.com/linux/keys/1password.asc \
+    curl -fsS https://downloads.1password.com/linux/keys/1password.asc \
       | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" \
       | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
   fi
-  sudo apt-get update -y
+  apt_update
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y 1password-cli
 }
 
@@ -451,7 +622,7 @@ install_az() {
   need_sudo
   sudo mkdir -p /etc/apt/keyrings
   if [ ! -f /etc/apt/keyrings/microsoft.gpg ]; then
-    curl -sLS https://packages.microsoft.com/keys/microsoft.asc \
+    curl -fsLS https://packages.microsoft.com/keys/microsoft.asc \
       | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg >/dev/null
     sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
   fi
@@ -464,7 +635,7 @@ install_az() {
   printf 'Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\nSuites: %s\nComponents: main\nArchitectures: %s\nSigned-by: /etc/apt/keyrings/microsoft.gpg\n' \
     "$suite" "$(dpkg --print-architecture)" \
     | sudo tee /etc/apt/sources.list.d/azure-cli.sources >/dev/null
-  sudo apt-get update -y
+  apt_update
   if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y azure-cli; then
     log "azure-cli apt install failed; installing with uv tool"
     uv tool install azure-cli
@@ -493,7 +664,7 @@ install_gcloud() {
   fi
   echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
     | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null
-  sudo apt-get update -y
+  apt_update
   sudo CLOUDSDK_SKIP_PY_COMPILATION=1 DEBIAN_FRONTEND=noninteractive apt-get install -y google-cloud-cli
 }
 
@@ -558,8 +729,201 @@ install_cloudflare() {
   fi
   echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" \
     | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
-  sudo apt-get update -y
+  apt_update
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
+}
+
+# Official script writes ~/bin and appends a frozen PATH to bashrc unless
+# $HOME/bin is already on PATH. Copy into ~/.local/bin so our marked block wins.
+install_devtunnel() {
+  log "Microsoft Dev Tunnels (devtunnel)"
+  if is_linux_bin devtunnel; then
+    return 0
+  fi
+  mkdir -p "$HOME/bin" "$HOME/.local/bin"
+  export PATH="$HOME/bin:$PATH"
+  curl -fsSL https://aka.ms/DevTunnelCliInstall | bash
+  if [ -x "$HOME/bin/devtunnel" ]; then
+    install -m 0755 "$HOME/bin/devtunnel" "$HOME/.local/bin/devtunnel"
+  fi
+}
+
+install_changie() {
+  log "changie"
+  if is_linux_bin changie; then
+    return 0
+  fi
+  local tag ver tmp asset
+  tag="$(curl -fsSL https://api.github.com/repos/miniscruff/changie/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
+  ver="${tag#v}"
+  if [ -z "$ver" ]; then
+    echo "could not resolve latest changie release" >&2
+    return 1
+  fi
+  tmp="$(mktemp -d)"
+  for asset in \
+    "changie_${ver}_linux_amd64.tar.gz" \
+    "changie_${ver}_Linux_x86_64.tar.gz"
+  do
+    if curl -fsSL "https://github.com/miniscruff/changie/releases/download/${tag}/${asset}" -o "$tmp/changie.tgz"; then
+      tar -xzf "$tmp/changie.tgz" -C "$tmp"
+      break
+    fi
+  done
+  if [ ! -f "$tmp/changie" ]; then
+    echo "could not download changie ${tag}" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  install -m 0755 "$tmp/changie" "$HOME/.local/bin/changie"
+  rm -rf "$tmp"
+}
+
+install_helm() {
+  log "helm"
+  if is_linux_bin helm; then
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  local tmp
+  tmp="$(mktemp -d)"
+  if curl -fsSL -o "$tmp/get_helm.sh" https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4; then
+    chmod 700 "$tmp/get_helm.sh"
+    HELM_INSTALL_DIR="$HOME/.local/bin" USE_SUDO=false "$tmp/get_helm.sh"
+  else
+    local tag
+    tag="$(curl -fsSL https://api.github.com/repos/helm/helm/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1 || true)"
+    if [ -z "$tag" ]; then
+      tag="$(curl -fsSL https://get.helm.sh/helm-latest-version)"
+      case "$tag" in
+        v*) ;;
+        *) tag="v${tag}" ;;
+      esac
+    fi
+    if [ -z "$tag" ]; then
+      echo "could not resolve latest helm release" >&2
+      rm -rf "$tmp"
+      return 1
+    fi
+    curl -fsSL "https://get.helm.sh/helm-${tag}-linux-amd64.tar.gz" -o "$tmp/helm.tgz"
+    tar -xzf "$tmp/helm.tgz" -C "$tmp"
+    install -m 0755 "$tmp/linux-amd64/helm" "$HOME/.local/bin/helm"
+  fi
+  rm -rf "$tmp"
+}
+
+install_hugo() {
+  log "hugo (extended)"
+  if is_linux_bin hugo; then
+    return 0
+  fi
+  local tag ver tmp asset
+  tag="$(curl -fsSL https://api.github.com/repos/gohugoio/hugo/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
+  ver="${tag#v}"
+  if [ -z "$ver" ]; then
+    echo "could not resolve latest hugo release" >&2
+    return 1
+  fi
+  tmp="$(mktemp -d)"
+  for asset in \
+    "hugo_extended_${ver}_linux-amd64.tar.gz" \
+    "hugo_extended_${ver}_Linux-64bit.tar.gz"
+  do
+    if curl -fsSL "https://github.com/gohugoio/hugo/releases/download/${tag}/${asset}" -o "$tmp/hugo.tgz"; then
+      tar -xzf "$tmp/hugo.tgz" -C "$tmp"
+      break
+    fi
+  done
+  if [ ! -x "$tmp/hugo" ]; then
+    echo "could not download hugo extended ${tag}" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  install -m 0755 "$tmp/hugo" "$HOME/.local/bin/hugo"
+  rm -rf "$tmp"
+}
+
+install_stripe() {
+  log "Stripe CLI"
+  if is_linux_bin stripe; then
+    return 0
+  fi
+  need_sudo
+  sudo mkdir -p /usr/share/keyrings
+  if [ ! -f /usr/share/keyrings/stripe.gpg ]; then
+    curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public \
+      | sudo gpg --dearmor --output /usr/share/keyrings/stripe.gpg
+  fi
+  echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" \
+    | sudo tee /etc/apt/sources.list.d/stripe.list >/dev/null
+  apt_update
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y stripe
+}
+
+install_7zip() {
+  log "7-Zip (7zz)"
+  if is_linux_bin 7zz; then
+    ln -sfn "$(command -v 7zz)" "$HOME/.local/bin/7z"
+    return 0
+  fi
+  local tag ver flat tmp
+  tag="$(curl -fsSL https://api.github.com/repos/ip7z/7zip/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | head -n1)"
+  ver="${tag#v}"
+  flat="$(printf '%s' "$ver" | tr -d '.')"
+  if [ -z "$flat" ]; then
+    echo "could not resolve latest 7-Zip release" >&2
+    return 1
+  fi
+  tmp="$(mktemp -d)"
+  if ! curl -fsSL "https://github.com/ip7z/7zip/releases/download/${tag}/7z${flat}-linux-x64.tar.xz" -o "$tmp/7z.tar.xz"; then
+    curl -fsSL "https://www.7-zip.org/a/7z${flat}-linux-x64.tar.xz" -o "$tmp/7z.tar.xz"
+  fi
+  tar -xJf "$tmp/7z.tar.xz" -C "$tmp"
+  install -m 0755 "$tmp/7zz" "$HOME/.local/bin/7zz"
+  ln -sfn "$HOME/.local/bin/7zz" "$HOME/.local/bin/7z"
+  rm -rf "$tmp"
+}
+
+install_mongosh() {
+  log "MongoDB Shell (mongosh)"
+  if is_linux_bin mongosh; then
+    return 0
+  fi
+  local url tmp dir
+  url="$(curl -fsSL https://downloads.mongodb.com/compass/mongosh.json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for ver in data.get("versions", []):
+    for dl in ver.get("downloads", []):
+        archive = dl.get("archive") or {}
+        if dl.get("arch") == "x86_64" and dl.get("distro") == "linux" and archive.get("type") == "tgz":
+            print(archive["url"])
+            raise SystemExit
+raise SystemExit("no linux x64 mongosh tarball in mongosh.json")
+')"
+  tmp="$(mktemp -d)"
+  curl -fsSL "$url" -o "$tmp/mongosh.tgz"
+  tar -xzf "$tmp/mongosh.tgz" -C "$tmp"
+  dir="$(find "$tmp" -maxdepth 1 -type d -name 'mongosh-*' | head -n1)"
+  if [ -z "$dir" ] || [ ! -x "$dir/bin/mongosh" ]; then
+    echo "mongosh tarball did not contain bin/mongosh" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$HOME/.local/opt/mongosh"
+  mkdir -p "$HOME/.local/opt"
+  mv "$dir" "$HOME/.local/opt/mongosh"
+  ln -sfn "$HOME/.local/opt/mongosh/bin/mongosh" "$HOME/.local/bin/mongosh"
+  rm -rf "$tmp"
+}
+
+install_flux() {
+  log "Flux CD (flux)"
+  if is_linux_bin flux; then
+    return 0
+  fi
+  mkdir -p "$HOME/.local/bin"
+  curl -fsSL https://fluxcd.io/install.sh | bash -s -- "$HOME/.local/bin"
 }
 
 # Electron's Chromium sandbox fails under WSL. Compass also rejects unknown
@@ -664,40 +1028,63 @@ install_compass() {
   ensure_compass_wsl_wrapper
 }
 
+# First line of stdout, even if the tool exits non-zero (stripe phones home).
+fmt_ver() {
+  local out
+  out="$("$@" 2>/dev/null | head -n1 || true)"
+  printf '%s' "${out:-missing}"
+}
+
 print_summary() {
   log "versions"
-  printf 'git        %s\n' "$(git --version 2>/dev/null || echo missing)"
-  printf 'gh         %s\n' "$(gh --version 2>/dev/null | head -n1 || echo missing)"
-  printf 'pwsh       %s\n' "$(pwsh --version 2>/dev/null || echo missing)"
+  printf 'profile    %s\n' "$PROFILE"
+  printf 'git        %s\n' "$(fmt_ver git --version)"
+  printf 'gh         %s\n' "$(fmt_ver gh --version)"
+  printf 'pwsh       %s\n' "$(fmt_ver pwsh --version)"
   if is_linux_bin docker; then
-    printf 'docker     %s\n' "$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 'installed, daemon not running')"
+    printf 'docker     %s\n' "$(fmt_ver docker version --format '{{.Server.Version}}')"
   else
     printf 'docker     %s\n' "missing — Docker Desktop on Windows + enable this distro"
   fi
-  printf 'node       %s\n' "$(node --version 2>/dev/null || echo missing)"
-  printf 'bun        %s\n' "$(bun --version 2>/dev/null || echo missing)"
-  printf 'go         %s\n' "$(go version 2>/dev/null || echo missing)"
-  printf 'dotnet     %s\n' "$(dotnet --version 2>/dev/null || echo missing)"
-  printf 'python     %s\n' "$(python3 --version 2>/dev/null || echo missing)"
-  printf 'rustc      %s\n' "$(rustc --version 2>/dev/null || echo missing)"
-  printf 'op         %s\n' "$(op --version 2>/dev/null || echo missing)"
-  printf 'dagger     %s\n' "$(dagger version 2>/dev/null | head -n1 || echo missing)"
-  printf 'starship   %s\n' "$(starship --version 2>/dev/null | head -n1 || echo missing)"
-  printf 'zoxide     %s\n' "$(zoxide --version 2>/dev/null || echo missing)"
-  printf 'fzf        %s\n' "$(fzf --version 2>/dev/null || echo missing)"
-  printf 'atuin      %s\n' "$(atuin --version 2>/dev/null || echo missing)"
-  printf 'opencode   %s\n' "$(opencode --version 2>/dev/null || echo missing)"
-  printf 'claude     %s\n' "$(claude --version 2>/dev/null || echo missing)"
-  printf 'grok       %s\n' "$(grok --version 2>/dev/null || echo missing)"
+  printf 'node       %s\n' "$(fmt_ver node --version)"
+  printf 'bun        %s\n' "$(fmt_ver bun --version)"
+  printf 'go         %s\n' "$(fmt_ver go version)"
+  printf 'dotnet     %s\n' "$(fmt_ver dotnet --version)"
+  printf 'python     %s\n' "$(fmt_ver python3 --version)"
+  printf 'python3.14 %s\n' "$(fmt_ver python3.14 --version)"
+  printf 'uv         %s\n' "$(fmt_ver uv --version)"
+  printf 'rustc      %s\n' "$(fmt_ver rustc --version)"
+  printf 'op         %s\n' "$(fmt_ver op --version)"
+  printf 'dagger     %s\n' "$(fmt_ver dagger version)"
+  printf 'starship   %s\n' "$(fmt_ver starship --version)"
+  printf 'zoxide     %s\n' "$(fmt_ver zoxide --version)"
+  printf 'fzf        %s\n' "$(fmt_ver fzf --version)"
+  printf 'atuin      %s\n' "$(fmt_ver atuin --version)"
+  printf 'opencode   %s\n' "$(fmt_ver opencode --version)"
+  printf 'copilot    %s\n' "$(fmt_ver copilot --version)"
+  printf 'claude     %s\n' "$(fmt_ver claude --version)"
+  printf 'grok       %s\n' "$(fmt_ver grok --version)"
   printf 'az         %s\n' "$(az version -o json 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["azure-cli"])' 2>/dev/null || echo missing)"
-  printf 'azd        %s\n' "$(azd version 2>/dev/null | head -n1 || echo missing)"
-  printf 'gcloud     %s\n' "$(gcloud --version 2>/dev/null | head -n1 || echo missing)"
-  printf 'saml2aws   %s\n' "$(saml2aws --version 2>&1 || echo missing)"
-  printf 'aws        %s\n' "$(aws --version 2>/dev/null || echo missing)"
-  printf 'cf         %s\n' "$(cf --version 2>/dev/null || echo missing)"
-  printf 'wrangler   %s\n' "$(wrangler --version 2>/dev/null || echo missing)"
-  printf 'cloudflared %s\n' "$(cloudflared --version 2>/dev/null || echo missing)"
+  printf 'azd        %s\n' "$(fmt_ver azd version)"
+  printf 'gcloud     %s\n' "$(fmt_ver gcloud --version)"
+  printf 'saml2aws   %s\n' "$(saml2aws --version 2>&1 | head -n1 || echo missing)"
+  printf 'aws        %s\n' "$(fmt_ver aws --version)"
+  printf 'cf         %s\n' "$(fmt_ver cf --version)"
+  printf 'wrangler   %s\n' "$(fmt_ver wrangler --version)"
+  printf 'cloudflared %s\n' "$(fmt_ver cloudflared --version)"
   printf 'compass    %s\n' "$(dpkg-query -W -f='${Version}' mongodb-compass 2>/dev/null || echo missing)"
+  printf 'devtunnel  %s\n' "$(fmt_ver devtunnel --version)"
+  printf 'changie    %s\n' "$(fmt_ver changie --version)"
+  printf 'helm       %s\n' "$(fmt_ver helm version --short)"
+  printf 'hugo       %s\n' "$(fmt_ver hugo version)"
+  printf 'stripe     %s\n' "$(fmt_ver stripe version)"
+  if is_linux_bin 7zz; then
+    printf '7zz        %s\n' "$(7zz 2>&1 | head -n1 || true)"
+  else
+    printf '7zz        missing\n'
+  fi
+  printf 'mongosh    %s\n' "$(fmt_ver mongosh --version)"
+  printf 'flux       %s\n' "$(fmt_ver flux --version)"
   printf 'oh-my-posh %s\n' "$(command -v oh-my-posh >/dev/null && echo 'STILL PRESENT (should be Windows-only)' || echo 'not in WSL (ok)')"
   if grep -q "alias ssh='ssh.exe'" "$HOME/.bash_aliases" 2>/dev/null; then
     printf '1p-ssh     aliases -> ssh.exe\n'
@@ -711,39 +1098,43 @@ print_summary() {
     printf 'sudo       PASSWORD REQUIRED (run windows/bootstrap.ps1)\n'
   fi
   printf 'wsl.conf   default=%s\n' "$(awk -F= '/^\[user\]/{s=1;next} /^\[/{s=0} s&&$1=="default"{print $2}' /etc/wsl.conf 2>/dev/null || echo unset)"
+  if ((${#FAILED_STEPS[@]} > 0)); then
+    log "failed this run (re-run ./install.sh when the host is reachable)"
+    local s
+    for s in "${FAILED_STEPS[@]}"; do
+      printf '  %s\n' "$s"
+    done
+  fi
 }
 
 main() {
+  resolve_profile "${1:-}"
+  collect_steps
+  log "profile $PROFILE"
   mkdir -p "$HOME/.local/bin" "$HOME/code"
   remove_oh_my_posh
   ensure_bashrc
-  install_apt
   ensure_passwordless_sudo
   ensure_1password_ssh
   install_wsl_open
-  install_uv_python
-  install_rust
-  install_bun
-  install_fnm_node
-  install_go
-  install_dotnet
-  install_gh
-  install_dagger
-  install_pwsh
-  install_starship
-  install_zoxide
-  install_atuin
-  install_opencode
-  install_claude
-  install_grok
-  install_op
-  install_az
-  install_azd
-  install_gcloud
-  install_saml2aws
-  install_aws
-  install_cloudflare
-  install_compass
+  case "$PROFILE" in
+    work)
+      prune_home_extras
+      ;;
+    universal)
+      prune_home_extras
+      prune_copilot
+      ;;
+  esac
+  local fn
+  for fn in "${PROFILE_STEPS[@]}"; do
+    if ! declare -F "$fn" >/dev/null; then
+      echo "!! unknown step $fn (check profiles/${PROFILE}.txt)" >&2
+      FAILED_STEPS+=("$fn")
+      continue
+    fi
+    run_step "$fn"
+  done
   [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
   export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
@@ -752,6 +1143,20 @@ main() {
   echo "Prompt in WSL is Starship. Oh My Posh stays on Windows only."
   echo "VS Code stays on Windows. From a Linux path:  code ."
   echo "MongoDB Compass is a Linux GUI:  compass    (window appears on Windows via WSLg)"
+  case "$PROFILE" in
+    work)
+      echo "Work profile: Copilot CLI yes. No grok, claude, opencode, devtunnel, changie, hugo, stripe."
+      ;;
+    home)
+      echo "Home profile: grok / claude / opencode / devtunnel / changie / hugo / stripe."
+      ;;
+    universal)
+      echo "Universal profile: shared toolchain only. Use ./install.sh work or ./install.sh home for extras."
+      ;;
+  esac
+  if ((${#FAILED_STEPS[@]} > 0)); then
+    echo "Some tools were skipped (blocked host or installer error). Re-run ./install.sh later."
+  fi
 }
 
 main "$@"

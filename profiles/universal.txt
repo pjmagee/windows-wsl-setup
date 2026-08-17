@@ -1,0 +1,27 @@
+# Shared toolchain. Both work and home run these.
+# One install_* name per line. Comments and blanks are ignored.
+install_apt
+install_uv_python
+install_rust
+install_bun
+install_fnm_node
+install_go
+install_dotnet
+install_gh
+install_dagger
+install_pwsh
+install_starship
+install_zoxide
+install_atuin
+install_op
+install_az
+install_azd
+install_gcloud
+install_saml2aws
+install_aws
+install_cloudflare
+install_helm
+install_7zip
+install_mongosh
+install_flux
+install_compass

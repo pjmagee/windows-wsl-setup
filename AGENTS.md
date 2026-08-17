@@ -9,8 +9,12 @@ home toolchain. Clone this repo, then **execute** the playbook. Do not invent
 a second Linux installer.
 
 At work, **Copilot is the operator**. Do not tell the user to run Grok or
-Claude there. `install.sh` still installs those CLIs (same home toolchain);
-leave them unless the user asks to skip.
+Claude there. Run the **work** profile (`./install.sh work` /
+`windows/bootstrap.ps1`). That profile installs Copilot CLI and **does not**
+install grok, claude, opencode, devtunnel, changie, hugo, or stripe. If those
+binaries are already present, `install.sh work` removes them.
+
+At home, run `./install.sh home`.
 
 Suggested first message:
 
@@ -91,7 +95,8 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
 8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
    `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
 9. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
-   `install.sh`. If that fails, the host script **throws** (no fake `Done.`).
+   `install.sh work`. If a required host step fails, the host script
+   **throws** (no fake `Done.`).
 
 If WSL was just enabled, Windows may ask for a **reboot**. Re-run the same
 command after login.
@@ -204,12 +209,29 @@ if [ ! -d ~/code/wsl-setup/.git ]; then
   git clone https://github.com/pjmagee/wsl-setup.git ~/code/wsl-setup
 fi
 cd ~/code/wsl-setup
-./install.sh
+# Work laptop (Copilot):
+./install.sh work
+# Home machine (Grok / Claude):
+./install.sh home
 ```
 
 Then open a **new** Ubuntu tab. From a Linux path: `code .`
 
-Updates later: `cd ~/code/wsl-setup && git pull && ./install.sh`
+The chosen profile is saved in `~/.config/wsl-setup/profile`. Later updates:
+
+```bash
+cd ~/code/wsl-setup && git pull && ./install.sh
+```
+
+Bare `./install.sh` reuses the saved profile, or **universal** if none is saved.
+
+Profiles (step lists the agent can read):
+
+| Profile | File | Extra on top of [`profiles/universal.txt`](profiles/universal.txt) |
+|---|---|---|
+| `universal` | [`profiles/universal.txt`](profiles/universal.txt) | shared toolchain only |
+| `work` | [`profiles/work.txt`](profiles/work.txt) | Copilot CLI. No home extras. |
+| `home` | [`profiles/home.txt`](profiles/home.txt) | grok, claude, opencode, devtunnel, changie, hugo, stripe |
 
 ---
 
@@ -262,13 +284,16 @@ Smoke test after §1.6: `ssh-add -l` then `ssh -T git@github.com`.
 ## 5. Changing this repo
 
 Keep `install.sh` **idempotent** (`set -euo pipefail`). Re-runs must be safe.
+Optional `install_*` steps go through `run_step` so a blocked GitHub / vendor
+host cannot abort the rest of the run. Required host steps (bashrc, sudo,
+`wsl-open`) still fail the script.
 Keep `windows/bootstrap.ps1` **Windows PowerShell 5.1 compatible** (work
 laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
-| Add a toolchain | New `install_*` function, `is_linux_bin` guard, call from `main`, line in `print_summary` |
+| Add a toolchain | New `install_*` function, `is_linux_bin` guard, line in the right [`profiles/*.txt`](profiles/) file, line in `print_summary` |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
 | Link opener | [`scripts/wsl-open`](scripts/wsl-open) |
@@ -284,6 +309,9 @@ Do not leave placeholders for unrelated work.
 ```
 .gitattributes             # LF for shell that runs in WSL
 install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
+profiles/universal.txt     # shared install_* steps
+profiles/work.txt          # work extras (Copilot CLI)
+profiles/home.txt          # home extras (grok/claude/opencode/…)
 packages/apt.txt           # apt packages (no language runtimes)
 scripts/wsl-open           # http(s)/mailto → Windows default browser
 starship.toml              # seed config (scan_timeout for /mnt/c)
@@ -303,8 +331,10 @@ Definition of done for a work-laptop bootstrap:
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
    and **wsl** exist. PowerShell `ubuntu` launches the same session.
 4. `~/code/wsl-setup` is a git checkout on the Linux disk.
-5. `./install.sh` finished; summary shows Linux versions and `sudo passwordless`.
-   Host bootstrap does not print `Done.` if `install.sh` failed.
+5. `./install.sh work` finished; summary shows `profile work`, Copilot CLI,
+   Linux versions, and `sudo passwordless`. No grok/claude/opencode/devtunnel/
+   changie/hugo/stripe. Host bootstrap does not print `Done.` if `install.sh`
+   failed a required host step.
 6. `1p-ssh` aliases → `ssh.exe`; `git-ssh` is `ssh.exe`.
 7. User knows the Windows leftovers (Docker integration for **26.04**, VS Code
    WSL, 1Password agent) and that unused 24.04 was left installed.
