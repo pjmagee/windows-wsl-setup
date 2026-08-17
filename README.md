@@ -81,11 +81,11 @@ code .
 
 ## Profiles
 
-One installer, three profiles. Step lists live in [`profiles/`](profiles/) so agents can read them without parsing bash.
+One installer, three profiles. Step lists live in [`profiles/`](profiles/); CLI packages live in [`brew/`](brew/).
 
 | Profile | Command | What you get |
 |---|---|---|
-| **universal** | `./install.sh universal` | Shared toolchain only ([`profiles/universal.txt`](profiles/universal.txt)) |
+| **universal** | `./install.sh universal` | Shared toolchain ([`profiles/universal.txt`](profiles/universal.txt) + [`brew/universal.Brewfile`](brew/universal.Brewfile)) |
 | **work** | `./install.sh work` | Universal + GitHub Copilot CLI. **Not** grok, claude, opencode, devtunnel, changie, hugo, stripe. `bootstrap.ps1` uses this. |
 | **home** | `./install.sh home` | Universal + grok, claude, opencode, devtunnel, changie, hugo, stripe |
 
@@ -96,42 +96,43 @@ One installer, three profiles. Step lists live in [`profiles/`](profiles/) so ag
 | Tool | Source |
 |---|---|
 | System packages | `apt` via [`packages/apt.txt`](packages/apt.txt) — compilers, `git`, `jq`, `ripgrep`, `fd`, `fzf`, `tmux`, `wl-clipboard`, ICU, fonts |
-| Node.js (LTS) | [fnm](https://github.com/Schniz/fnm) |
-| bun | [bun.sh](https://bun.sh) |
-| Go | official tarball → `~/.local/go` |
-| .NET SDK 10 | Microsoft `dotnet-install.sh` → `~/.dotnet` |
-| Python 3.14 | [uv](https://docs.astral.sh/uv/) (official `install.sh`; `uv` CLI stays on PATH) |
-| Rust | rustup (stable) |
-| PowerShell 7 | Microsoft apt repo, or GitHub tarball if that repo is missing |
-| GitHub CLI | official Linux release (`gh auth login` once) |
-| Dagger | official **Linux** installer → `~/.local/bin/dagger` |
-| Starship | official installer + [`starship.toml`](starship.toml) (`scan_timeout` for `/mnt/c`) |
-| zoxide | official installer (`z` jump) |
+| Homebrew | official Linux/WSL installer → `/home/linuxbrew/.linuxbrew` |
+| Node.js (LTS) | Homebrew `fnm`, then `fnm install --lts` |
+| bun | Homebrew `bun` |
+| Go | Homebrew `go` |
+| .NET SDK 10 | Homebrew `dotnet` |
+| Python 3.14 | Homebrew `uv`, then `uv python install 3.14` |
+| Rust | Homebrew `rustup`, then `rustup update stable` |
+| PowerShell 7 | Homebrew `powershell` |
+| GitHub CLI | Homebrew `gh` (`gh auth login` once) |
+| Dagger | Homebrew `dagger` |
+| Starship | Homebrew `starship` + [`starship.toml`](starship.toml) (`scan_timeout` for `/mnt/c`) |
+| zoxide | Homebrew `zoxide` (`z` jump) |
 | fzf | Ubuntu apt + bash keybindings |
-| atuin | official installer (shell history) |
-| OpenCode | [opencode.ai](https://opencode.ai/docs/) install script (**home** profile) |
-| 1Password CLI (`op`) | 1Password apt repo (no Windows Hello) |
+| atuin | Homebrew `atuin` |
+| OpenCode | Homebrew `opencode` (**home** profile) |
+| 1Password CLI (`op`) | Homebrew cask `1password-cli` (no Windows Hello) |
 | 1Password SSH | `ssh` / `ssh-add` aliases → Windows `ssh.exe`; `git` `core.sshCommand=ssh.exe` |
-| Claude Code | official installer (**home** profile) |
-| GitHub Copilot CLI (`copilot`) | official `gh.io/copilot-install`, else GitHub tarball, else npm (**work** profile) |
-| Grok Build | official installer (**home** profile) |
-| Azure CLI (`az`) | Microsoft azure-cli apt repo (`noble` fallback until 26.04 is published) |
-| Azure Developer CLI (`azd`) | official `install-azd.sh` |
-| Google Cloud CLI (`gcloud`) | official `google-cloud-cli` apt repo |
-| saml2aws | latest GitHub release → `~/.local/bin` |
-| AWS CLI v2 (`aws`) | official Linux installer → `/usr/local/bin/aws` |
-| Cloudflare CLI (`cf`) | npm `cf@latest` |
-| Wrangler | npm `wrangler@latest` |
-| cloudflared | official Cloudflare apt repo |
-| MongoDB Compass | official Linux `.deb`; `compass` launches it through WSLg |
-| Microsoft Dev Tunnels (`devtunnel`) | official Linux install script (**home** profile) |
-| changie | latest GitHub release → `~/.local/bin` (**home** profile) |
-| Helm | official `get-helm-4` script → `~/.local/bin` |
-| Hugo (extended) | official GitHub tarball → `~/.local/bin` (**home** profile) |
-| Stripe CLI | official Stripe apt repo (**home** profile) |
-| 7-Zip (`7zz`) | official Linux tarball → `~/.local/bin` (`7z` symlink) |
-| MongoDB Shell (`mongosh`) | official Linux tarball → `~/.local/opt/mongosh` |
-| Flux CD (`flux`) | official `fluxcd.io/install.sh` → `~/.local/bin` |
+| Claude Code | Homebrew cask `claude-code` (**home** profile) |
+| GitHub Copilot CLI (`copilot`) | Homebrew cask `copilot-cli` (**work** profile) |
+| Grok Build | Homebrew cask `grok-build` (**home** profile). Not `brew install grok`. |
+| Azure CLI (`az`) | Homebrew `azure-cli` |
+| Azure Developer CLI (`azd`) | Homebrew `azure-dev` |
+| Google Cloud CLI (`gcloud`) | Homebrew cask `gcloud-cli` |
+| saml2aws | Homebrew `saml2aws` |
+| AWS CLI v2 (`aws`) | Homebrew `awscli` |
+| Cloudflare CLI (`cf`) | npm `cf@latest` (not in Homebrew) |
+| Wrangler | Homebrew `cloudflare-wrangler` |
+| cloudflared | Homebrew `cloudflared` |
+| MongoDB Compass | official Linux `.deb`; `compass` launches it through WSLg (Homebrew cask is macOS-only) |
+| Microsoft Dev Tunnels (`devtunnel`) | Homebrew cask `devtunnel` (**home** profile) |
+| changie | Homebrew `changie` (**home** profile) |
+| Helm | Homebrew `helm` |
+| Hugo (extended) | Homebrew `hugo` (**home** profile) |
+| Stripe CLI | Homebrew `stripe-cli` (**home** profile) |
+| 7-Zip (`7zz`) | Homebrew `sevenzip` |
+| MongoDB Shell (`mongosh`) | Homebrew `mongosh` |
+| Flux CD (`flux`) | Homebrew `fluxcd` (not `flux`) |
 | `wsl-open` | [`scripts/wsl-open`](scripts/wsl-open) — Linux `http`/`https`/`mailto` → Windows default browser |
 
 ## Linux GUIs (WSLg)
@@ -210,19 +211,19 @@ ssh -T git@github.com      # should prompt 1Password, then authenticate
 ## Updates
 
 ```bash
-cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile
+cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile (Brewfiles + post-steps)
 # ./install.sh home
 # ./install.sh work
+
+brew update && brew upgrade                             # already-installed Homebrew CLIs
 ```
 
-Or by layer:
+`brew upgrade` is the winget-style “update all” for everything Homebrew owns. Re-run `./install.sh` to pick up new Brewfile entries, refresh Node LTS / Python 3.14 / rustup stable, Compass, and `cf`.
+
+System packages:
 
 ```bash
 sudo apt update && sudo apt full-upgrade
-bun upgrade
-rustup update
-fnm install --lts
-uv python install 3.14
 ```
 
 WSL kernel / WSLg: `wsl --update` from Windows.
@@ -234,10 +235,15 @@ WSL kernel / WSLg: `wsl --update` from Windows.
 - Built for a work laptop whose Windows host has **no** interop copies of these tools.
 - `install.sh` ignores Windows binaries on `PATH` (`/mnt/c/...`, `*.exe`) and installs Linux ones.
 - Linux binaries are prepended on `PATH` so WSL interop cannot win even if the host later grows winget packages.
-- Language runtimes come from upstream installers, not stale `apt` packages.
-- Profiles split the toolchain: [`profiles/universal.txt`](profiles/universal.txt) is shared; [`profiles/work.txt`](profiles/work.txt) adds Copilot; [`profiles/home.txt`](profiles/home.txt) adds the home extras.
+- Language runtimes come from Homebrew, not stale `apt` packages. uv / fnm /
+  rustup still pin the Python / Node / Rust versions.
+- **apt for system packages. Homebrew for CLIs.** Official Linux/WSL prefix
+  `/home/linuxbrew/.linuxbrew` (bottles). `brew update && brew upgrade` updates
+  them. Do not add a third package manager. Compass (Linux GUI) and Cloudflare
+  `cf` are not in Homebrew.
+- Profiles split the toolchain: [`brew/universal.Brewfile`](brew/universal.Brewfile) is shared; [`brew/work.Brewfile`](brew/work.Brewfile) adds Copilot; [`brew/home.Brewfile`](brew/home.Brewfile) adds the home extras.
 - Optional tools are skipped when their host is blocked or the installer errors (`run_step`). Re-run `./install.sh` later. Curl and apt use short timeouts so a dead repo cannot hang the run.
-- Edit [`packages/apt.txt`](packages/apt.txt) to add system packages.
+- Edit [`packages/apt.txt`](packages/apt.txt) to add system packages. Edit [`brew/*.Brewfile`](brew/) to add a CLI.
 
 ## License
 

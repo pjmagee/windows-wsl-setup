@@ -45,8 +45,8 @@ else echo "windows"; fi
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
 
-`uname -m` must be `x86_64`. `install.sh` fetches amd64 tarballs (Go, gh,
-saml2aws, AWS CLI, pwsh). Stop on ARM.
+`uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64.
+Stop on ARM.
 
 ---
 
@@ -221,17 +221,18 @@ The chosen profile is saved in `~/.config/wsl-setup/profile`. Later updates:
 
 ```bash
 cd ~/code/wsl-setup && git pull && ./install.sh
+brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
 Bare `./install.sh` reuses the saved profile, or **universal** if none is saved.
 
 Profiles (step lists the agent can read):
 
-| Profile | File | Extra on top of [`profiles/universal.txt`](profiles/universal.txt) |
+| Profile | Steps | Extra Homebrew file |
 |---|---|---|
-| `universal` | [`profiles/universal.txt`](profiles/universal.txt) | shared toolchain only |
-| `work` | [`profiles/work.txt`](profiles/work.txt) | Copilot CLI. No home extras. |
-| `home` | [`profiles/home.txt`](profiles/home.txt) | grok, claude, opencode, devtunnel, changie, hugo, stripe |
+| `universal` | [`profiles/universal.txt`](profiles/universal.txt) | [`brew/universal.Brewfile`](brew/universal.Brewfile) |
+| `work` | universal + [`brew/work.Brewfile`](brew/work.Brewfile) | Copilot CLI. No home extras. |
+| `home` | universal + [`brew/home.Brewfile`](brew/home.Brewfile) | grok, claude, opencode, devtunnel, changie, hugo, stripe |
 
 ---
 
@@ -243,20 +244,26 @@ Profiles (step lists the agent can read):
 - **Repos live on the Linux disk** (`~/code/...`), not `/mnt/c` or `/mnt/d`.
 - **Do not install in WSL:** Linux VS Code, Discord, Oh My Posh. Prompt is
   Starship. Editors stay on Windows.
+- **apt for system packages. Homebrew for CLIs and language runtimes.**
+  Official Linux/WSL prefix only: `/home/linuxbrew/.linuxbrew` (needed for
+  bottles). `brew update && brew upgrade` is the “update all CLIs” command.
+  Do not add a third package manager. Compass (Linux GUI) and Cloudflare `cf`
+  are not in Homebrew; those stay as special `install_*` steps.
 - **Do not reinstall `wslu` / `wslview`.** Ubuntu 26.04 dropped them. Links go
   through `scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
 - **Do not move the Linux toolchain into PowerShell.**
   [`windows/bootstrap.ps1`](windows/bootstrap.ps1) is host-only (WSL,
   Terminal, launchers, NOPASSWD for the existing user).
-  [`install.sh`](install.sh) is the only toolchain installer.
+  [`install.sh`](install.sh) is the only toolchain installer (it installs
+  Homebrew and runs the Brewfiles).
 - **Do not add cloud-init.** The work laptop already exists; first-run
   user creation is the normal WSL prompt if Ubuntu is new.
 - **Do not unregister leftover distros.** Unused `Ubuntu-24.04` / Store
   `Ubuntu` stay installed unless the user asks to remove them.
 - **Do not use `apt` for language runtimes** (Node, Go, Rust, .NET, modern Python).
-  Those come from upstream installers in `install.sh`. System packages only in
-  [`packages/apt.txt`](packages/apt.txt).
+  Those come from Homebrew, then uv / fnm / rustup for the versioned
+  runtimes. System packages only in [`packages/apt.txt`](packages/apt.txt).
 
 ---
 
@@ -293,11 +300,14 @@ laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
-| Add a toolchain | New `install_*` function, `is_linux_bin` guard, line in the right [`profiles/*.txt`](profiles/) file, line in `print_summary` |
+| Add a CLI / runtime | Line in the right [`brew/*.Brewfile`](brew/) (`brew` or `cask`), line in `print_summary` |
+| Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in the right [`profiles/*.txt`](profiles/) file |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
 | Link opener | [`scripts/wsl-open`](scripts/wsl-open) |
 | WSL / Terminal / passwordless user | [`windows/bootstrap.ps1`](windows/bootstrap.ps1), [`windows/ensure-user.sh`](windows/ensure-user.sh) |
+
+Do not `brew install grok` (unrelated regex tool). xAI Grok Build is `cask "grok-build"`. Flux CD is `fluxcd`, not `flux`.
 
 Comments: short, factual, only for non-obvious constraints.
 Do not leave placeholders for unrelated work.
@@ -309,9 +319,12 @@ Do not leave placeholders for unrelated work.
 ```
 .gitattributes             # LF for shell that runs in WSL
 install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
-profiles/universal.txt     # shared install_* steps
-profiles/work.txt          # work extras (Copilot CLI)
-profiles/home.txt          # home extras (grok/claude/opencode/…)
+brew/universal.Brewfile    # shared Homebrew formulae + Linux casks
+brew/work.Brewfile         # Copilot CLI
+brew/home.Brewfile         # grok/claude/opencode/devtunnel/changie/hugo/stripe
+profiles/universal.txt     # shared install_* steps (apt, brew, post-steps)
+profiles/work.txt          # work notes (packages are in brew/work.Brewfile)
+profiles/home.txt          # home notes (packages are in brew/home.Brewfile)
 packages/apt.txt           # apt packages (no language runtimes)
 scripts/wsl-open           # http(s)/mailto → Windows default browser
 starship.toml              # seed config (scan_timeout for /mnt/c)
@@ -331,10 +344,10 @@ Definition of done for a work-laptop bootstrap:
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
    and **wsl** exist. PowerShell `ubuntu` launches the same session.
 4. `~/code/wsl-setup` is a git checkout on the Linux disk.
-5. `./install.sh work` finished; summary shows `profile work`, Copilot CLI,
-   Linux versions, and `sudo passwordless`. No grok/claude/opencode/devtunnel/
-   changie/hugo/stripe. Host bootstrap does not print `Done.` if `install.sh`
-   failed a required host step.
+5. `./install.sh work` finished; summary shows `profile work`, Homebrew,
+   Copilot CLI, Linux versions, and `sudo passwordless`. No grok/claude/
+   opencode/devtunnel/changie/hugo/stripe. Host bootstrap does not print
+   `Done.` if `install.sh` failed a required host step.
 6. `1p-ssh` aliases → `ssh.exe`; `git-ssh` is `ssh.exe`.
 7. User knows the Windows leftovers (Docker integration for **26.04**, VS Code
    WSL, 1Password agent) and that unused 24.04 was left installed.

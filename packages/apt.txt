@@ -1,8 +1,11 @@
 # System packages for Ubuntu 26.04 WSL.
-# Language runtimes are installed by install.sh, not from here.
+# Language runtimes and CLIs come from Homebrew, not from here.
+# file + procps are required to bootstrap Homebrew on Linux.
 apt-transport-https
 software-properties-common
 build-essential
+procps
+file
 pkg-config
 libssl-dev
 ca-certificates

@@ -1,4 +1,3 @@
 # Extra steps for the work profile (on top of universal).
-# Copilot is the operator at work. Do not add grok, claude, opencode,
-# devtunnel, changie, hugo, or stripe here.
-install_copilot
+# Copilot CLI is in brew/work.Brewfile (install_brew already loaded it).
+# Do not add grok, claude, opencode, devtunnel, changie, hugo, or stripe.

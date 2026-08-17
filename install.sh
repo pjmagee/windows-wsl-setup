@@ -2,14 +2,23 @@
 # Idempotent Ubuntu 26.04 WSL workstation bootstrap.
 # Installs native Linux tools only. Does not use Windows interop copies.
 # Safe to re-run. Does not install Linux VS Code, Discord, or Oh My Posh.
+# apt = system packages. Homebrew = CLIs and language runtimes.
+# Compass (Linux GUI) and Cloudflare cf stay as special steps.
 # Optional toolchain steps continue after a blocked host or installer error.
-# Profiles: ./install.sh universal|work|home  (see profiles/).
+# Profiles: ./install.sh universal|work|home  (see profiles/ and brew/).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 : "${HOME:=$(getent passwd "$(id -un)" | cut -d: -f6)}"
 export HOME
-export PATH="$HOME/.local/bin:$HOME/.atuin/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.grok/bin:$PATH"
+BREW_PREFIX="/home/linuxbrew/.linuxbrew"
+
+# Wrappers first, then cargo/GOPATH, then whatever brew shellenv prepends.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+if [ -x "$BREW_PREFIX/bin/brew" ]; then
+  eval "$("$BREW_PREFIX/bin/brew" shellenv bash)"
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+fi
 
 log() { printf '\n==> %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -92,7 +101,7 @@ read_step_file() {
     echo "missing profile file: $f" >&2
     return 1
   fi
-  tr -d '\r' <"$f" | grep -vE '^\s*(#|$)'
+  tr -d '\r' <"$f" | grep -vE '^\s*(#|$)' || true
 }
 
 resolve_profile() {
@@ -130,6 +139,27 @@ collect_steps() {
   fi
 }
 
+ensure_brew_env() {
+  if [ -x "$BREW_PREFIX/bin/brew" ]; then
+    eval "$("$BREW_PREFIX/bin/brew" shellenv bash)"
+  elif is_linux_bin brew; then
+    eval "$(brew shellenv bash)"
+  else
+    return 1
+  fi
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+  if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -d "$HOMEBREW_PREFIX/opt/dotnet/libexec" ]; then
+    export DOTNET_ROOT="$HOMEBREW_PREFIX/opt/dotnet/libexec"
+  fi
+  if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -d "$HOMEBREW_PREFIX/share/google-cloud-sdk/bin" ]; then
+    export PATH="$PATH:$HOMEBREW_PREFIX/share/google-cloud-sdk/bin"
+  fi
+  export HOMEBREW_NO_AUTO_UPDATE="${HOMEBREW_NO_AUTO_UPDATE:-1}"
+  export HOMEBREW_NO_ENV_HINTS=1
+  export NONINTERACTIVE=1
+  return 0
+}
+
 # Work laptops must not keep home-only CLIs from an earlier full run.
 prune_home_extras() {
   log "pruning home-only tools (profile=$PROFILE)"
@@ -152,10 +182,22 @@ prune_home_extras() {
     need_sudo
     sudo rm -f /etc/apt/sources.list.d/stripe.list
   fi
+  if ensure_brew_env; then
+    local name
+    for name in opencode changie hugo stripe-cli; do
+      brew uninstall --force "$name" >/dev/null 2>&1 || true
+    done
+    for name in claude-code grok-build devtunnel; do
+      brew uninstall --cask --force "$name" >/dev/null 2>&1 || true
+    done
+  fi
 }
 
 prune_copilot() {
   rm -f "$HOME/.local/bin/copilot"
+  if ensure_brew_env; then
+    brew uninstall --cask --force copilot-cli >/dev/null 2>&1 || true
+  fi
 }
 
 # Drop [user] / [interop] and rewrite them. Other sections stay.
@@ -237,10 +279,18 @@ ensure_bashrc() {
   cat >"$path_block" <<'EOF'
 # >>> wsl-linux-path >>>
 # Linux toolchains must precede the Windows PATH that WSL appends.
-# Do not rely on winget / UniGetUI / Windows copies of these CLIs.
-export PATH="$HOME/.local/bin:$HOME/.atuin/bin:$HOME/.opencode/bin:$HOME/.bun/bin:$HOME/.dotnet:$HOME/.dotnet/tools:$HOME/.local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.grok/bin:$PATH"
-if [ -d "$HOME/.local/share/fnm" ]; then
-  export PATH="$HOME/.local/share/fnm:$PATH"
+# Homebrew owns CLIs. ~/.local/bin is wrappers (wsl-open, compass, python3.14).
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -d "$HOMEBREW_PREFIX/share/google-cloud-sdk/bin" ]; then
+  export PATH="$PATH:$HOMEBREW_PREFIX/share/google-cloud-sdk/bin"
+fi
+if [ -n "${HOMEBREW_PREFIX:-}" ] && [ -d "$HOMEBREW_PREFIX/opt/dotnet/libexec" ]; then
+  export DOTNET_ROOT="$HOMEBREW_PREFIX/opt/dotnet/libexec"
+fi
+if command -v fnm >/dev/null 2>&1; then
   eval "$(fnm env --shell bash 2>/dev/null)" || true
 fi
 # Linux GUI/CLI "open this URL" should hit the Windows default browser.
@@ -377,11 +427,174 @@ EOF
   fi
 }
 
+install_homebrew() {
+  log "Homebrew (Linux / WSL)"
+  if ensure_brew_env; then
+    return 0
+  fi
+  need_sudo
+  # Official prefix /home/linuxbrew/.linuxbrew is required for bottles on Linux.
+  # Child bash — our curl() wrapper is not exported.
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  ensure_brew_env
+}
+
+# formula<TAB>name  or  cask<TAB>name
+read_brewfile_entries() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  tr -d '\r' <"$f" | sed -n \
+    -e 's/^[[:space:]]*brew[[:space:]]*"\([^"]*\)".*/formula\t\1/p' \
+    -e 's/^[[:space:]]*cask[[:space:]]*"\([^"]*\)".*/cask\t\1/p'
+}
+
+install_one_brew_entry() {
+  local kind="$1"
+  local name="$2"
+  case "$kind" in
+    formula)
+      if brew list --formula "$name" >/dev/null 2>&1; then
+        brew upgrade --formula "$name"
+      else
+        brew install --formula "$name"
+      fi
+      ;;
+    cask)
+      if brew list --cask "$name" >/dev/null 2>&1; then
+        brew upgrade --cask "$name"
+      else
+        brew install --cask "$name"
+      fi
+      ;;
+    *)
+      echo "unknown brew entry kind: $kind" >&2
+      return 1
+      ;;
+  esac
+}
+
+bundle_brewfile() {
+  local file="$1"
+  local kind name
+  [ -f "$file" ] || return 0
+  log "brew bundle $(basename "$file")"
+  if brew bundle --help 2>/dev/null | grep -q -- '--upgrade'; then
+    if brew bundle --file="$file" --upgrade; then
+      return 0
+    fi
+  elif brew bundle --file="$file"; then
+    brew upgrade || true
+    return 0
+  fi
+  log "brew bundle failed for $(basename "$file"); installing one by one"
+  while IFS=$'\t' read -r kind name; do
+    [ -n "$name" ] || continue
+    if ! install_one_brew_entry "$kind" "$name"; then
+      echo "!! brew $kind $name failed; continuing" >&2
+      FAILED_STEPS+=("brew:$kind:$name")
+    fi
+  done < <(read_brewfile_entries "$file")
+}
+
+# Drop leftover tarball / vendor-apt copies so they cannot shadow brew.
+# Only removes a path after brew actually provides that command.
+migrate_legacy_clis() {
+  local prefix="${HOMEBREW_PREFIX:-$BREW_PREFIX}"
+  brew_bin() { [ -x "$prefix/bin/$1" ]; }
+
+  if brew_bin gh; then rm -f "$HOME/.local/bin/gh"; fi
+  if brew_bin dagger; then rm -f "$HOME/.local/bin/dagger"; fi
+  if brew_bin starship; then rm -f "$HOME/.local/bin/starship"; fi
+  if brew_bin zoxide; then rm -f "$HOME/.local/bin/zoxide"; fi
+  if brew_bin atuin; then rm -f "$HOME/.local/bin/atuin" "$HOME/.atuin/bin/atuin"; fi
+  if brew_bin bun; then rm -f "$HOME/.bun/bin/bun"; fi
+  if brew_bin uv; then rm -f "$HOME/.local/bin/uv"; fi
+  if brew_bin fnm; then rm -f "$HOME/.local/share/fnm/fnm"; fi
+  if brew_bin go; then rm -rf "$HOME/.local/go"; fi
+  if brew_bin saml2aws; then rm -f "$HOME/.local/bin/saml2aws"; fi
+  if brew_bin helm; then rm -f "$HOME/.local/bin/helm"; fi
+  if brew_bin 7zz; then
+    rm -f "$HOME/.local/bin/7zz"
+    # Keep a 7z name if brew did not provide one.
+    if [ ! -x "$prefix/bin/7z" ]; then
+      ln -sfn "$prefix/bin/7zz" "$HOME/.local/bin/7z"
+    else
+      rm -f "$HOME/.local/bin/7z"
+    fi
+  fi
+  if brew_bin mongosh; then
+    rm -f "$HOME/.local/bin/mongosh"
+    rm -rf "$HOME/.local/opt/mongosh"
+  fi
+  if brew_bin flux; then rm -f "$HOME/.local/bin/flux"; fi
+  if brew_bin opencode; then rm -f "$HOME/.local/bin/opencode" "$HOME/.opencode/bin/opencode"; fi
+  if brew_bin changie; then rm -f "$HOME/.local/bin/changie"; fi
+  if brew_bin hugo; then rm -f "$HOME/.local/bin/hugo"; fi
+  if brew_bin copilot; then rm -f "$HOME/.local/bin/copilot"; fi
+  if brew_bin claude; then rm -f "$HOME/.local/bin/claude" "$HOME/.claude/bin/claude"; fi
+  if brew_bin grok; then rm -f "$HOME/.local/bin/grok" "$HOME/.grok/bin/grok"; fi
+  if brew_bin devtunnel; then rm -f "$HOME/.local/bin/devtunnel" "$HOME/bin/devtunnel"; fi
+  if brew_bin azd; then rm -f "$HOME/.local/bin/azd"; fi
+
+  if brew_bin wrangler && is_linux_bin npm; then
+    npm uninstall -g wrangler >/dev/null 2>&1 || true
+  fi
+
+  if brew_bin aws && [ -x /usr/local/bin/aws ]; then
+    need_sudo
+    sudo rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
+    sudo rm -rf /usr/local/aws-cli
+  fi
+  if brew_bin pwsh && [ -L /usr/local/bin/pwsh ]; then
+    need_sudo
+    sudo rm -f /usr/local/bin/pwsh
+  fi
+
+  if ! sudo -n true 2>/dev/null; then
+    return 0
+  fi
+  local pkg
+  for pkg in 1password-cli azure-cli google-cloud-cli cloudflared stripe powershell; do
+    case "$pkg" in
+      1password-cli) brew_bin op || continue ;;
+      azure-cli) brew_bin az || continue ;;
+      google-cloud-cli) brew_bin gcloud || continue ;;
+      cloudflared) brew_bin cloudflared || continue ;;
+      stripe) brew_bin stripe || continue ;;
+      powershell) brew_bin pwsh || continue ;;
+    esac
+    if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
+      sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y "$pkg" || true
+    fi
+  done
+  sudo rm -f \
+    /etc/apt/sources.list.d/1password.list \
+    /etc/apt/sources.list.d/azure-cli.sources \
+    /etc/apt/sources.list.d/google-cloud-sdk.list \
+    /etc/apt/sources.list.d/cloudflared.list \
+    /etc/apt/sources.list.d/stripe.list
+}
+
+install_brew() {
+  log "Homebrew packages (profile=$PROFILE)"
+  if ! ensure_brew_env; then
+    echo "Homebrew is not installed (install_homebrew must succeed first)" >&2
+    return 1
+  fi
+  # One index refresh per run. Individual brew install uses NO_AUTO_UPDATE.
+  HOMEBREW_NO_AUTO_UPDATE=0 brew update || log "brew update reported errors (GitHub may be blocked); continuing"
+  bundle_brewfile "$ROOT/brew/universal.Brewfile"
+  if [ "$PROFILE" != universal ] && [ -f "$ROOT/brew/${PROFILE}.Brewfile" ]; then
+    bundle_brewfile "$ROOT/brew/${PROFILE}.Brewfile"
+  fi
+  migrate_legacy_clis
+}
+
 install_uv_python() {
-  log "uv + Python 3.14"
+  log "Python 3.14 (uv)"
   if ! is_linux_bin uv; then
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.local/bin:$PATH"
+    echo "uv missing (brew package uv)" >&2
+    return 1
   fi
   uv python install 3.14
   local py
@@ -391,539 +604,43 @@ install_uv_python() {
 }
 
 install_rust() {
-  log "rustup"
+  log "rustup toolchain"
   if ! is_linux_bin rustup; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+    echo "rustup missing (brew package rustup)" >&2
+    return 1
   fi
-  # shellcheck disable=SC1091
-  source "$HOME/.cargo/env"
   rustup default stable
   rustup update stable
 }
 
-install_bun() {
-  log "bun"
-  if [ -x "$HOME/.bun/bin/bun" ]; then
-    "$HOME/.bun/bin/bun" upgrade || true
-  else
-    curl -fsSL https://bun.com/install | bash
-  fi
-}
-
 install_fnm_node() {
-  log "fnm + Node LTS"
-  if [ ! -x "$HOME/.local/share/fnm/fnm" ] && ! is_linux_bin fnm; then
-    curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$HOME/.local/share/fnm" --skip-shell
+  log "Node LTS (fnm)"
+  if ! is_linux_bin fnm; then
+    echo "fnm missing (brew package fnm)" >&2
+    return 1
   fi
-  export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash)"
   fnm install --lts
   fnm default lts-latest
 }
 
-install_go() {
-  log "go"
-  local gover
-  gover="$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -n1)"
-  if [ ! -x "$HOME/.local/go/bin/go" ] || [ "$("$HOME/.local/go/bin/go" env GOVERSION 2>/dev/null || true)" != "$gover" ]; then
-    local tmp
-    tmp="$(mktemp -d)"
-    curl -fsSL "https://go.dev/dl/${gover}.linux-amd64.tar.gz" -o "$tmp/go.tgz"
-    rm -rf "$HOME/.local/go"
-    mkdir -p "$HOME/.local"
-    tar -C "$HOME/.local" -xzf "$tmp/go.tgz"
-    rm -rf "$tmp"
-  fi
-}
-
-install_dotnet() {
-  log "dotnet 10"
-  local tmp
-  tmp="$(mktemp)"
-  curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$tmp"
-  bash "$tmp" --channel 10.0 --install-dir "$HOME/.dotnet"
-  rm -f "$tmp"
-}
-
-install_dagger() {
-  log "dagger (Linux)"
-  if is_linux_bin dagger; then
-    return 0
-  fi
-  mkdir -p "$HOME/.local/bin"
-  curl -fsSL https://dl.dagger.io/dagger/install.sh | BIN_DIR="$HOME/.local/bin" sh
-}
-
-install_pwsh() {
-  log "PowerShell 7 (Linux)"
-  if is_linux_bin pwsh; then
-    return 0
-  fi
-  need_sudo
-  # shellcheck disable=SC1091
-  source /etc/os-release
-  local deb
-  deb="$(mktemp --suffix=.deb)"
-  if curl -fsSL "https://packages.microsoft.com/config/ubuntu/${VERSION_ID}/packages-microsoft-prod.deb" -o "$deb"; then
-    sudo dpkg -i "$deb" || true
-    apt_update
-    if apt-cache show powershell >/dev/null 2>&1; then
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y powershell
-      rm -f "$deb"
-      return 0
-    fi
-  fi
-  rm -f "$deb"
-  log "powershell package not in Microsoft apt for ${VERSION_ID}; installing GitHub tarball"
-  local tag tmp
-  tag="$(curl -fsSL https://api.github.com/repos/PowerShell/PowerShell/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
-  tmp="$(mktemp -d)"
-  curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/${tag}/powershell-${tag#v}-linux-x64.tar.gz" -o "$tmp/pwsh.tgz"
-  sudo mkdir -p /opt/microsoft/powershell/7
-  sudo tar -C /opt/microsoft/powershell/7 -xzf "$tmp/pwsh.tgz"
-  sudo chmod +x /opt/microsoft/powershell/7/pwsh
-  sudo ln -sfn /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh
-  rm -rf "$tmp"
-}
-
-install_starship() {
-  log "starship"
-  if ! is_linux_bin starship; then
-    curl -fsS https://starship.rs/install.sh | sh -s -- -y -b "$HOME/.local/bin"
-  fi
+install_starship_config() {
+  log "starship config"
   mkdir -p "$HOME/.config"
   if [ ! -f "$HOME/.config/starship.toml" ]; then
     install -m 0644 "$ROOT/starship.toml" "$HOME/.config/starship.toml"
   fi
 }
 
-install_zoxide() {
-  log "zoxide"
-  if ! is_linux_bin zoxide; then
-    curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
-  fi
-}
-
-install_atuin() {
-  log "atuin"
-  if ! is_linux_bin atuin; then
-    curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh -s -- --non-interactive
-  fi
-  # Official installer puts the binary in ~/.atuin/bin
-  export PATH="$HOME/.atuin/bin:$PATH"
-}
-
-install_opencode() {
-  log "opencode"
-  if ! is_linux_bin opencode; then
-    curl -fsSL https://opencode.ai/install | bash
-  fi
-}
-
-install_gh() {
-  log "gh"
-  if is_linux_bin gh; then
-    return 0
-  fi
-  local tag ver tmp
-  tag="$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
-  ver="${tag#v}"
-  tmp="$(mktemp -d)"
-  curl -fsSL "https://github.com/cli/cli/releases/download/${tag}/gh_${ver}_linux_amd64.tar.gz" -o "$tmp/gh.tgz"
-  tar -xzf "$tmp/gh.tgz" -C "$tmp"
-  install -m 0755 "$tmp/gh_${ver}_linux_amd64/bin/gh" "$HOME/.local/bin/gh"
-  rm -rf "$tmp"
-}
-
-install_copilot() {
-  log "GitHub Copilot CLI"
-  if is_linux_bin copilot; then
-    return 0
-  fi
-  mkdir -p "$HOME/.local/bin"
-  # Official script. PREFIX defaults to ~/.local for a non-root user.
-  # gh.io 429s; fall back to the GitHub linux-x64 tarball, then npm.
-  if curl -fsSL https://gh.io/copilot-install | PREFIX="$HOME/.local" bash; then
-    is_linux_bin copilot && return 0
-  fi
-  local tag tmp bin
-  tag="$(curl -fsSL https://api.github.com/repos/github/copilot-cli/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
-  if [ -n "$tag" ]; then
-    tmp="$(mktemp -d)"
-    if curl -fsSL "https://github.com/github/copilot-cli/releases/download/${tag}/copilot-linux-x64.tar.gz" -o "$tmp/copilot.tgz"; then
-      tar -xzf "$tmp/copilot.tgz" -C "$tmp"
-      bin="$(find "$tmp" -type f -name copilot | head -n1)"
-      if [ -n "$bin" ]; then
-        install -m 0755 "$bin" "$HOME/.local/bin/copilot"
-        rm -rf "$tmp"
-        return 0
-      fi
-    fi
-    rm -rf "$tmp"
-  fi
-  export PATH="$HOME/.local/share/fnm:$PATH"
-  eval "$(fnm env --shell bash 2>/dev/null)" || true
-  if is_linux_bin npm; then
-    npm install -g @github/copilot
-    return 0
-  fi
-  echo "could not install GitHub Copilot CLI" >&2
-  return 1
-}
-
-install_claude() {
-  log "claude code"
-  if ! is_linux_bin claude; then
-    curl -fsSL https://claude.ai/install.sh | bash
-  fi
-}
-
-install_grok() {
-  log "grok"
-  if [ ! -x "$HOME/.grok/bin/grok" ]; then
-    curl -fsSL https://x.ai/cli/install.sh | bash
-  fi
-}
-
-install_op() {
-  log "1Password CLI (op)"
-  if is_linux_bin op; then
-    return 0
-  fi
-  need_sudo
-  if [ ! -f /usr/share/keyrings/1password-archive-keyring.gpg ]; then
-    curl -fsS https://downloads.1password.com/linux/keys/1password.asc \
-      | sudo gpg --dearmor --output /usr/share/keyrings/1password-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$(dpkg --print-architecture) stable main" \
-      | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
-  fi
-  apt_update
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y 1password-cli
-}
-
-# Microsoft has no azure-cli suite for Ubuntu 26.04 (resolute) yet. Official
-# guidance is to use an earlier published suite; noble is the closest LTS.
-azure_cli_suite() {
-  local candidate
-  for candidate in "$(lsb_release -cs)" noble jammy; do
-    if curl -fsI "https://packages.microsoft.com/repos/azure-cli/dists/${candidate}/Release" >/dev/null 2>&1; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  return 1
-}
-
-install_az() {
-  log "Azure CLI (az)"
-  if is_linux_bin az; then
-    return 0
-  fi
-  need_sudo
-  sudo mkdir -p /etc/apt/keyrings
-  if [ ! -f /etc/apt/keyrings/microsoft.gpg ]; then
-    curl -fsLS https://packages.microsoft.com/keys/microsoft.asc \
-      | gpg --dearmor | sudo tee /etc/apt/keyrings/microsoft.gpg >/dev/null
-    sudo chmod go+r /etc/apt/keyrings/microsoft.gpg
-  fi
-  local suite
-  if ! suite="$(azure_cli_suite)"; then
-    log "no azure-cli apt suite published; installing with uv tool"
-    uv tool install azure-cli
-    return 0
-  fi
-  printf 'Types: deb\nURIs: https://packages.microsoft.com/repos/azure-cli/\nSuites: %s\nComponents: main\nArchitectures: %s\nSigned-by: /etc/apt/keyrings/microsoft.gpg\n' \
-    "$suite" "$(dpkg --print-architecture)" \
-    | sudo tee /etc/apt/sources.list.d/azure-cli.sources >/dev/null
-  apt_update
-  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y azure-cli; then
-    log "azure-cli apt install failed; installing with uv tool"
-    uv tool install azure-cli
-  fi
-}
-
-install_azd() {
-  log "Azure Developer CLI (azd)"
-  if is_linux_bin azd; then
-    return 0
-  fi
-  need_sudo
-  curl -fsSL https://aka.ms/install-azd.sh | bash -s -- --no-telemetry
-}
-
-install_gcloud() {
-  log "Google Cloud CLI (gcloud)"
-  if is_linux_bin gcloud; then
-    return 0
-  fi
-  need_sudo
-  sudo mkdir -p /usr/share/keyrings
-  if [ ! -f /usr/share/keyrings/cloud.google.gpg ]; then
-    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-      | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-  fi
-  echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
-    | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list >/dev/null
-  apt_update
-  sudo CLOUDSDK_SKIP_PY_COMPILATION=1 DEBIAN_FRONTEND=noninteractive apt-get install -y google-cloud-cli
-}
-
-install_saml2aws() {
-  log "saml2aws"
-  if is_linux_bin saml2aws; then
-    return 0
-  fi
-  local ver tmp
-  ver="$(curl -fsSL https://api.github.com/repos/Versent/saml2aws/releases/latest | sed -n 's/.*"tag_name": "v\([^"]*\)".*/\1/p' | head -n1)"
-  if [ -z "$ver" ]; then
-    echo "could not resolve latest saml2aws release" >&2
-    return 1
-  fi
-  tmp="$(mktemp -d)"
-  curl -fsSL "https://github.com/Versent/saml2aws/releases/download/v${ver}/saml2aws_${ver}_linux_amd64.tar.gz" -o "$tmp/s.tgz"
-  tar -xzf "$tmp/s.tgz" -C "$tmp"
-  install -m 0755 "$tmp/saml2aws" "$HOME/.local/bin/saml2aws"
-  rm -rf "$tmp"
-}
-
-install_aws() {
-  log "AWS CLI v2"
-  if is_linux_bin aws; then
-    return 0
-  fi
-  need_sudo
-  local tmp
-  tmp="$(mktemp -d)"
-  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "$tmp/awscliv2.zip"
-  unzip -q "$tmp/awscliv2.zip" -d "$tmp"
-  if [ -x /usr/local/bin/aws ]; then
-    sudo "$tmp/aws/install" --update
-  else
-    sudo "$tmp/aws/install"
-  fi
-  rm -rf "$tmp"
-}
-
-install_cloudflare() {
-  log "Cloudflare CLI (cf, wrangler, cloudflared)"
-  export PATH="$HOME/.local/share/fnm:$PATH"
+# Cloudflare's unified `cf` CLI is not in Homebrew (npm only, preview).
+install_cloudflare_cf() {
+  log "Cloudflare CLI (cf)"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
   if ! is_linux_bin npm; then
-    echo "Linux npm is required for the Cloudflare CLIs (install_fnm_node first)" >&2
+    echo "Linux npm is required for cf (install_fnm_node first)" >&2
     return 1
   fi
-  if ! is_linux_bin cf; then
-    npm install -g cf@latest
-  fi
-  if ! is_linux_bin wrangler; then
-    npm install -g wrangler@latest
-  fi
-  if is_linux_bin cloudflared; then
-    return 0
-  fi
-  need_sudo
-  sudo mkdir -p --mode=0755 /usr/share/keyrings
-  if [ ! -f /usr/share/keyrings/cloudflare-main.gpg ]; then
-    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
-      | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
-  fi
-  echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" \
-    | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
-  apt_update
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
-}
-
-# Official script writes ~/bin and appends a frozen PATH to bashrc unless
-# $HOME/bin is already on PATH. Copy into ~/.local/bin so our marked block wins.
-install_devtunnel() {
-  log "Microsoft Dev Tunnels (devtunnel)"
-  if is_linux_bin devtunnel; then
-    return 0
-  fi
-  mkdir -p "$HOME/bin" "$HOME/.local/bin"
-  export PATH="$HOME/bin:$PATH"
-  curl -fsSL https://aka.ms/DevTunnelCliInstall | bash
-  if [ -x "$HOME/bin/devtunnel" ]; then
-    install -m 0755 "$HOME/bin/devtunnel" "$HOME/.local/bin/devtunnel"
-  fi
-}
-
-install_changie() {
-  log "changie"
-  if is_linux_bin changie; then
-    return 0
-  fi
-  local tag ver tmp asset
-  tag="$(curl -fsSL https://api.github.com/repos/miniscruff/changie/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
-  ver="${tag#v}"
-  if [ -z "$ver" ]; then
-    echo "could not resolve latest changie release" >&2
-    return 1
-  fi
-  tmp="$(mktemp -d)"
-  for asset in \
-    "changie_${ver}_linux_amd64.tar.gz" \
-    "changie_${ver}_Linux_x86_64.tar.gz"
-  do
-    if curl -fsSL "https://github.com/miniscruff/changie/releases/download/${tag}/${asset}" -o "$tmp/changie.tgz"; then
-      tar -xzf "$tmp/changie.tgz" -C "$tmp"
-      break
-    fi
-  done
-  if [ ! -f "$tmp/changie" ]; then
-    echo "could not download changie ${tag}" >&2
-    rm -rf "$tmp"
-    return 1
-  fi
-  install -m 0755 "$tmp/changie" "$HOME/.local/bin/changie"
-  rm -rf "$tmp"
-}
-
-install_helm() {
-  log "helm"
-  if is_linux_bin helm; then
-    return 0
-  fi
-  mkdir -p "$HOME/.local/bin"
-  local tmp
-  tmp="$(mktemp -d)"
-  if curl -fsSL -o "$tmp/get_helm.sh" https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4; then
-    chmod 700 "$tmp/get_helm.sh"
-    HELM_INSTALL_DIR="$HOME/.local/bin" USE_SUDO=false "$tmp/get_helm.sh"
-  else
-    local tag
-    tag="$(curl -fsSL https://api.github.com/repos/helm/helm/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1 || true)"
-    if [ -z "$tag" ]; then
-      tag="$(curl -fsSL https://get.helm.sh/helm-latest-version)"
-      case "$tag" in
-        v*) ;;
-        *) tag="v${tag}" ;;
-      esac
-    fi
-    if [ -z "$tag" ]; then
-      echo "could not resolve latest helm release" >&2
-      rm -rf "$tmp"
-      return 1
-    fi
-    curl -fsSL "https://get.helm.sh/helm-${tag}-linux-amd64.tar.gz" -o "$tmp/helm.tgz"
-    tar -xzf "$tmp/helm.tgz" -C "$tmp"
-    install -m 0755 "$tmp/linux-amd64/helm" "$HOME/.local/bin/helm"
-  fi
-  rm -rf "$tmp"
-}
-
-install_hugo() {
-  log "hugo (extended)"
-  if is_linux_bin hugo; then
-    return 0
-  fi
-  local tag ver tmp asset
-  tag="$(curl -fsSL https://api.github.com/repos/gohugoio/hugo/releases/latest | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' | head -n1)"
-  ver="${tag#v}"
-  if [ -z "$ver" ]; then
-    echo "could not resolve latest hugo release" >&2
-    return 1
-  fi
-  tmp="$(mktemp -d)"
-  for asset in \
-    "hugo_extended_${ver}_linux-amd64.tar.gz" \
-    "hugo_extended_${ver}_Linux-64bit.tar.gz"
-  do
-    if curl -fsSL "https://github.com/gohugoio/hugo/releases/download/${tag}/${asset}" -o "$tmp/hugo.tgz"; then
-      tar -xzf "$tmp/hugo.tgz" -C "$tmp"
-      break
-    fi
-  done
-  if [ ! -x "$tmp/hugo" ]; then
-    echo "could not download hugo extended ${tag}" >&2
-    rm -rf "$tmp"
-    return 1
-  fi
-  install -m 0755 "$tmp/hugo" "$HOME/.local/bin/hugo"
-  rm -rf "$tmp"
-}
-
-install_stripe() {
-  log "Stripe CLI"
-  if is_linux_bin stripe; then
-    return 0
-  fi
-  need_sudo
-  sudo mkdir -p /usr/share/keyrings
-  if [ ! -f /usr/share/keyrings/stripe.gpg ]; then
-    curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public \
-      | sudo gpg --dearmor --output /usr/share/keyrings/stripe.gpg
-  fi
-  echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" \
-    | sudo tee /etc/apt/sources.list.d/stripe.list >/dev/null
-  apt_update
-  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y stripe
-}
-
-install_7zip() {
-  log "7-Zip (7zz)"
-  if is_linux_bin 7zz; then
-    ln -sfn "$(command -v 7zz)" "$HOME/.local/bin/7z"
-    return 0
-  fi
-  local tag ver flat tmp
-  tag="$(curl -fsSL https://api.github.com/repos/ip7z/7zip/releases/latest | sed -n 's/.*"tag_name": "\([^"]*\)".*/\1/p' | head -n1)"
-  ver="${tag#v}"
-  flat="$(printf '%s' "$ver" | tr -d '.')"
-  if [ -z "$flat" ]; then
-    echo "could not resolve latest 7-Zip release" >&2
-    return 1
-  fi
-  tmp="$(mktemp -d)"
-  if ! curl -fsSL "https://github.com/ip7z/7zip/releases/download/${tag}/7z${flat}-linux-x64.tar.xz" -o "$tmp/7z.tar.xz"; then
-    curl -fsSL "https://www.7-zip.org/a/7z${flat}-linux-x64.tar.xz" -o "$tmp/7z.tar.xz"
-  fi
-  tar -xJf "$tmp/7z.tar.xz" -C "$tmp"
-  install -m 0755 "$tmp/7zz" "$HOME/.local/bin/7zz"
-  ln -sfn "$HOME/.local/bin/7zz" "$HOME/.local/bin/7z"
-  rm -rf "$tmp"
-}
-
-install_mongosh() {
-  log "MongoDB Shell (mongosh)"
-  if is_linux_bin mongosh; then
-    return 0
-  fi
-  local url tmp dir
-  url="$(curl -fsSL https://downloads.mongodb.com/compass/mongosh.json | python3 -c '
-import json, sys
-data = json.load(sys.stdin)
-for ver in data.get("versions", []):
-    for dl in ver.get("downloads", []):
-        archive = dl.get("archive") or {}
-        if dl.get("arch") == "x86_64" and dl.get("distro") == "linux" and archive.get("type") == "tgz":
-            print(archive["url"])
-            raise SystemExit
-raise SystemExit("no linux x64 mongosh tarball in mongosh.json")
-')"
-  tmp="$(mktemp -d)"
-  curl -fsSL "$url" -o "$tmp/mongosh.tgz"
-  tar -xzf "$tmp/mongosh.tgz" -C "$tmp"
-  dir="$(find "$tmp" -maxdepth 1 -type d -name 'mongosh-*' | head -n1)"
-  if [ -z "$dir" ] || [ ! -x "$dir/bin/mongosh" ]; then
-    echo "mongosh tarball did not contain bin/mongosh" >&2
-    rm -rf "$tmp"
-    return 1
-  fi
-  rm -rf "$HOME/.local/opt/mongosh"
-  mkdir -p "$HOME/.local/opt"
-  mv "$dir" "$HOME/.local/opt/mongosh"
-  ln -sfn "$HOME/.local/opt/mongosh/bin/mongosh" "$HOME/.local/bin/mongosh"
-  rm -rf "$tmp"
-}
-
-install_flux() {
-  log "Flux CD (flux)"
-  if is_linux_bin flux; then
-    return 0
-  fi
-  mkdir -p "$HOME/.local/bin"
-  curl -fsSL https://fluxcd.io/install.sh | bash -s -- "$HOME/.local/bin"
+  npm install -g cf@latest
 }
 
 # Electron's Chromium sandbox fails under WSL. Compass also rejects unknown
@@ -1038,6 +755,7 @@ fmt_ver() {
 print_summary() {
   log "versions"
   printf 'profile    %s\n' "$PROFILE"
+  printf 'brew       %s\n' "$(fmt_ver brew --version)"
   printf 'git        %s\n' "$(fmt_ver git --version)"
   printf 'gh         %s\n' "$(fmt_ver gh --version)"
   printf 'pwsh       %s\n' "$(fmt_ver pwsh --version)"
@@ -1135,14 +853,15 @@ main() {
     fi
     run_step "$fn"
   done
+  ensure_brew_env || true
   [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-  export PATH="$HOME/.local/share/fnm:$PATH"
   eval "$(fnm env --shell bash 2>/dev/null)" || true
   print_summary
   echo
   echo "Prompt in WSL is Starship. Oh My Posh stays on Windows only."
   echo "VS Code stays on Windows. From a Linux path:  code ."
   echo "MongoDB Compass is a Linux GUI:  compass    (window appears on Windows via WSLg)"
+  echo "CLIs update with:  brew update && brew upgrade"
   case "$PROFILE" in
     work)
       echo "Work profile: Copilot CLI yes. No grok, claude, opencode, devtunnel, changie, hugo, stripe."

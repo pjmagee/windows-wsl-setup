@@ -1,9 +1,3 @@
 # Extra steps for the home profile (on top of universal).
-# These stay off work laptops.
-install_opencode
-install_claude
-install_grok
-install_devtunnel
-install_changie
-install_hugo
-install_stripe
+# These stay off work laptops. Packages are in brew/home.Brewfile
+# (install_brew already loaded it).

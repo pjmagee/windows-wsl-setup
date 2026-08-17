@@ -4,3 +4,4 @@
 scripts/wsl-open text eol=lf
 packages/apt.txt text eol=lf
 profiles/*.txt text eol=lf
+brew/*.Brewfile text eol=lf
