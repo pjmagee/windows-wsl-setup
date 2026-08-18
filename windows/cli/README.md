@@ -1,17 +1,18 @@
-# wsl-setup (Windows TUI)
+# wsl-setup.exe
 
-Native console app. No browser.
+Single Windows binary. Users download it from GitHub Releases. They do not clone the repo or run scripts.
 
-```powershell
-cargo build --release --manifest-path windows\cli\Cargo.toml
-.\windows\cli\target\release\wsl-setup.exe capture
+```
+wsl-setup              Collect or Restore
+wsl-setup collect      scan this PC → winget manifest + kit on a data drive
+wsl-setup restore      pick packages from the kit → winget install; remount Dev Drive / WSL; Brave bookmarks + extensions.html
+wsl-setup inventory    JSON scan
 ```
 
-Or from the repo root, `windows\host\capture.ps1` launches this binary (builds it if needed).
+Collect writes `apps/winget-selected.json` (winget import schema) plus `inventory/apps.json` (ids and names). Restore shows every package in that manifest; the user ticks what to install.
 
-| Command | What |
-|---|---|
-| `wsl-setup` / `capture` | TUI: dest, home/work, Linux extras, WSL, host, winget, write kit |
-| `wsl-setup inventory` | JSON scan to stdout |
+Build (maintainers):
 
-Keys: `tab` section, `j`/`k` move, `space` toggle, `w` work-tick on Linux extras, `/` filter apps, `W` or Enter on Write to emit the kit, `q` quit.
+```
+cargo build --release --manifest-path windows/cli/Cargo.toml
+```

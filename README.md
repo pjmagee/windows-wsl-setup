@@ -1,14 +1,21 @@
 # wsl-setup
 
-Windows capture → kit → restore, plus an idempotent **WSL 2 Ubuntu 26.04** toolchain.
+**Windows 11 users: one binary. No git clone. No PowerShell to run.**
 
-The product name for the Windows half is **windows-wsl-setup**. Same repo. Work laptops still clone this URL and run `windows\bootstrap.ps1`.
+Download `wsl-setup.exe` from [Releases](https://github.com/pjmagee/wsl-setup/releases).
 
-| Situation | Command |
+| On | What you do |
 |---|---|
-| Used PC, about to reset | `windows\host\capture.ps1` — checkbox UI, kit on a non-`C:` drive |
-| Fresh PC, kit already on E:/M:/P: | Read the kit `AGENTS.md` |
-| Work laptop, first WSL | `windows\bootstrap.ps1` then `./install.sh work` inside Ubuntu |
+| Current PC | Run `wsl-setup.exe` → **Collect**. Pick a non-C: drive, tick winget packages, WSL, Dev Drive, Brave. Write the kit. |
+| Fresh Windows 11 | Run the same exe (from Releases, or `wsl-setup.exe` inside the kit) → **Restore**. Tick packages from the manifest, Apply. The tool installs them with winget, remounts the Dev Drive, imports WSL, copies Brave bookmarks, and opens an extensions page (Add to Brave by hand). |
+
+```
+wsl-setup              Collect or Restore
+wsl-setup collect      scan this PC, write a kit
+wsl-setup restore      install from a kit on a data drive
+```
+
+The Linux Ubuntu 26.04 toolchain (`install.sh`) is still in this repo for work laptops and for after WSL is back. End users of the Windows kit never need it.
 
 Idempotent bootstrap for the **Linux** side of a WSL 2 Ubuntu 26.04 development machine.
 
@@ -33,15 +40,11 @@ The host OS does **not** need the developer CLIs. It only needs:
 - [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for **Ubuntu-26.04** (needed for `docker` / Dagger; flip this if it still targets 24.04)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 
-## Capture a used Windows PC
+## Capture / restore (the Windows exe)
 
-```powershell
-git clone https://github.com/pjmagee/wsl-setup.git
-cd wsl-setup
-powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\host\capture.ps1
-```
+Source: [`windows/cli`](windows/cli). CI builds `wsl-setup.exe` on every `main` push.
 
-That launches a **native Rust TUI** (no browser): pick a data drive, tick home/work extras, WSL, winget, write the kit. Details: [`windows/cli/README.md`](windows/cli/README.md).
+Brave extensions cannot be force-installed without policy. Restore copies bookmarks and opens `browser/extensions.html` so you click **Add to Brave** after Brave is installed via winget.
 
 ## Install
 

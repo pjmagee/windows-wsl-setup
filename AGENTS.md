@@ -59,13 +59,15 @@ else echo "windows"; fi
 
 ### 0a. Capture a used machine (windows-wsl-setup)
 
-From the repo root in **Windows PowerShell** (not Git Bash):
+End users download `wsl-setup.exe` from GitHub Releases (no clone).
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\host\capture.ps1
+```
+wsl-setup              Collect or Restore
+wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
+wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
 ```
 
-That builds (if needed) and runs the **native Rust TUI** (`windows/cli`). No browser. Tabs: dest, home/work profile, Linux extra ticks, WSL, host leftovers, winget, write kit. VHDX copy of the Dev Drive / distro disks is a later elevated pass.
+Do not tell the user to run PowerShell scripts or git clone for this. Maintainers build `windows/cli`.
 
 Never write the kit on `C:`. Never unregister WSL. Linux toolchains stay inside WSL after restore (`./install.sh home` or `work` from `KIT.json`).
 

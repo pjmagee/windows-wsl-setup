@@ -1,7 +1,6 @@
 #Requires -Version 5.1
 <#
-.SYNOPSIS
-  Launch the native windows-wsl-setup capture TUI (Rust). No browser.
+  Maintainer helper: build + launch the exe. End users download wsl-setup.exe.
 #>
 [CmdletBinding()]
 param()

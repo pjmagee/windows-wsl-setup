@@ -213,6 +213,79 @@ impl App {
 }
 
 pub fn run() -> Result<(), String> {
+    match home_choice()? {
+        HomeChoice::Collect => run_collect(),
+        HomeChoice::Restore => crate::tui_restore::run(None),
+        HomeChoice::Quit => Ok(()),
+    }
+}
+
+enum HomeChoice {
+    Collect,
+    Restore,
+    Quit,
+}
+
+fn home_choice() -> Result<HomeChoice, String> {
+    let mut cursor = 0usize;
+    let mut term = ratatui::init();
+    let result = loop {
+        term.draw(|f| {
+            let items = [
+                "Collect   scan this PC, pick winget software, write a kit on a data drive",
+                "Restore   read a kit, pick packages, install with winget, remount WSL / Dev Drive",
+            ];
+            let list_items: Vec<ListItem> = items
+                .iter()
+                .enumerate()
+                .map(|(i, t)| {
+                    let mark = if i == cursor { "(*)" } else { "( )" };
+                    let it = ListItem::new(format!("{mark}  {t}"));
+                    if i == cursor {
+                        it.style(Style::new().fg(mint()).bg(Color::Rgb(28, 38, 48)))
+                    } else {
+                        it
+                    }
+                })
+                .collect();
+            let w = List::new(list_items).block(
+                Block::bordered()
+                    .title(" wsl-setup ")
+                    .border_style(Style::new().fg(Color::DarkGray)),
+            );
+            let chunks = Layout::vertical([Constraint::Min(6), Constraint::Length(1)]).split(f.area());
+            f.render_widget(w, chunks[0]);
+            f.render_widget(
+                Paragraph::new("j/k move   Enter choose   q quit").style(Style::new().fg(Color::DarkGray)),
+                chunks[1],
+            );
+        })
+        .map_err(|e| e.to_string())?;
+        let Event::Key(key) = event::read().map_err(|e| e.to_string())? else {
+            continue;
+        };
+        if key.kind != KeyEventKind::Press {
+            continue;
+        }
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc => break Ok(HomeChoice::Quit),
+            KeyCode::Down | KeyCode::Char('j') => cursor = 1,
+            KeyCode::Up | KeyCode::Char('k') => cursor = 0,
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                break Ok(if cursor == 0 {
+                    HomeChoice::Collect
+                } else {
+                    HomeChoice::Restore
+                });
+            }
+            _ => {}
+        }
+    };
+    ratatui::restore();
+    result
+}
+
+pub fn run_collect() -> Result<(), String> {
     let inv = inventory::collect()?;
     let mut app = App::new(inv);
 

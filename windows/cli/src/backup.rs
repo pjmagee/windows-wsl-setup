@@ -111,6 +111,19 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         serde_json::to_string_pretty(&selected_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
+    let kept_apps: Vec<_> = sel
+        .inv
+        .apps
+        .iter()
+        .zip(sel.app_keep.iter())
+        .filter(|(_, k)| **k)
+        .map(|(a, _)| a)
+        .collect();
+    fs::write(
+        root.join("inventory/apps.json"),
+        serde_json::to_string_pretty(&kept_apps).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     let export = root.join("apps/winget-export-raw.json");
     let _ = Command::new("winget")
         .args([
@@ -149,6 +162,38 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         .map(|(d, _)| d.name.as_str())
         .collect();
 
+    let mut wsl_disks = Vec::new();
+    for (d, keep) in sel.inv.wsl.iter().zip(sel.wsl_keep.iter()) {
+        if !*keep {
+            continue;
+        }
+        wsl_disks.push(serde_json::json!({
+            "name": d.name,
+            "vhdx": d.vhdx,
+            "onDevDrive": d.vhdx.as_deref().map(|p| p.starts_with("D:\\") || p.contains("\\Dev Drive")).unwrap_or(false),
+        }));
+    }
+    let dev_drive_disk = if sel.dev_drive {
+        let live = sel
+            .inv
+            .dev_drive
+            .vhdx
+            .iter()
+            .find(|v| !v.on_c)
+            .or(sel.inv.dev_drive.vhdx.first());
+        Some(serde_json::json!({
+            "keep": true,
+            "livePath": live.map(|v| v.path.clone()),
+            "letter": sel.inv.dev_drive.letter.map(|c| c.to_string()),
+        }))
+    } else {
+        None
+    };
+
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = fs::copy(&exe, root.join("wsl-setup.exe"));
+    }
+
     let kit = serde_json::json!({
         "schemaVersion": 1,
         "computer": sel.inv.computer,
@@ -157,7 +202,6 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         "linuxProfile": sel.profile.as_str(),
         "linuxTools": tools,
         "kitRoot": sel.kit_root,
-        "repo": "https://github.com/pjmagee/wsl-setup.git",
         "selections": {
             "apps": app_ids,
             "wsl": wsl_names,
@@ -165,7 +209,9 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
             "dockerData": sel.docker,
             "browser": sel.browser,
             "dotfiles": sel.dotfiles
-        }
+        },
+        "wslDisks": wsl_disks,
+        "devDriveDisk": dev_drive_disk,
     });
     fs::write(
         root.join("KIT.json"),
@@ -173,69 +219,12 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
     )
     .map_err(|e| e.to_string())?;
 
-    let profile = sel.profile.as_str();
-    let agents = format!(
-        r#"# Restore this machine (generated kit)
-
-If you are an agent on a freshly reset Windows 11 PC and the human says
-anything like **restore this machine**, **execute this file**. Do not invent
-a second plan. Do not format data drives. Do not `wsl --unregister`.
-
-- Kit: `{kit}`
-- Old computer: {pc}
-- Windows user: {user}
-- Linux profile: `./install.sh {profile}` (inside Ubuntu-26.04)
-- Repo: https://github.com/pjmagee/wsl-setup.git
-
-## Order
-
-1. Clone the repo if needed (HTTPS is fine).
-2. `windows\host\Restore-Kit.ps1 -KitRoot '{kit}'`
-3. `windows\bootstrap.ps1 -SkipLinuxInstall`
-4. Copy `inventory/linux-tools.json` to `~/.config/wsl-setup/tools.json` if present.
-5. Inside Ubuntu-26.04: `cd ~/code/wsl-setup && git pull && ./install.sh {profile}`
-
-There is no universal profile. Base tools always install; extras follow the ticks in `linux-tools.json`.
-
-## Selected
-
-- Apps: {apps} winget ids
-- WSL: {wsl}
-- Dev Drive: {dd}
-- Docker data: {dk}
-- Brave: {br}
-- Dotfiles: {df}
-
-## Manual leftovers
-
-- 1Password → Settings → Developer → Use the SSH agent
-- OpenSSH Authentication Agent service off
-- Steam library path / Docker Desktop WSL integration
-"#,
-        kit = sel.kit_root,
-        pc = sel.inv.computer,
-        user = sel.inv.user,
-        profile = profile,
-        apps = app_ids.len(),
-        wsl = if wsl_names.is_empty() {
-            "none".into()
-        } else {
-            wsl_names.join(", ")
-        },
-        dd = sel.dev_drive,
-        dk = sel.docker,
-        br = sel.browser,
-        df = sel.dotfiles,
-    );
-    fs::write(root.join("AGENTS.md"), agents).map_err(|e| e.to_string())?;
-
     let mut start = fs::File::create(root.join("START-HERE.txt")).map_err(|e| e.to_string())?;
     writeln!(
         start,
-        "windows-wsl-setup kit — {} {}\n\nOn the new PC, tell the agent:\n  Read {}\\AGENTS.md and restore this machine.\n",
-        sel.inv.computer,
-        sel.kit_root,
-        sel.kit_root
+        "wsl-setup kit — {pc}\n\nOn the new Windows 11 PC:\n  1. Do not wipe this data drive.\n  2. Download wsl-setup.exe from GitHub Releases (or use wsl-setup.exe in this folder).\n  3. Run it and choose Restore.\n  4. Tick the winget packages to install, then Apply.\n\nKit folder: {kit}\n",
+        pc = sel.inv.computer,
+        kit = sel.kit_root,
     )
     .map_err(|e| e.to_string())?;
 
