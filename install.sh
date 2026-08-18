@@ -5,7 +5,7 @@
 # apt = system packages. Homebrew = CLIs and language runtimes.
 # Compass (Linux GUI) and Cloudflare cf stay as special steps.
 # Optional toolchain steps continue after a blocked host or installer error.
-# Profiles: ./install.sh universal|work|home  (see profiles/ and brew/).
+# Profiles: ./install.sh home|work  (base tools + profiles/tools.json ticks).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,17 +82,17 @@ run_step() {
   return 0
 }
 
-# universal = shared base. work = universal + copilot (no home extras).
-# home = universal + grok/claude/opencode/devtunnel/changie/hugo/stripe.
+# home = base + extras ticked home in profiles/tools.json (or overlay).
+# work = base + extras ticked work. Work also uninstalls home-only extras.
 PROFILE=""
 PROFILE_STEPS=()
 PROFILE_STATE="$HOME/.config/wsl-setup/profile"
+TOOLS_OVERLAY="$HOME/.config/wsl-setup/tools.json"
 
 usage() {
-  echo "usage: ./install.sh [universal|work|home]"
-  echo "  universal  shared toolchain (default if nothing saved)"
-  echo "  work       universal + Copilot CLI; drops home extras"
-  echo "  home       universal + grok, claude, opencode, devtunnel, changie, hugo, stripe"
+  echo "usage: ./install.sh [home|work]"
+  echo "  home  base + extras ticked for home (default if nothing saved)"
+  echo "  work  base + extras ticked for work; drops home-only extras"
 }
 
 read_step_file() {
@@ -109,9 +109,13 @@ resolve_profile() {
   if [ -z "$requested" ] && [ -f "$PROFILE_STATE" ]; then
     requested="$(tr -d '[:space:]' <"$PROFILE_STATE")"
   fi
-  requested="${requested:-universal}"
+  # Old checkouts saved "universal". That profile is gone; treat as home.
+  if [ "$requested" = "universal" ]; then
+    requested="home"
+  fi
+  requested="${requested:-home}"
   case "$requested" in
-    universal|work|home) PROFILE="$requested" ;;
+    work|home) PROFILE="$requested" ;;
     -h|--help|help) usage; exit 0 ;;
     *)
       echo "unknown profile: $requested" >&2
@@ -129,9 +133,9 @@ collect_steps() {
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     PROFILE_STEPS+=("$line")
-  done < <(read_step_file "$ROOT/profiles/universal.txt")
+  done < <(read_step_file "$ROOT/profiles/base.txt")
   extra="$ROOT/profiles/${PROFILE}.txt"
-  if [ "$PROFILE" != universal ] && [ -f "$extra" ]; then
+  if [ -f "$extra" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] || continue
       PROFILE_STEPS+=("$line")
@@ -160,44 +164,51 @@ ensure_brew_env() {
   return 0
 }
 
-# Work laptops must not keep home-only CLIs from an earlier full run.
-prune_home_extras() {
-  log "pruning home-only tools (profile=$PROFILE)"
-  rm -f \
-    "$HOME/.local/bin/opencode" \
-    "$HOME/.opencode/bin/opencode" \
-    "$HOME/.local/bin/claude" \
-    "$HOME/.claude/bin/claude" \
-    "$HOME/.local/bin/grok" \
-    "$HOME/.grok/bin/grok" \
-    "$HOME/.local/bin/devtunnel" \
-    "$HOME/bin/devtunnel" \
-    "$HOME/.local/bin/changie" \
-    "$HOME/.local/bin/hugo"
-  if dpkg-query -W -f='${Status}' stripe 2>/dev/null | grep -q 'install ok installed'; then
-    need_sudo
-    sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y stripe || true
+# Uninstall extras not ticked for this profile (from profiles/tools.json).
+prune_unselected_extras() {
+  log "pruning extras not on profile=$PROFILE"
+  local line kind pkg
+  local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/profiles/tools.json")
+  if [ -f "$TOOLS_OVERLAY" ]; then
+    args+=("$TOOLS_OVERLAY")
   fi
-  if [ -f /etc/apt/sources.list.d/stripe.list ]; then
-    need_sudo
-    sudo rm -f /etc/apt/sources.list.d/stripe.list
-  fi
-  if ensure_brew_env; then
-    local name
-    for name in opencode changie hugo stripe-cli; do
-      brew uninstall --force "$name" >/dev/null 2>&1 || true
-    done
-    for name in claude-code grok-build devtunnel; do
-      brew uninstall --cask --force "$name" >/dev/null 2>&1 || true
-    done
-  fi
-}
-
-prune_copilot() {
-  rm -f "$HOME/.local/bin/copilot"
-  if ensure_brew_env; then
-    brew uninstall --cask --force copilot-cli >/dev/null 2>&1 || true
-  fi
+  while IFS=$'\t' read -r kind pkg; do
+    [ -n "$pkg" ] || continue
+    case "$pkg" in
+      opencode)
+        rm -f "$HOME/.local/bin/opencode" "$HOME/.opencode/bin/opencode"
+        ;;
+      claude-code)
+        rm -f "$HOME/.local/bin/claude" "$HOME/.claude/bin/claude"
+        ;;
+      grok-build)
+        rm -f "$HOME/.local/bin/grok" "$HOME/.grok/bin/grok"
+        ;;
+      devtunnel)
+        rm -f "$HOME/.local/bin/devtunnel" "$HOME/bin/devtunnel"
+        ;;
+      changie) rm -f "$HOME/.local/bin/changie" ;;
+      hugo) rm -f "$HOME/.local/bin/hugo" ;;
+      copilot-cli) rm -f "$HOME/.local/bin/copilot" ;;
+      stripe-cli)
+        if dpkg-query -W -f='${Status}' stripe 2>/dev/null | grep -q 'install ok installed'; then
+          need_sudo
+          sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y stripe || true
+        fi
+        if [ -f /etc/apt/sources.list.d/stripe.list ]; then
+          need_sudo
+          sudo rm -f /etc/apt/sources.list.d/stripe.list
+        fi
+        ;;
+    esac
+    if ensure_brew_env; then
+      if [ "$kind" = cask ]; then
+        brew uninstall --cask --force "$pkg" >/dev/null 2>&1 || true
+      else
+        brew uninstall --force "$pkg" >/dev/null 2>&1 || true
+      fi
+    fi
+  done < <(python3 "${args[@]}")
 }
 
 # Drop [user] / [interop] and rewrite them. Other sections stay.
@@ -583,10 +594,15 @@ install_brew() {
   fi
   # One index refresh per run. Individual brew install uses NO_AUTO_UPDATE.
   HOMEBREW_NO_AUTO_UPDATE=0 brew update || log "brew update reported errors (GitHub may be blocked); continuing"
-  bundle_brewfile "$ROOT/brew/universal.Brewfile"
-  if [ "$PROFILE" != universal ] && [ -f "$ROOT/brew/${PROFILE}.Brewfile" ]; then
-    bundle_brewfile "$ROOT/brew/${PROFILE}.Brewfile"
+  local generated
+  generated="$(mktemp)"
+  if [ -f "$TOOLS_OVERLAY" ]; then
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/tools.json" "$TOOLS_OVERLAY" >"$generated"
+  else
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/tools.json" >"$generated"
   fi
+  bundle_brewfile "$generated"
+  rm -f "$generated"
   migrate_legacy_clis
 }
 
@@ -835,15 +851,7 @@ main() {
   ensure_passwordless_sudo
   ensure_1password_ssh
   install_wsl_open
-  case "$PROFILE" in
-    work)
-      prune_home_extras
-      ;;
-    universal)
-      prune_home_extras
-      prune_copilot
-      ;;
-  esac
+  prune_unselected_extras
   local fn
   for fn in "${PROFILE_STEPS[@]}"; do
     if ! declare -F "$fn" >/dev/null; then
@@ -864,13 +872,10 @@ main() {
   echo "CLIs update with:  brew update && brew upgrade"
   case "$PROFILE" in
     work)
-      echo "Work profile: Copilot CLI yes. No grok, claude, opencode, devtunnel, changie, hugo, stripe."
+      echo "Work profile: extras from profiles/tools.json with work=true (Copilot CLI by default)."
       ;;
     home)
-      echo "Home profile: grok / claude / opencode / devtunnel / changie / hugo / stripe."
-      ;;
-    universal)
-      echo "Universal profile: shared toolchain only. Use ./install.sh work or ./install.sh home for extras."
+      echo "Home profile: extras from profiles/tools.json with home=true (grok/claude/opencode by default)."
       ;;
   esac
   if ((${#FAILED_STEPS[@]} > 0)); then

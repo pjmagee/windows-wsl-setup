@@ -16,9 +16,19 @@ binaries are already present, `install.sh work` removes them.
 
 At home, run `./install.sh home`.
 
-Suggested first message:
+Suggested first message (work laptop / first WSL):
 
 > Read AGENTS.md and set up WSL on this Windows 11 laptop from this repo.
+
+Suggested first message (used PC, about to reset):
+
+> Read AGENTS.md and capture this Windows machine into a kit on a non-C: drive.
+
+Suggested first message (fresh PC with a kit):
+
+> Read &lt;kit&gt;\AGENTS.md and restore this machine.
+
+Capture/restore live under [`windows/host/`](windows/host/). Copilot on a work laptop must **not** run capture or restore unless the human asked.
 
 ---
 
@@ -40,10 +50,24 @@ else echo "windows"; fi
 
 | You are | Do this |
 |---|---|
-| Windows PowerShell / cmd / Git Bash | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
+| Windows, human asked to **capture / backup** a used PC | **§0a**. `windows\host\capture.ps1`. Do not run `install.sh`. |
+| Windows, human pointed at a **kit** (`KIT.json` / `AGENTS.md` on a data drive) | Execute **that kit's** `AGENTS.md`. Scripts: `windows\host\Backup-Kit.ps1` / restore scripts. Do not format data drives. Do not `wsl --unregister`. |
+| Windows PowerShell / cmd / Git Bash (normal WSL setup) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
+
+### 0a. Capture a used machine (windows-wsl-setup)
+
+From the repo root in **Windows PowerShell** (not Git Bash):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\host\capture.ps1
+```
+
+That builds (if needed) and runs the **native Rust TUI** (`windows/cli`). No browser. Tabs: dest, home/work profile, Linux extra ticks, WSL, host leftovers, winget, write kit. VHDX copy of the Dev Drive / distro disks is a later elevated pass.
+
+Never write the kit on `C:`. Never unregister WSL. Linux toolchains stay inside WSL after restore (`./install.sh home` or `work` from `KIT.json`).
 
 `uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64.
 Stop on ARM.
@@ -224,15 +248,16 @@ cd ~/code/wsl-setup && git pull && ./install.sh
 brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
-Bare `./install.sh` reuses the saved profile, or **universal** if none is saved.
+Bare `./install.sh` reuses the saved profile, or **home** if none is saved.
 
-Profiles (step lists the agent can read):
+Profiles (there is no `universal`):
 
-| Profile | Steps | Extra Homebrew file |
+| Profile | Steps | Homebrew |
 |---|---|---|
-| `universal` | [`profiles/universal.txt`](profiles/universal.txt) | [`brew/universal.Brewfile`](brew/universal.Brewfile) |
-| `work` | universal + [`brew/work.Brewfile`](brew/work.Brewfile) | Copilot CLI. No home extras. |
-| `home` | universal + [`brew/home.Brewfile`](brew/home.Brewfile) | grok, claude, opencode, devtunnel, changie, hugo, stripe |
+| `home` | [`profiles/base.txt`](profiles/base.txt) + [`profiles/home.txt`](profiles/home.txt) | base tools + extras with `home: true` in [`profiles/tools.json`](profiles/tools.json) |
+| `work` | base + [`profiles/work.txt`](profiles/work.txt) | base + extras with `work: true`. Uninstalls home-only extras. |
+
+A kit overlay at `~/.config/wsl-setup/tools.json` (from capture ticks) overrides the home/work flags. Edit `profiles/tools.json` to change the repo defaults. Do not invent a third profile.
 
 ---
 
@@ -249,6 +274,9 @@ Profiles (step lists the agent can read):
   bottles). `brew update && brew upgrade` is the “update all CLIs” command.
   Do not add a third package manager. Compass (Linux GUI) and Cloudflare `cf`
   are not in Homebrew; those stay as special `install_*` steps.
+- **Only `home` and `work` profiles.** Shared packages are `layer: base` in
+  `profiles/tools.json`. Extras are ticked `home` and/or `work`. Do not
+  reintroduce a `universal` profile.
 - **Do not reinstall `wslu` / `wslview`.** Ubuntu 26.04 dropped them. Links go
   through `scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
@@ -300,7 +328,7 @@ laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
-| Add a CLI / runtime | Line in the right [`brew/*.Brewfile`](brew/) (`brew` or `cask`), line in `print_summary` |
+| Add a CLI / runtime | Entry in [`profiles/tools.json`](profiles/tools.json) (`layer: base` or extra with `home`/`work` ticks), line in `print_summary` |
 | Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in the right [`profiles/*.txt`](profiles/) file |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
@@ -319,18 +347,19 @@ Do not leave placeholders for unrelated work.
 ```
 .gitattributes             # LF for shell that runs in WSL
 install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
-brew/universal.Brewfile    # shared Homebrew formulae + Linux casks
-brew/work.Brewfile         # Copilot CLI
-brew/home.Brewfile         # grok/claude/opencode/devtunnel/changie/hugo/stripe
-profiles/universal.txt     # shared install_* steps (apt, brew, post-steps)
-profiles/work.txt          # work notes (packages are in brew/work.Brewfile)
-profiles/home.txt          # home notes (packages are in brew/home.Brewfile)
+profiles/tools.json        # base Homebrew + extra ticks (home / work)
+profiles/base.txt          # shared install_* steps (apt, brew, post-steps)
+profiles/work.txt          # extra install_* for work
+profiles/home.txt          # extra install_* for home
+scripts/linux-tools.py     # renders Brewfile / prune list from tools.json
 packages/apt.txt           # apt packages (no language runtimes)
 scripts/wsl-open           # http(s)/mailto → Windows default browser
 starship.toml              # seed config (scan_timeout for /mnt/c)
 windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
+windows/host/              # capture UI + kit backup (windows-wsl-setup)
+schema/kit.schema.json     # KIT.json
 README.md                  # human docs
 AGENTS.md                  # this playbook
 .github/copilot-instructions.md

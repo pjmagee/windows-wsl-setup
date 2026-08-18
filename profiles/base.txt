@@ -1,6 +1,6 @@
-# Shared toolchain. Both work and home run these.
+# Shared toolchain steps. Both home and work run these.
+# Extra Homebrew packages are selected in profiles/tools.json (home/work ticks).
 # One install_* name per line. Comments and blanks are ignored.
-# CLI packages live in brew/universal.Brewfile (plus brew/<profile>.Brewfile).
 install_apt
 install_homebrew
 install_brew

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/pjmagee/wsl-setup/schema/kit.schema.json",
+  "title": "windows-wsl-setup kit",
+  "type": "object",
+  "required": ["schemaVersion", "createdAt", "computer", "user", "linuxProfile", "kitRoot"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "createdAt": { "type": "string" },
+    "computer": { "type": "string" },
+    "user": { "type": "string" },
+    "windowsUserProfile": { "type": "string" },
+    "linuxProfile": { "type": "string", "enum": ["home", "work", "skip"] },
+    "linuxTools": { "type": "object" },
+    "kitRoot": { "type": "string" },
+    "volumes": { "type": "array" },
+    "selections": {
+      "type": "object",
+      "properties": {
+        "apps": { "type": "array", "items": { "type": "string" } },
+        "wsl": { "type": "array", "items": { "type": "string" } },
+        "devDrive": { "type": "boolean" },
+        "dockerData": { "type": "boolean" },
+        "browser": { "type": "boolean" },
+        "dotfiles": { "type": "boolean" }
+      }
+    }
+  }
+}

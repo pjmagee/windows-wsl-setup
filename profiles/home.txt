@@ -1,3 +1,2 @@
-# Extra steps for the home profile (on top of universal).
-# These stay off work laptops. Packages are in brew/home.Brewfile
-# (install_brew already loaded it).
+# Extra install_* steps for home (on top of profiles/base.txt).
+# Homebrew extras are ticked in profiles/tools.json (home: true).

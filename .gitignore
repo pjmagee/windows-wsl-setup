@@ -1,2 +1,5 @@
 .cache/
 *.log
+__pycache__/
+*.pyc
+windows/cli/target/

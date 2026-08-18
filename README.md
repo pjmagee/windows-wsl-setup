@@ -1,6 +1,16 @@
 # wsl-setup
 
-Idempotent bootstrap for a **WSL 2 Ubuntu 26.04** development machine.
+Windows capture → kit → restore, plus an idempotent **WSL 2 Ubuntu 26.04** toolchain.
+
+The product name for the Windows half is **windows-wsl-setup**. Same repo. Work laptops still clone this URL and run `windows\bootstrap.ps1`.
+
+| Situation | Command |
+|---|---|
+| Used PC, about to reset | `windows\host\capture.ps1` — checkbox UI, kit on a non-`C:` drive |
+| Fresh PC, kit already on E:/M:/P: | Read the kit `AGENTS.md` |
+| Work laptop, first WSL | `windows\bootstrap.ps1` then `./install.sh work` inside Ubuntu |
+
+Idempotent bootstrap for the **Linux** side of a WSL 2 Ubuntu 26.04 development machine.
 
 This repo is the source of truth for the toolchain. Clone it on a **clean Windows host** (a work laptop with no winget / UniGetUI copies of these CLIs) and you still get every tool. Nothing here depends on Windows interop versions of `az`, `gcloud`, `aws`, Node, Git, etc.
 
@@ -22,6 +32,16 @@ The host OS does **not** need the developer CLIs. It only needs:
 - Passwordless `sudo` inside the distro (`sudo -n` — `install.sh` will not prompt)
 - [Docker Desktop](https://docs.docker.com/desktop/features/wsl/) with WSL integration enabled for **Ubuntu-26.04** (needed for `docker` / Dagger; flip this if it still targets 24.04)
 - [Visual Studio Code](https://code.visualstudio.com/) on **Windows**, with the [WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
+
+## Capture a used Windows PC
+
+```powershell
+git clone https://github.com/pjmagee/wsl-setup.git
+cd wsl-setup
+powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\host\capture.ps1
+```
+
+That launches a **native Rust TUI** (no browser): pick a data drive, tick home/work extras, WSL, winget, write the kit. Details: [`windows/cli/README.md`](windows/cli/README.md).
 
 ## Install
 
@@ -81,15 +101,16 @@ code .
 
 ## Profiles
 
-One installer, three profiles. Step lists live in [`profiles/`](profiles/); CLI packages live in [`brew/`](brew/).
+Two profiles. **Base** tools always install. Extra tools are ticked onto home and/or work in [`profiles/tools.json`](profiles/tools.json) (the capture UI does the same).
 
 | Profile | Command | What you get |
 |---|---|---|
-| **universal** | `./install.sh universal` | Shared toolchain ([`profiles/universal.txt`](profiles/universal.txt) + [`brew/universal.Brewfile`](brew/universal.Brewfile)) |
-| **work** | `./install.sh work` | Universal + GitHub Copilot CLI. **Not** grok, claude, opencode, devtunnel, changie, hugo, stripe. `bootstrap.ps1` uses this. |
-| **home** | `./install.sh home` | Universal + grok, claude, opencode, devtunnel, changie, hugo, stripe |
+| **home** | `./install.sh home` | Base + extras with `"home": true` (Grok, Claude, OpenCode, … by default) |
+| **work** | `./install.sh work` | Base + extras with `"work": true` (Copilot CLI by default). Uninstalls home-only extras. |
 
-`install.sh work` also **removes** those home-only binaries if a previous full run left them behind.
+`windows\bootstrap.ps1` runs **work**. There is no `universal` profile.
+
+Edit ticks in `profiles/tools.json`, or in the capture page (saved into the kit as `inventory/linux-tools.json` → `~/.config/wsl-setup/tools.json` on restore).
 
 ## What it installs
 
@@ -211,7 +232,7 @@ ssh -T git@github.com      # should prompt 1Password, then authenticate
 ## Updates
 
 ```bash
-cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile (Brewfiles + post-steps)
+cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile (tools.json + post-steps)
 # ./install.sh home
 # ./install.sh work
 
@@ -241,9 +262,9 @@ WSL kernel / WSLg: `wsl --update` from Windows.
   `/home/linuxbrew/.linuxbrew` (bottles). `brew update && brew upgrade` updates
   them. Do not add a third package manager. Compass (Linux GUI) and Cloudflare
   `cf` are not in Homebrew.
-- Profiles split the toolchain: [`brew/universal.Brewfile`](brew/universal.Brewfile) is shared; [`brew/work.Brewfile`](brew/work.Brewfile) adds Copilot; [`brew/home.Brewfile`](brew/home.Brewfile) adds the home extras.
+- Base vs extras: [`profiles/tools.json`](profiles/tools.json). `install.sh home|work` renders a Brewfile. Capture UI ticks extras onto home and/or work.
 - Optional tools are skipped when their host is blocked or the installer errors (`run_step`). Re-run `./install.sh` later. Curl and apt use short timeouts so a dead repo cannot hang the run.
-- Edit [`packages/apt.txt`](packages/apt.txt) to add system packages. Edit [`brew/*.Brewfile`](brew/) to add a CLI.
+- Edit [`packages/apt.txt`](packages/apt.txt) to add system packages. Edit [`profiles/tools.json`](profiles/tools.json) to add a CLI (`layer: base` or extra with `home` / `work` ticks).
 
 ## License
 
