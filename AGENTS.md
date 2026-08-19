@@ -20,15 +20,11 @@ Suggested first message (work laptop / first WSL):
 
 > Read AGENTS.md and set up WSL on this Windows 11 laptop from this repo.
 
-Suggested first message (used PC, about to reset):
+Suggested first message (used PC, about to reset, or fresh PC with a kit):
 
-> Read AGENTS.md and capture this Windows machine into a kit on a non-C: drive.
+> Run Windows WSL Setup. Finish anything the exe cannot click (1Password SSH, Steam library, Docker WSL, Brave Add buttons). Then inside Ubuntu: ./install.sh home
 
-Suggested first message (fresh PC with a kit):
-
-> Read &lt;kit&gt;\AGENTS.md and restore this machine.
-
-Capture/restore live under [`windows/host/`](windows/host/). Copilot on a work laptop must **not** run capture or restore unless the human asked.
+The exe is Collect/Restore. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/windows-wsl-setup/SKILL.md`.
 
 ---
 
@@ -50,8 +46,8 @@ else echo "windows"; fi
 
 | You are | Do this |
 |---|---|
-| Windows, human asked to **capture / backup** a used PC | **§0a**. `windows\host\capture.ps1`. Do not run `install.sh`. |
-| Windows, human pointed at a **kit** (`KIT.json` / `AGENTS.md` on a data drive) | Execute **that kit's** `AGENTS.md`. Scripts: `windows\host\Backup-Kit.ps1` / restore scripts. Do not format data drives. Do not `wsl --unregister`. |
+| Windows, human asked to **capture / backup** a used PC | **§0a**. `windows-wsl-setup.exe` **Collect**. Do not run `install.sh`. |
+| Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `windows-wsl-setup.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
 | Windows PowerShell / cmd / Git Bash (normal WSL setup) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
