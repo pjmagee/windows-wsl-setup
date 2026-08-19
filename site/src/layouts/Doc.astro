@@ -1,0 +1,31 @@
+---
+import Base from './Base.astro';
+import { allDocs, groups } from '../lib/docs';
+
+const { title, description, slug } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const docs = await allDocs();
+const grouped = groups(docs);
+---
+<Base title={title} description={description} current="docs">
+  <div class="wrap doc-shell">
+    <aside class="side">
+      {grouped.map(([name, items]) => (
+        <>
+          <div class="g">{name}</div>
+          {items.map((d) => (
+            <a
+              href={`${base}docs/${d.id}/`}
+              aria-current={d.id === slug ? 'page' : undefined}
+            >
+              {d.data.title}
+            </a>
+          ))}
+        </>
+      ))}
+    </aside>
+    <article class="doc">
+      <slot />
+    </article>
+  </div>
+</Base>

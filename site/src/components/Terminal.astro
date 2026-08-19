@@ -1,0 +1,86 @@
+---
+const sessions = [
+  {
+    id: 'starship',
+    label: 'after setup',
+    html: `<span class="c-path">~/code</span> <span class="c-git">on main</span>
+<span class="c-ok">via</span> 🦀 1.88.0 <span class="c-ok">via</span> 🐍 uv <span class="c-ok">via</span> 🥟 bun
+<span class="c-prompt">❯</span> http pie.dev/get tool==windows-wsl-setup
+<span class="c-ok">HTTP/1.1 200 OK</span>
+<span class="c-key">Content-Type:</span> application/json
+
+{
+    <span class="c-key">"args"</span>: {
+        <span class="c-key">"tool"</span>: <span class="c-str">"windows-wsl-setup"</span>
+    },
+    <span class="c-key">"headers"</span>: {
+        <span class="c-key">"User-Agent"</span>: <span class="c-str">"HTTPie/3.2"</span>
+    }
+}`,
+  },
+  {
+    id: 'map',
+    label: 'map',
+    html: `<span class="c-prompt">❯</span> windows-wsl-setup map Microsoft.AzureCLI
+
+{
+    <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>,
+    <span class="c-key">"category"</span>: <span class="c-str">"cloud"</span>,
+    <span class="c-key">"preferLinux"</span>: <span class="c-bool">true</span>,
+    <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span>
+}`,
+  },
+  {
+    id: 'suggest',
+    label: 'suggest',
+    html: `<span class="c-prompt">❯</span> windows-wsl-setup suggest
+
+{
+    <span class="c-key">"windows"</span>: [<span class="c-str">"Brave.Brave"</span>, <span class="c-str">"Valve.Steam"</span>],
+    <span class="c-key">"linux"</span>: [<span class="c-str">"uv"</span>, <span class="c-str">"azure-cli"</span>, <span class="c-str">"fnm"</span>],
+    <span class="c-key">"skippedPreferLinux"</span>: [
+        { <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>, <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span> }
+    ]
+}`,
+  },
+  {
+    id: 'apply',
+    label: 'apply',
+    html: `<span class="c-prompt">❯</span> windows-wsl-setup apply default --linux-only
+
+[
+    { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Ubuntu-26.04 installed"</span> },
+    { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>,  <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patri"</span> },
+    { <span class="c-key">"step"</span>: <span class="c-str">"install.sh"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"profile home"</span> }
+]`,
+  },
+];
+---
+
+<div class="term" data-term>
+  <div class="term-top">
+    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+    <span class="term-title">wsl · Ubuntu-26.04 · starship</span>
+  </div>
+  <div class="term-tabs" role="tablist">
+    {sessions.map((s, i) => (
+      <button type="button" data-i={i} class={i === 0 ? 'on' : ''} role="tab">
+        {s.label}
+      </button>
+    ))}
+  </div>
+  <div class="term-body" data-out set:html={sessions[0].html} />
+</div>
+
+<script define:vars={{ sessions }}>
+  const root = document.querySelector('[data-term]');
+  if (root) {
+    const out = root.querySelector('[data-out]');
+    const buttons = [...root.querySelectorAll('button[data-i]')];
+    const show = (i) => {
+      out.innerHTML = sessions[i].html;
+      buttons.forEach((b, n) => b.classList.toggle('on', n === i));
+    };
+    buttons.forEach((b) => b.addEventListener('click', () => show(Number(b.dataset.i))));
+  }
+</script>

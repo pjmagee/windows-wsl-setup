@@ -2,6 +2,8 @@
 
 Download `windows-wsl-setup.exe` from **Releases**. Do not clone this repo.
 
+Site (GitHub Pages): <https://pjmagee.github.io/windows-wsl-setup/>
+
 A **kit** is a snapshot of this PC (Collect → Restore). A **profile** is a named list of software you want (shipped `home` / `work` / `default`, or your own). Use a profile when you have nothing to restore.
 
 ## 1. Old PC — Collect

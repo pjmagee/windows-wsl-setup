@@ -1,0 +1,99 @@
+---
+import Base from '../layouts/Base.astro';
+import Terminal from '../components/Terminal.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+<Base>
+  <section class="hero">
+    <div class="layer layer-grid" data-speed="0.12"></div>
+    <div class="layer" data-speed="0.22">
+      <div class="orb orb-a"></div>
+    </div>
+    <div class="layer" data-speed="0.35">
+      <div class="orb orb-b"></div>
+    </div>
+    <div class="layer watermark" data-speed="0.08">26.04</div>
+    <div class="wrap hero-grid">
+      <div>
+        <p class="kicker">windows 11 · wsl 2 · one exe</p>
+        <h1>Collect.<br />Restore.<br />Or start new.</h1>
+        <p class="lede">
+          Download <code>windows-wsl-setup.exe</code>. Snapshot a used PC onto a data drive,
+          remount the same WSL disk after a reset, or stand up Ubuntu 26.04 with a named
+          software profile. You never clone this repo.
+        </p>
+        <div class="cta-row">
+          <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Download</a>
+          <a class="btn ghost" href={`${base}docs/welcome/`}>Read the docs</a>
+        </div>
+      </div>
+      <Terminal />
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <h2>Four jobs. Same binary.</h2>
+      <p class="sub">A kit is what this PC has. A profile is what you want. Restore wins when you have a VHDX.</p>
+      <div class="cards">
+        <article class="card">
+          <div class="n">01 · collect</div>
+          <h3>Snapshot</h3>
+          <p>Pick a non-C: drive. Tick winget apps by category, WSL disks, Dev Drive, Brave. Write the kit.</p>
+        </article>
+        <article class="card">
+          <div class="n">02 · restore</div>
+          <h3>Bring disks back</h3>
+          <p>Fresh Windows 11. Remount the Dev Drive, import-in-place the existing ext4.vhdx, install the ticked apps.</p>
+        </article>
+        <article class="card">
+          <div class="n">03 · new wsl</div>
+          <h3>Empty Ubuntu</h3>
+          <p>Always Ubuntu 26.04. Passwordless sudo from your Windows username. Then <code>install.sh</code> for a linux profile.</p>
+        </article>
+        <article class="card">
+          <div class="n">04 · profiles</div>
+          <h3>What you want</h3>
+          <p>Shipped <code>default</code>, <code>home</code>, <code>work</code> — or suggest from a messy PC and map Node/Azure onto Linux.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap split">
+      <div>
+        <h2>Starship in WSL.<br />JSON on Windows.</h2>
+        <p class="sub">
+          After New WSL the prompt is Starship. CLIs are Homebrew. The Windows exe
+          speaks JSON so an agent can search winget, map a Windows id onto the
+          Linux catalog, save a profile, and apply it.
+        </p>
+        <p class="note">
+          Agents: <code>suggest</code> → <code>map</code> → <code>profile add</code> → <code>apply</code>.
+          Confirm winget ids with the human. Prefer Linux for SDKs and cloud CLIs.
+        </p>
+      </div>
+      <pre><code>windows-wsl-setup suggest
+windows-wsl-setup map Microsoft.AzureCLI
+windows-wsl-setup search linux kubectl
+windows-wsl-setup search winget terraform
+windows-wsl-setup profile new my-dev --from home
+windows-wsl-setup profile add my-dev --linux kubectl
+windows-wsl-setup apply my-dev</code></pre>
+    </div>
+  </section>
+  <script>
+    const layers = document.querySelectorAll('[data-speed]');
+    const onScroll = () => {
+      const y = window.scrollY;
+      layers.forEach((el) => {
+        const s = Number(el.dataset.speed || 0);
+        el.style.transform = `translate3d(0, ${y * s}px, 0)`;
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  </script>
+</Base>

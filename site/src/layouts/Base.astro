@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+
+const { title, description, current } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const fullTitle = title ? `${title} · Windows WSL Setup` : 'Windows WSL Setup';
+const desc =
+  description ??
+  'One Windows binary. Collect a kit, restore disks, create Ubuntu 26.04, or apply a software profile.';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href={base}>
+          <span class="mark">ww</span>
+          Windows WSL Setup
+        </a>
+        <nav class="nav-links">
+          <a href={`${base}docs/welcome/`} aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
+          <a href={`${base}docs/download/`} aria-current={current === 'download' ? 'page' : undefined}>Download</a>
+          <a href={`${base}docs/profiles/`} aria-current={current === 'profiles' ? 'page' : undefined}>Profiles</a>
+          <a href={`${base}docs/automate/`} aria-current={current === 'automate' ? 'page' : undefined}>CLI</a>
+          <a href="https://github.com/pjmagee/windows-wsl-setup">GitHub</a>
+        </nav>
+        <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Get the exe</a>
+      </div>
+    </header>
+    <slot />
+    <footer class="wrap footer">
+      <span>Ubuntu 26.04 · winget · Homebrew · one binary</span>
+      <span>
+        <a href="https://github.com/pjmagee/windows-wsl-setup">pjmagee/windows-wsl-setup</a>
+      </span>
+    </footer>
+  </body>
+</html>
