@@ -1,8 +1,63 @@
 ---
 const sessions = [
   {
-    id: 'starship',
-    label: 'after setup',
+    id: 'map',
+    profile: 'Windows PowerShell',
+    kind: 'ps',
+    html: `Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> windows-wsl-setup map Microsoft.AzureCLI
+
+{
+  <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>,
+  <span class="c-key">"category"</span>: <span class="c-str">"cloud"</span>,
+  <span class="c-key">"preferLinux"</span>: <span class="c-bool">true</span>,
+  <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span>
+}
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> <span class="caret"></span>`,
+  },
+  {
+    id: 'suggest',
+    profile: 'Windows PowerShell',
+    kind: 'ps',
+    html: `Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> windows-wsl-setup suggest
+
+{
+  <span class="c-key">"windows"</span>: [<span class="c-str">"Brave.Brave"</span>, <span class="c-str">"Valve.Steam"</span>],
+  <span class="c-key">"linux"</span>: [<span class="c-str">"uv"</span>, <span class="c-str">"azure-cli"</span>, <span class="c-str">"fnm"</span>],
+  <span class="c-key">"skippedPreferLinux"</span>: [
+    { <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>, <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span> }
+  ]
+}
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> <span class="caret"></span>`,
+  },
+  {
+    id: 'apply',
+    profile: 'Windows PowerShell',
+    kind: 'ps',
+    html: `Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> windows-wsl-setup apply default --linux-only
+
+[
+  { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Ubuntu-26.04 installed"</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patri"</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"install.sh"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"profile home"</span> }
+]
+
+<span class="c-ps">PS C:\\Users\\patri&gt;</span> <span class="caret"></span>`,
+  },
+  {
+    id: 'ubuntu',
+    profile: 'Ubuntu-26.04',
+    kind: 'wsl',
     html: `<span class="c-path">~/code</span> <span class="c-git">on main</span>
 <span class="c-ok">via</span> 🦀 1.88.0 <span class="c-ok">via</span> 🐍 uv <span class="c-ok">via</span> 🥟 bun
 <span class="c-prompt">❯</span> http pie.dev/get tool==windows-wsl-setup
@@ -10,73 +65,55 @@ const sessions = [
 <span class="c-key">Content-Type:</span> application/json
 
 {
-    <span class="c-key">"args"</span>: {
-        <span class="c-key">"tool"</span>: <span class="c-str">"windows-wsl-setup"</span>
-    },
-    <span class="c-key">"headers"</span>: {
-        <span class="c-key">"User-Agent"</span>: <span class="c-str">"HTTPie/3.2"</span>
-    }
-}`,
-  },
-  {
-    id: 'map',
-    label: 'map',
-    html: `<span class="c-prompt">❯</span> windows-wsl-setup map Microsoft.AzureCLI
+  <span class="c-key">"args"</span>: { <span class="c-key">"tool"</span>: <span class="c-str">"windows-wsl-setup"</span> },
+  <span class="c-key">"headers"</span>: { <span class="c-key">"User-Agent"</span>: <span class="c-str">"HTTPie/3.2"</span> }
+}
 
-{
-    <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>,
-    <span class="c-key">"category"</span>: <span class="c-str">"cloud"</span>,
-    <span class="c-key">"preferLinux"</span>: <span class="c-bool">true</span>,
-    <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span>
-}`,
-  },
-  {
-    id: 'suggest',
-    label: 'suggest',
-    html: `<span class="c-prompt">❯</span> windows-wsl-setup suggest
-
-{
-    <span class="c-key">"windows"</span>: [<span class="c-str">"Brave.Brave"</span>, <span class="c-str">"Valve.Steam"</span>],
-    <span class="c-key">"linux"</span>: [<span class="c-str">"uv"</span>, <span class="c-str">"azure-cli"</span>, <span class="c-str">"fnm"</span>],
-    <span class="c-key">"skippedPreferLinux"</span>: [
-        { <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>, <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span> }
-    ]
-}`,
-  },
-  {
-    id: 'apply',
-    label: 'apply',
-    html: `<span class="c-prompt">❯</span> windows-wsl-setup apply default --linux-only
-
-[
-    { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Ubuntu-26.04 installed"</span> },
-    { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>,  <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patri"</span> },
-    { <span class="c-key">"step"</span>: <span class="c-str">"install.sh"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"profile home"</span> }
-]`,
+<span class="c-prompt">❯</span> <span class="caret"></span>`,
   },
 ];
 ---
 
-<div class="term" data-term>
-  <div class="term-top">
-    <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-    <span class="term-title">wsl · Ubuntu-26.04 · starship</span>
+<div class="wt" data-term>
+  <div class="wt-bar">
+    <div class="wt-tabs" role="tablist">
+      {sessions.map((s, i) => (
+        <button type="button" class:list={['wt-tab', { on: i === 0 }]} data-i={i} role="tab">
+          {s.kind === 'ps' ? (
+            <svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z" />
+              <path d="M8.2 12.4h5.6v1.8H8.2z" />
+            </svg>
+          ) : (
+            <svg class="wt-ico ubu" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.2" />
+              <circle cx="8" cy="4.1" r="1.15" fill="#fff" />
+              <circle cx="4.7" cy="10.1" r="1.15" fill="#fff" />
+              <circle cx="11.3" cy="10.1" r="1.15" fill="#fff" />
+            </svg>
+          )}
+          <span>{s.id === 'ubuntu' ? 'Ubuntu-26.04' : s.id}</span>
+        </button>
+      ))}
+      <span class="wt-new" aria-hidden="true">
+        <span>+</span>
+        <span class="wt-chev">▾</span>
+      </span>
+    </div>
+    <div class="wt-win" aria-hidden="true">
+      <span class="wt-w">─</span>
+      <span class="wt-w">□</span>
+      <span class="wt-w x">✕</span>
+    </div>
   </div>
-  <div class="term-tabs" role="tablist">
-    {sessions.map((s, i) => (
-      <button type="button" data-i={i} class={i === 0 ? 'on' : ''} role="tab">
-        {s.label}
-      </button>
-    ))}
-  </div>
-  <div class="term-body" data-out set:html={sessions[0].html} />
+  <div class="wt-body" data-out set:html={sessions[0].html} />
 </div>
 
 <script define:vars={{ sessions }}>
   const root = document.querySelector('[data-term]');
   if (root) {
     const out = root.querySelector('[data-out]');
-    const buttons = [...root.querySelectorAll('button[data-i]')];
+    const buttons = [...root.querySelectorAll('.wt-tab')];
     const show = (i) => {
       out.innerHTML = sessions[i].html;
       buttons.forEach((b, n) => b.classList.toggle('on', n === i));
