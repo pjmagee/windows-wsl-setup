@@ -1,23 +1,24 @@
 ---
 title: Distros
-description: We support one empty-Linux target. Restored disks keep whatever you already had.
-order: 6
+description: Official Linux targets, and what we bootstrap on each.
+order: 7
 group: Reference
 ---
 
 | Situation | Distro |
 |---|---|
-| Restore a kit | Whatever VHDX you collected. We do not convert it. |
-| New WSL / Apply linux | **Ubuntu 26.04** only |
-| Leftover `Ubuntu`, `Ubuntu-24.04`, `docker-desktop` | Left installed. We never unregister them. |
+| Restore a kit | Whatever disk you collected. We do not convert it. |
+| New WSL / Apply linux | **Ubuntu 26.04** (default), **Debian**, or **Arch** (`archlinux`) |
+| Other distros already installed | Left alone. We never unregister them. |
 
-We do **not** offer Fedora, Arch, or “pick a package manager”.
+CLIs (uv, bun, rust, git extras, cloud tools) come from **Homebrew** on every supported distro. Only the bootstrap set uses the distro package manager (`apt` on Ubuntu/Debian, `pacman` on Arch).
 
-On a new instance:
+| Distro | WSL name | Package manager | Notes |
+|---|---|---|---|
+| Ubuntu 26.04 LTS | `Ubuntu-26.04` | apt | Default. Best Homebrew-on-Linux fit. |
+| Debian | `Debian` | apt | Same bootstrap as Ubuntu. |
+| Arch | `archlinux` | pacman | amd64 only. First boot is often root until we create a user. |
 
-- **apt** — system packages (`packages/apt.txt`: git, jq, build-essential, …)
-- **Homebrew** — CLIs and language runtimes (`uv`, `bun`, `fnm`, rust, go, dotnet, cloud CLIs, …)
+Fedora, Kali, and openSUSE stay **unsupported** as new-instance targets (different package managers, or the wrong job). You can still **restore** a kit that already has them.
 
-`uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64. Stop on ARM.
-
-Ubuntu 26.04’s image wants WSL **2.4.10+**. The exe runs `wsl --update` first. If `Ubuntu-26.04` is missing from `wsl --list --online`, update WSL elevated and retry. We will not install a different Ubuntu.
+`uname -m` should be `x86_64` for Arch. Ubuntu and Debian also have ARM images; Homebrew is most reliable on Ubuntu.

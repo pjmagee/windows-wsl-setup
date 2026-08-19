@@ -13,18 +13,17 @@ const base = import.meta.env.BASE_URL;
     <div class="layer" data-speed="0.35">
       <div class="orb orb-b"></div>
     </div>
-    <div class="layer watermark" data-speed="0.08">26.04</div>
     <div class="wrap hero-grid">
       <div>
-        <p class="kicker">windows 11 · wsl 2 · one exe</p>
-        <h1>Collect.<br />Restore.<br />Or start new.</h1>
+        <p class="kicker">messy pc → fresh windows 11</p>
+        <h1>Export what you use.<br />Restore it clean.</h1>
         <p class="lede">
-          Download <code>windows-wsl-setup.exe</code>. Snapshot a used PC onto a data drive,
-          remount the same WSL disk after a reset, or stand up Ubuntu 26.04 with a named
-          software profile. You never clone this repo.
+          Collect a snapshot of this machine: apps, data volumes, Linux disks.
+          On a new Windows 11 install, restore that snapshot — or let
+          <strong>Grok, Claude, or Codex</strong> drive the setup with our skill.
         </p>
         <div class="cta-row">
-          <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Download</a>
+          <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Download the exe</a>
           <a class="btn ghost" href={`${base}docs/welcome/`}>Read the docs</a>
         </div>
       </div>
@@ -34,28 +33,33 @@ const base = import.meta.env.BASE_URL;
 
   <section class="section">
     <div class="wrap">
-      <h2>Four jobs. Same binary.</h2>
-      <p class="sub">A kit is what this PC has. A profile is what you want. Restore wins when you have a VHDX.</p>
+      <h2>The problem we solve</h2>
+      <p class="sub">
+        A used PC is a pile of installers, browser logins, and maybe a Linux
+        environment. A reset throws that away. We export it first, then put
+        the important parts back in a sensible order: password manager, your
+        browser, then everything else.
+      </p>
       <div class="cards">
         <article class="card">
           <div class="n">01 · collect</div>
           <h3>Snapshot</h3>
-          <p>Pick a non-C: drive. Tick winget apps by category, WSL disks, Dev Drive, Brave. Write the kit.</p>
+          <p>Apps, Linux disks, data volumes, browser bookmarks. Written to a drive that survives a Windows reinstall.</p>
         </article>
         <article class="card">
           <div class="n">02 · restore</div>
-          <h3>Bring disks back</h3>
-          <p>Fresh Windows 11. Remount the Dev Drive, import-in-place the existing ext4.vhdx, install the ticked apps.</p>
+          <h3>Bring it back</h3>
+          <p>Fresh Windows 11. Install the apps you ticked, remount your disks, open your browser with the extensions list.</p>
         </article>
         <article class="card">
-          <div class="n">03 · new wsl</div>
-          <h3>Empty Ubuntu</h3>
-          <p>Always Ubuntu 26.04. Passwordless sudo from your Windows username. Then <code>install.sh</code> for a linux profile.</p>
+          <div class="n">03 · new linux</div>
+          <h3>Or start Linux new</h3>
+          <p>Ubuntu, Debian, or Arch. A software profile bootstraps the CLIs that make sense on that distro.</p>
         </article>
         <article class="card">
-          <div class="n">04 · profiles</div>
-          <h3>What you want</h3>
-          <p>Shipped <code>default</code>, <code>home</code>, <code>work</code> — or suggest from a messy PC and map Node/Azure onto Linux.</p>
+          <div class="n">04 · agents</div>
+          <h3>Agent-ready</h3>
+          <p>Install our skill. The agent downloads the CLI, runs collect or restore, and talks JSON the whole way.</p>
         </article>
       </div>
     </div>
@@ -64,24 +68,22 @@ const base = import.meta.env.BASE_URL;
   <section class="section">
     <div class="wrap split">
       <div>
-        <h2>Starship in WSL.<br />JSON on Windows.</h2>
+        <h2>Hand it to an agent</h2>
         <p class="sub">
-          After New WSL the prompt is Starship. CLIs are Homebrew. The Windows exe
-          speaks JSON so an agent can search winget, map a Windows id onto the
-          Linux catalog, save a profile, and apply it.
+          Grok, Claude, Codex, Copilot — any of them. Install the skill from
+          GitHub, then say “set up this PC.” They already know the commands.
         </p>
         <p class="note">
-          Agents: <code>suggest</code> → <code>map</code> → <code>profile add</code> → <code>apply</code>.
-          Confirm winget ids with the human. Prefer Linux for SDKs and cloud CLIs.
+          Identity first (password manager), then your browser, then the rest.
+          Linux CLIs come from Homebrew on the distro you picked.
         </p>
       </div>
-      <pre><code>windows-wsl-setup suggest
-windows-wsl-setup map Microsoft.AzureCLI
-windows-wsl-setup search linux kubectl
-windows-wsl-setup search winget terraform
-windows-wsl-setup profile new my-dev --from home
-windows-wsl-setup profile add my-dev --linux kubectl
-windows-wsl-setup apply my-dev</code></pre>
+      <pre><code>npx skills add pjmagee/windows-wsl-setup
+
+windows-wsl-setup collect
+windows-wsl-setup restore
+windows-wsl-setup new-wsl
+windows-wsl-setup apply default</code></pre>
     </div>
   </section>
   <script>

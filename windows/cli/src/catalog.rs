@@ -51,6 +51,13 @@ pub struct WindowsPackage {
     pub linux: Option<String>,
     #[serde(default)]
     pub prefer_linux: bool,
+    /// Lower installs first. 10 = password manager, 20 = browser, 30 = desktop, …
+    #[serde(default = "default_priority")]
+    pub priority: u32,
+}
+
+fn default_priority() -> u32 {
+    100
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -329,5 +336,9 @@ mod tests {
         let work = &s.linux["work"];
         assert!(work.tools.contains(&"copilot-cli".into()));
         assert!(!work.tools.contains(&"grok-build".into()));
+        let one = s.windows_pkg("AgileBits.1Password").unwrap().priority;
+        let brave = s.windows_pkg("Brave.Brave").unwrap().priority;
+        let steam = s.windows_pkg("Valve.Steam").unwrap().priority;
+        assert!(one < brave && brave < steam);
     }
 }

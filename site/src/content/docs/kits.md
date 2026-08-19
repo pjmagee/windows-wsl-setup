@@ -1,7 +1,7 @@
 ---
 title: Kits (Collect / Restore)
-description: Snapshot a used PC onto a data drive, then remount disks after a Windows reset.
-order: 4
+description: Snapshot a used PC, then put it back after a Windows reinstall.
+order: 5
 group: Use
 ---
 
@@ -10,22 +10,21 @@ group: Use
 On the old PC:
 
 1. Run the exe → **Collect**.
-2. Pick a destination that is **not C:** and not the Dev Drive. Suggested path: `<letter>:\Backups\<HOST>-<date>\`.
-3. Tick winget apps (grouped by category). Space on a category header toggles the group.
-4. Tick WSL distros and the Dev Drive if you use them.
-5. Write the kit. Keep that folder. A copy of the exe is placed in it.
+2. Pick a destination that is **not the system drive** and not a developer volume you might format.
+3. Tick apps (grouped by category). Tick Linux disks and data volumes you want kept.
+4. Write the kit. A copy of the exe is placed in the folder.
 
-Never format data drives. Never `wsl --unregister` unless you mean to delete that Linux disk.
+Never format those data drives. Never delete a Linux distro unless you mean to.
 
 ## Restore
 
-Install Windows 11. Do **not** wipe the data drives.
+Install Windows 11. Leave the data drives alone.
 
-1. Run the exe (from Releases, or the copy in the kit) → **Restore**.
+1. Run the exe → **Restore**.
 2. Pick the kit.
-3. Tick packages, remount Dev Drive, restore WSL, restore Brave bookmarks.
+3. Tick packages. Confirm remounting disks and restoring browser bookmarks.
 4. Apply.
 
-Restore remounts the **existing** VHDX. Linux tools come back with that disk. Do not run New WSL on top unless you asked to rebuild the toolchain.
+Restore remounts the **existing** Linux disk. Tools inside it come back with the disk. Do not run New WSL on top unless you asked to rebuild the toolchain.
 
-If WSL returns Access Denied on `ext4.vhdx` after import-in-place, grant SID `S-1-5-83-0` (NT VIRTUAL MACHINE\Virtual Machines) Full control. That SID is the Hyper-V VM group the new machine uses.
+Password manager and browser go in first so you can log in while the rest installs. Then open the extensions page and click **Add** for each one.

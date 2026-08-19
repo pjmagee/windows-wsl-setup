@@ -1,29 +1,30 @@
 ---
 title: Welcome
-description: What Windows WSL Setup is, and which path to take.
+description: What problem we solve, and which path to take.
 order: 1
 group: Start
 ---
 
-Windows WSL Setup is **one Windows console app**. Download the exe from GitHub Releases. Do not clone this repository unless you are changing it.
+You have a **messy Windows 11 PC**. Maybe you used WSL before, maybe not. You are about to reset, or you just installed Windows 11 again.
 
-Three different jobs. Do not mix them.
+**Windows WSL Setup** exports what matters, then puts it back — or builds a new Linux environment from a profile. One Windows exe. Optional: let **Grok, Claude, or Codex** run it for you.
 
-| You have | You want | Mode |
+| You have | You want | Do this |
 |---|---|---|
-| A used Windows 11 PC | A kit that survives a reset | **Collect** |
-| A kit on a data drive | The same disks and apps back | **Restore** |
-| No kit | Ubuntu 26.04 + a toolchain | **New WSL** |
-| No kit | A named software list (Windows + Linux) | **Profiles / Apply** |
+| A used PC | A snapshot that survives a reinstall | **Collect** |
+| That snapshot on a data drive | The same apps and disks on a new Windows 11 | **Restore** |
+| No snapshot | A new Linux environment + a software list | **New WSL** or **Apply a profile** |
+| An agent | The agent to drive the exe | [Install the skill](../agents/) |
 
-A **kit** answers “what does this PC have?”  
-A **profile** answers “what do I want on a blank machine?”
+A **kit** is a snapshot of *this* machine. A **profile** is a named list of *what you want*. Restore wins when you still have the Linux disk. Apply does not remount disks.
 
-Restore wins when you still have an `ext4.vhdx`. New WSL and Apply do not remount disks.
+## Install order (why it feels usable fast)
 
-## What the exe does not click
+On a fresh PC we install in this order:
 
-- 1Password → Settings → Developer → Use the SSH agent
-- Steam → add an existing library folder
-- Docker Desktop → WSL integration for your distro
-- Brave → **Add to Brave** on the extensions page it opens
+1. **Password manager** — unlocks vaults and SSH.
+2. **Your browser** — logins, bookmarks, extension list.
+3. **Daily desktop** — Terminal, archive tool, PowerToys.
+4. Everything else (editors, Git, Linux, Docker, games).
+
+Linux CLIs inside WSL follow a similar idea: shell first, then runtimes, then cloud tools, then coding agents.

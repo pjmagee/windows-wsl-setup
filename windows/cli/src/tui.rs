@@ -228,10 +228,10 @@ enum HomeChoice {
 }
 
 const HOME_ITEMS: [&str; 4] = [
-    "Collect    scan this PC, pick winget software, write a kit on a data drive",
-    "Restore    read a kit, pick packages, install with winget, remount WSL / Dev Drive",
-    "New WSL    empty Ubuntu 26.04 + a linux profile (home / work / custom)",
-    "Profiles   browse catalogs, suggest from this PC, save, apply (no kit)",
+    "Collect    snapshot this PC (apps, Linux disks, data volumes) onto a data drive",
+    "Restore    read a kit, install apps, remount disks, restore browser bookmarks",
+    "New WSL    Ubuntu, Debian, or Arch + a linux profile",
+    "Profiles   named software lists — suggest, save, apply (no kit)",
 ];
 
 fn home_choice() -> Result<HomeChoice, String> {

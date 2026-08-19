@@ -200,7 +200,7 @@ impl App {
         };
         self.status = "applying (winget + optional New WSL)…".into();
         let _ = term.draw(|f| draw(f, self));
-        let steps = apply::apply_resolved(&r, true, true);
+        let steps = apply::apply_resolved(&self.store, &r, true, true);
         for st in &steps {
             self.log.push(format!(
                 "{} {} {}",

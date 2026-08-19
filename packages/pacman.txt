@@ -1,0 +1,22 @@
+# Arch Linux bootstrap. Language runtimes and CLIs still come from Homebrew.
+base-devel
+procps-ng
+file
+curl
+git
+jq
+ripgrep
+fd
+fzf
+tmux
+htop
+tree
+shellcheck
+sqlite
+ca-certificates
+unzip
+wget
+gnupg
+xz
+python
+python-pip

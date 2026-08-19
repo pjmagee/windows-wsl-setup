@@ -1,7 +1,7 @@
-//! Create a new Ubuntu 26.04 distro and install the default toolchain.
+//! Create a supported WSL distro and install the default toolchain.
 //!
-//! We do not ask which distro or package manager. Ubuntu + apt (system) +
-//! Homebrew (CLIs). The human never clones; we clone inside WSL.
+//! Official: Ubuntu-26.04 (default), Debian. Also: archlinux.
+//! System packages via apt or pacman. CLIs via Homebrew. The human never clones.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -10,6 +10,24 @@ use std::thread;
 use std::time::Duration;
 
 pub const DISTRO: &str = "Ubuntu-26.04";
+pub const SUPPORTED: &[&str] = &["Ubuntu-26.04", "Debian", "archlinux"];
+
+pub fn normalize_distro(name: &str) -> &str {
+    let n = name.trim();
+    if n.is_empty() {
+        return DISTRO;
+    }
+    if n.eq_ignore_ascii_case("ubuntu") || n.eq_ignore_ascii_case("ubuntu-26.04") {
+        return "Ubuntu-26.04";
+    }
+    if n.eq_ignore_ascii_case("debian") {
+        return "Debian";
+    }
+    if n.eq_ignore_ascii_case("arch") || n.eq_ignore_ascii_case("archlinux") {
+        return "archlinux";
+    }
+    DISTRO
+}
 const LINUX_REPO: &str = "$HOME/code/windows-wsl-setup";
 const GIT_REMOTE: &str = "https://github.com/pjmagee/windows-wsl-setup.git";
 
@@ -42,10 +60,14 @@ pub fn distro_names() -> Vec<String> {
         .collect()
 }
 
+#[allow(dead_code)]
 pub fn has_distro() -> bool {
-    distro_names()
-        .iter()
-        .any(|n| n.eq_ignore_ascii_case(DISTRO))
+    has_named(DISTRO)
+}
+
+pub fn has_named(distro: &str) -> bool {
+    let d = normalize_distro(distro);
+    distro_names().iter().any(|n| n.eq_ignore_ascii_case(d))
 }
 
 fn looks_like_reboot(msg: &str) -> bool {
@@ -84,30 +106,31 @@ pub fn ensure_wsl() -> Result<String, String> {
     Ok(ver.lines().take(4).collect::<Vec<_>>().join(" | "))
 }
 
-fn online_has_ubuntu() -> bool {
+fn online_has(distro: &str) -> bool {
     Command::new("wsl.exe")
         .args(["--list", "--online"])
         .output()
         .map(|o| {
             let text = decode(&o.stdout) + &decode(&o.stderr);
             text.to_ascii_lowercase()
-                .contains(&DISTRO.to_ascii_lowercase())
+                .contains(&distro.to_ascii_lowercase())
         })
         .unwrap_or(true)
 }
 
-pub fn install_distro() -> Result<String, String> {
-    if has_distro() {
-        return Ok(format!("{DISTRO} already installed"));
+pub fn install_distro(distro: &str) -> Result<String, String> {
+    let distro = normalize_distro(distro);
+    if has_named(distro) {
+        return Ok(format!("{distro} already installed"));
     }
-    if !online_has_ubuntu() {
+    if !online_has(distro) {
         return Err(format!(
-            "{DISTRO} is not in `wsl --list --online`. Update WSL (elevated: wsl --update) and retry. We will not install a different Ubuntu."
+            "{distro} is not in `wsl --list --online`. Update WSL (elevated: wsl --update) and retry."
         ));
     }
     let attempts: [&[&str]; 2] = [
-        &["--install", "-d", DISTRO, "--no-launch"],
-        &["--install", DISTRO, "--no-launch"],
+        &["--install", "-d", distro, "--no-launch"],
+        &["--install", distro, "--no-launch"],
     ];
     let mut last = String::new();
     for args in attempts {
@@ -116,13 +139,13 @@ pub fn install_distro() -> Result<String, String> {
             .output()
             .map_err(|e| e.to_string())?;
         last = format!("{}{}", decode(&out.stdout), decode(&out.stderr));
-        if has_distro() {
+        if has_named(distro) {
             let extra = if looks_like_reboot(&last) {
                 " Windows may still want a reboot before the first launch."
             } else {
                 ""
             };
-            return Ok(format!("{DISTRO} installed.{extra}").trim().to_string());
+            return Ok(format!("{distro} installed.{extra}").trim().to_string());
         }
         if looks_like_reboot(&last) {
             return Err(format!(
@@ -131,16 +154,17 @@ pub fn install_distro() -> Result<String, String> {
         }
     }
     Err(format!(
-        "could not install {DISTRO}. Run this app elevated if Windows asked for admin.\n{last}"
+        "could not install {distro}. Run this app elevated if Windows asked for admin.\n{last}"
     ))
 }
 
-pub fn wait_for_root() -> Result<String, String> {
+pub fn wait_for_root(distro: &str) -> Result<String, String> {
+    let distro = normalize_distro(distro);
     let mut last = String::new();
     for _ in 0..45 {
-        match wsl(&["-d", DISTRO, "-u", "root", "--", "echo", "ok"]) {
+        match wsl(&["-d", distro, "-u", "root", "--", "echo", "ok"]) {
             Ok(s) if s.to_ascii_lowercase().contains("ok") => {
-                return Ok("Ubuntu is up (root)".into());
+                return Ok(format!("{distro} is up (root)"));
             }
             Ok(s) => last = s,
             Err(e) => last = e,
@@ -148,14 +172,20 @@ pub fn wait_for_root() -> Result<String, String> {
         thread::sleep(Duration::from_secs(2));
     }
     Err(format!(
-        "{DISTRO} did not start after install. Reboot if Windows asked, then retry.\n{last}"
+        "{distro} did not start after install. Reboot if Windows asked, then retry.\n{last}"
     ))
 }
 
+#[allow(dead_code)]
 pub fn linux_user() -> Option<String> {
+    linux_user_on(DISTRO)
+}
+
+pub fn linux_user_on(distro: &str) -> Option<String> {
+    let distro = normalize_distro(distro);
     wsl(&[
         "-d",
-        DISTRO,
+        distro,
         "-u",
         "root",
         "--",
@@ -185,10 +215,10 @@ fn linux_name_from_windows() -> String {
     n
 }
 
-/// Create uid 1000 from the Windows username when Ubuntu has no user yet.
-/// Skips Microsoft's first-launch password prompt.
-pub fn create_user_if_needed() -> Result<String, String> {
-    if let Some(u) = linux_user() {
+/// Create uid 1000 from the Windows username when the distro has no user yet.
+pub fn create_user_if_needed(distro: &str) -> Result<String, String> {
+    let distro = normalize_distro(distro);
+    if let Some(u) = linux_user_on(distro) {
         return Ok(format!("linux user already exists: {u}"));
     }
     let name = linux_name_from_windows();
@@ -202,23 +232,25 @@ if id -u {name} >/dev/null 2>&1; then
   echo "user {name} exists"
   exit 0
 fi
-useradd -m -s /bin/bash -u 1000 -G sudo,adm {name}
-passwd -d {name} >/dev/null
+useradd -m -s /bin/bash -u 1000 {name}
+usermod -aG sudo,adm,wheel {name} 2>/dev/null || usermod -aG wheel {name} 2>/dev/null || usermod -aG sudo,adm {name} 2>/dev/null || true
+passwd -d {name} >/dev/null || true
 echo "created {name} (uid 1000, empty password)"
 "#
     );
-    wsl(&["-d", DISTRO, "-u", "root", "--", "bash", "-lc", &script]).map(|s| s.trim().to_string())
+    wsl(&["-d", distro, "-u", "root", "--", "bash", "-lc", &script]).map(|s| s.trim().to_string())
 }
 
-pub fn ensure_passwordless_sudo() -> Result<String, String> {
-    if linux_user().is_none() {
+pub fn ensure_passwordless_sudo(distro: &str) -> Result<String, String> {
+    let distro = normalize_distro(distro);
+    if linux_user_on(distro).is_none() {
         return Err(
-            "no Linux user yet — New WSL should have created one. Retry, or open Ubuntu once."
+            "no Linux user yet — New WSL should have created one. Retry, or open the distro once."
                 .into(),
         );
     }
     let mut child = Command::new("wsl.exe")
-        .args(["-d", DISTRO, "-u", "root", "--", "bash", "-s"])
+        .args(["-d", distro, "-u", "root", "--", "bash", "-s"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -235,18 +267,23 @@ pub fn ensure_passwordless_sudo() -> Result<String, String> {
         return Err(text.trim().to_string());
     }
     let _ = Command::new("wsl.exe")
-        .args(["--terminate", DISTRO])
+        .args(["--terminate", distro])
         .output();
     Ok(text.trim().to_string())
 }
 
-pub fn set_default_distro() -> Result<String, String> {
-    wsl(&["--set-default", DISTRO]).map(|_| format!("default distro = {DISTRO}"))
+pub fn set_default_distro(distro: &str) -> Result<String, String> {
+    let distro = normalize_distro(distro);
+    wsl(&["--set-default", distro]).map(|_| format!("default distro = {distro}"))
 }
 
-/// Clone this project's Linux installer inside Ubuntu and run it.
-/// `profile_json` is written into `~/.config/wsl-setup/profiles/<id>.json` so custom profiles work.
-pub fn install_toolchain(profile: &str, profile_json: Option<&str>) -> Result<String, String> {
+/// Clone this project's Linux installer inside the distro and run it.
+pub fn install_toolchain(
+    distro: &str,
+    profile: &str,
+    profile_json: Option<&str>,
+) -> Result<String, String> {
+    let distro = normalize_distro(distro);
     let profile = crate::catalog::sanitize_id(profile)?;
     let mut copy = String::new();
     if let Some(json) = profile_json {
@@ -267,8 +304,12 @@ fi
         r#"
 set -euo pipefail
 sudo -n true
-sudo apt-get update -y
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y git curl
+if command -v apt-get >/dev/null; then
+  sudo apt-get update -y
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y git curl
+elif command -v pacman >/dev/null; then
+  sudo pacman -Sy --noconfirm --needed git curl
+fi
 {copy}
 mkdir -p "$HOME/code"
 if [ ! -d {repo}/.git ]; then
@@ -290,7 +331,7 @@ cd {repo}
         copy = copy,
     );
     let out = Command::new("wsl.exe")
-        .args(["-d", DISTRO, "--", "bash", "-lc", &script])
+        .args(["-d", distro, "--", "bash", "-lc", &script])
         .output()
         .map_err(|e| e.to_string())?;
     let text = format!("{}{}", decode(&out.stdout), decode(&out.stderr));

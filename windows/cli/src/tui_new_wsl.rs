@@ -8,6 +8,8 @@ use crate::new_wsl;
 struct App {
     profiles: Vec<String>,
     profile: usize,
+    distros: Vec<String>,
+    distro: usize,
     store: Store,
     log: Vec<String>,
     status: String,
@@ -20,22 +22,42 @@ impl App {
         if profiles.is_empty() {
             profiles = vec!["home".into(), "work".into()];
         }
-        let have = if new_wsl::has_distro() {
-            format!("{} is installed", new_wsl::DISTRO)
-        } else {
-            format!("{} is not installed yet", new_wsl::DISTRO)
-        };
+        let distros: Vec<String> = new_wsl::SUPPORTED.iter().map(|s| (*s).to_string()).collect();
+        let have = distros
+            .iter()
+            .map(|d| {
+                if new_wsl::has_named(d) {
+                    format!("{d} is installed")
+                } else {
+                    format!("{d} is not installed yet")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" · ");
         Self {
             profiles,
             profile: 0,
+            distros,
+            distro: 0,
             store,
             log: vec![have],
-            status: "Enter = create Ubuntu 26.04 and install tools. You never clone a repo.".into(),
+            status: "Enter = create the selected distro and install tools. You never clone a repo."
+                .into(),
         }
     }
 
     fn profile_id(&self) -> &str {
-        self.profiles.get(self.profile).map(|s| s.as_str()).unwrap_or("home")
+        self.profiles
+            .get(self.profile)
+            .map(|s| s.as_str())
+            .unwrap_or("home")
+    }
+
+    fn distro_id(&self) -> &str {
+        self.distros
+            .get(self.distro)
+            .map(|s| s.as_str())
+            .unwrap_or(new_wsl::DISTRO)
     }
 
     fn push(&mut self, line: impl Into<String>) {
@@ -82,45 +104,44 @@ impl App {
 
     fn run_setup(&mut self, term: &mut ratatui::DefaultTerminal) {
         let profile = self.profile_id().to_string();
+        let distro = self.distro_id().to_string();
         self.push(new_wsl::ensure_wslconfig());
         if !self.step(term, "checking WSL…", new_wsl::ensure_wsl) {
             return;
         }
-        if !self.step(
-            term,
-            "installing Ubuntu 26.04 if needed…",
-            new_wsl::install_distro,
-        ) {
+        if !self.step(term, "installing the selected distro if needed…", || {
+            new_wsl::install_distro(&distro)
+        }) {
             return;
         }
-        if !self.step(term, "waiting for first boot…", new_wsl::wait_for_root) {
+        if !self.step(term, "waiting for first boot…", || {
+            new_wsl::wait_for_root(&distro)
+        }) {
             return;
         }
-        if !self.step(
-            term,
-            "creating passwordless Linux user…",
-            new_wsl::create_user_if_needed,
-        ) {
+        if !self.step(term, "creating the Linux user…", || {
+            new_wsl::create_user_if_needed(&distro)
+        }) {
             return;
         }
-        if !self.step(
-            term,
-            "passwordless sudo + default user…",
-            new_wsl::ensure_passwordless_sudo,
-        ) {
+        if !self.step(term, "sudo for that user…", || {
+            new_wsl::ensure_passwordless_sudo(&distro)
+        }) {
             return;
         }
-        if !self.step(term, "default WSL distro…", new_wsl::set_default_distro) {
+        if !self.step(term, "default WSL distro…", || {
+            new_wsl::set_default_distro(&distro)
+        }) {
             return;
         }
-        self.status = format!("installing {profile} tools inside Ubuntu (several minutes)…");
+        self.status = format!("installing {profile} tools inside {distro} (several minutes)…");
         let _ = term.draw(|f| draw(f, self));
         let json = self
             .store
             .linux
             .get(&profile)
             .and_then(|p| serde_json::to_string(p).ok());
-        match new_wsl::install_toolchain(&profile, json.as_deref()) {
+        match new_wsl::install_toolchain(&distro, &profile, json.as_deref()) {
             Ok(s) => {
                 for line in s
                     .lines()
@@ -132,7 +153,7 @@ impl App {
                 {
                     self.push(line);
                 }
-                self.status = "done. Open a new Ubuntu tab.".into();
+                self.status = format!("done. Open a new {distro} tab.");
             }
             Err(e) => {
                 for line in e
@@ -174,6 +195,16 @@ pub fn run() -> Result<(), String> {
                     app.profile = (app.profile + 1) % app.profiles.len();
                 }
             }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if !app.distros.is_empty() {
+                    app.distro = (app.distro + app.distros.len() - 1) % app.distros.len();
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !app.distros.is_empty() {
+                    app.distro = (app.distro + 1) % app.distros.len();
+                }
+            }
             KeyCode::Enter => app.run_setup(&mut term),
             _ => {}
         }
@@ -188,7 +219,7 @@ fn mint() -> Color {
 
 fn draw(f: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
-        Constraint::Length(5),
+        Constraint::Length(6),
         Constraint::Min(6),
         Constraint::Length(2),
     ])
@@ -207,10 +238,23 @@ fn draw(f: &mut Frame, app: &App) {
         })
         .collect::<Vec<_>>()
         .join("   ");
+    let distros: String = app
+        .distros
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            if i == app.distro {
+                format!("(*) {p}")
+            } else {
+                format!("( ) {p}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("   ");
     let head = format!(
-        "New WSL = Ubuntu 26.04 + a linux profile (Homebrew CLIs).\n\
-         Always Ubuntu. We do not support other distros.\n\
-         {names}     ← → to switch"
+        "New WSL = a Linux distro + a software profile (Homebrew CLIs).\n\
+         {distros}     j/k distro\n\
+         {names}     ← → profile"
     );
     f.render_widget(
         Paragraph::new(head).block(

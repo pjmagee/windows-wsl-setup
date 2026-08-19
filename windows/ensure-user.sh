@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent. Run as root inside Ubuntu-26.04.
+# Idempotent. Run as root inside a WSL distro.
 # Configures an existing user: NOPASSWD sudo + /etc/wsl.conf default=.
 # Does not create users or lock passwords.
 # Usage: ensure-user.sh [linux-user]
@@ -21,7 +21,7 @@ if [ -z "$u" ] || ! id -u "$u" >/dev/null 2>&1; then
   exit 1
 fi
 
-usermod -aG sudo,adm "$u" 2>/dev/null || true
+usermod -aG sudo,adm,wheel "$u" 2>/dev/null || usermod -aG wheel "$u" 2>/dev/null || usermod -aG sudo,adm "$u" 2>/dev/null || true
 
 printf '%s ALL=(ALL) NOPASSWD:ALL\n' "$u" >"/etc/sudoers.d/90-${u}"
 chmod 440 "/etc/sudoers.d/90-${u}"

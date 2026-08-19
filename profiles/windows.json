@@ -1,89 +1,488 @@
 {
   "schemaVersion": 1,
-  "note": "Curated winget catalog. Not all of winget. linux + preferLinux map a Windows install to the WSL catalog.",
+  "note": "Curated winget catalog. priority: lower installs first (identity, browser, desktop, then the rest).",
   "packages": [
-    { "id": "JanDeDobbeleer.OhMyPosh", "name": "Oh My Posh", "category": "environment" },
-    { "id": "Microsoft.WindowsTerminal", "name": "Windows Terminal", "category": "environment" },
-    { "id": "Microsoft.PowerShell", "name": "PowerShell 7", "category": "environment", "linux": "powershell", "preferLinux": false },
-    { "id": "Microsoft.PowerToys", "name": "PowerToys", "category": "environment" },
-    { "id": "Microsoft.Edit", "name": "Edit", "category": "environment" },
-    { "id": "Atuinsh.Atuin", "name": "Atuin", "category": "environment", "linux": "atuin", "preferLinux": true },
-
-    { "id": "Git.Git", "name": "Git", "category": "sdks" },
-    { "id": "Microsoft.VisualStudio.BuildTools", "name": "VS Build Tools", "category": "sdks" },
-    { "id": "Kitware.CMake", "name": "CMake", "category": "sdks" },
-    { "id": "Microsoft.DotNet.SDK.8", "name": ".NET SDK 8", "category": "sdks", "linux": "dotnet", "preferLinux": true },
-    { "id": "Microsoft.DotNet.SDK.9", "name": ".NET SDK 9", "category": "sdks", "linux": "dotnet", "preferLinux": true },
-    { "id": "Microsoft.OpenJDK.21", "name": "Microsoft OpenJDK 21", "category": "sdks", "linux": "openjdk", "preferLinux": true },
-    { "id": "Oracle.JavaRuntimeEnvironment", "name": "Java Runtime", "category": "sdks", "linux": "openjdk", "preferLinux": true },
-    { "id": "OpenJS.NodeJS.LTS", "name": "Node.js LTS", "category": "sdks", "linux": "fnm", "preferLinux": true },
-    { "id": "Python.Python.3.12", "name": "Python 3.12", "category": "sdks", "linux": "uv", "preferLinux": true },
-    { "id": "Python.Python.3.13", "name": "Python 3.13", "category": "sdks", "linux": "uv", "preferLinux": true },
-    { "id": "Rustlang.Rust.MSVC", "name": "Rust MSVC", "category": "sdks", "linux": "rustup", "preferLinux": true },
-    { "id": "GoLang.Go", "name": "Go", "category": "sdks", "linux": "go", "preferLinux": true },
-    { "id": "astral-sh.uv", "name": "uv", "category": "sdks", "linux": "uv", "preferLinux": true },
-    { "id": "Oven-sh.Bun", "name": "Bun", "category": "sdks", "linux": "bun", "preferLinux": true },
-
-    { "id": "GitHub.cli", "name": "GitHub CLI", "category": "devops", "linux": "gh", "preferLinux": true },
-    { "id": "Docker.DockerDesktop", "name": "Docker Desktop", "category": "devops" },
-    { "id": "Kubernetes.kubectl", "name": "kubectl", "category": "devops", "linux": "kubectl", "preferLinux": true },
-    { "id": "Microsoft.WinDbg", "name": "WinDbg", "category": "devops" },
-    { "id": "Microsoft.WingetCreate", "name": "WingetCreate", "category": "devops" },
-    { "id": "Xmake-io.Xmake", "name": "Xmake", "category": "devops" },
-
-    { "id": "Microsoft.AzureCLI", "name": "Azure CLI", "category": "cloud", "linux": "azure-cli", "preferLinux": true },
-    { "id": "Microsoft.Azd", "name": "Azure Developer CLI", "category": "cloud", "linux": "azure-dev", "preferLinux": true },
-    { "id": "Amazon.AWSCLI", "name": "AWS CLI", "category": "cloud", "linux": "awscli", "preferLinux": true },
-    { "id": "Google.CloudSDK", "name": "Google Cloud SDK", "category": "cloud", "linux": "gcloud-cli", "preferLinux": true },
-
-    { "id": "AgileBits.1Password.CLI", "name": "1Password CLI", "category": "integrations", "linux": "1password-cli", "preferLinux": true },
-    { "id": "Stripe.StripeCli", "name": "Stripe CLI", "category": "integrations", "linux": "stripe-cli", "preferLinux": true },
-    { "id": "Tailscale.Tailscale", "name": "Tailscale", "category": "integrations" },
-    { "id": "NordSecurity.NordVPN", "name": "NordVPN", "category": "integrations" },
-    { "id": "Symless.Synergy", "name": "Synergy", "category": "integrations" },
-
-    { "id": "xAI.GrokBuild", "name": "Grok Build", "category": "agents" },
-    { "id": "Anthropic.Claude", "name": "Claude", "category": "agents" },
-    { "id": "Anthropic.ClaudeCode", "name": "Claude Code", "category": "agents", "linux": "claude-code", "preferLinux": false },
-    { "id": "GitHub.Copilot", "name": "GitHub Copilot", "category": "agents" },
-    { "id": "Anysphere.Cursor", "name": "Cursor", "category": "editors" },
-
-    { "id": "Brave.Brave", "name": "Brave", "category": "browsers" },
-    { "id": "Google.Chrome", "name": "Chrome", "category": "browsers" },
-    { "id": "Mozilla.Firefox", "name": "Firefox", "category": "browsers" },
-
-    { "id": "Microsoft.VisualStudioCode", "name": "VS Code", "category": "editors" },
-    { "id": "Microsoft.Office", "name": "Microsoft 365", "category": "editors" },
-    { "id": "Microsoft.Outlook", "name": "Outlook", "category": "editors" },
-
-    { "id": "Valve.Steam", "name": "Steam", "category": "games" },
-    { "id": "EpicGames.EpicGamesLauncher", "name": "Epic Games", "category": "games" },
-    { "id": "Blizzard.BattleNet", "name": "Battle.net", "category": "games" },
-    { "id": "ElectronicArts.EADesktop", "name": "EA App", "category": "games" },
-    { "id": "Ubisoft.Connect", "name": "Ubisoft Connect", "category": "games" },
-    { "id": "GOG.Galaxy", "name": "GOG Galaxy", "category": "games" },
-    { "id": "Nvidia.GeForceNow", "name": "GeForce Now", "category": "games" },
-    { "id": "RockstarGames.Launcher", "name": "Rockstar Launcher", "category": "games" },
-    { "id": "CloudImperiumGames.RSILauncher", "name": "RSI Launcher", "category": "games" },
-    { "id": "NexusMods.Vortex", "name": "Vortex", "category": "games" },
-
-    { "id": "VideoLAN.VLC", "name": "VLC", "category": "media" },
-    { "id": "Plex.Plex", "name": "Plex", "category": "media" },
-    { "id": "Spotify.Spotify", "name": "Spotify", "category": "media" },
-    { "id": "Ytmdesktop.Ytmdesktop", "name": "YouTube Music", "category": "media" },
-
-    { "id": "AgileBits.1Password", "name": "1Password", "category": "utils" },
-    { "id": "Piriform.CCleaner", "name": "CCleaner", "category": "utils" },
-    { "id": "Piriform.Speccy", "name": "Speccy", "category": "utils" },
-    { "id": "SteelSeries.GG", "name": "SteelSeries GG", "category": "utils" },
-    { "id": "Corsair.iCUE.5", "name": "iCUE", "category": "utils" },
-    { "id": "BitSum.ProcessLasso", "name": "Process Lasso", "category": "utils" },
-    { "id": "Klocman.BulkCrapUninstaller", "name": "BCUninstaller", "category": "utils" },
-    { "id": "7zip.7zip", "name": "7-Zip", "category": "utils" },
-    { "id": "WinSCP.WinSCP", "name": "WinSCP", "category": "utils" },
-    { "id": "Devolutions.UniGetUI", "name": "UniGetUI", "category": "utils" },
-    { "id": "Discord.Discord", "name": "Discord", "category": "utils" },
-    { "id": "TeamViewer.TeamViewer", "name": "TeamViewer", "category": "utils" },
-    { "id": "Yubico.YubikeyManager", "name": "YubiKey Manager", "category": "utils" }
+    {
+      "id": "JanDeDobbeleer.OhMyPosh",
+      "name": "Oh My Posh",
+      "category": "environment",
+      "priority": 200
+    },
+    {
+      "id": "Microsoft.WindowsTerminal",
+      "name": "Windows Terminal",
+      "category": "environment",
+      "priority": 31
+    },
+    {
+      "id": "Microsoft.PowerShell",
+      "name": "PowerShell 7",
+      "category": "environment",
+      "linux": "powershell",
+      "preferLinux": false,
+      "priority": 32
+    },
+    {
+      "id": "Microsoft.PowerToys",
+      "name": "PowerToys",
+      "category": "environment",
+      "priority": 34
+    },
+    {
+      "id": "Microsoft.Edit",
+      "name": "Edit",
+      "category": "environment",
+      "priority": 33
+    },
+    {
+      "id": "Atuinsh.Atuin",
+      "name": "Atuin",
+      "category": "environment",
+      "linux": "atuin",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Git.Git",
+      "name": "Git",
+      "category": "sdks",
+      "priority": 70
+    },
+    {
+      "id": "Microsoft.VisualStudio.BuildTools",
+      "name": "VS Build Tools",
+      "category": "sdks",
+      "priority": 109
+    },
+    {
+      "id": "Kitware.CMake",
+      "name": "CMake",
+      "category": "sdks",
+      "priority": 101
+    },
+    {
+      "id": "Microsoft.DotNet.SDK.8",
+      "name": ".NET SDK 8",
+      "category": "sdks",
+      "linux": "dotnet",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Microsoft.DotNet.SDK.9",
+      "name": ".NET SDK 9",
+      "category": "sdks",
+      "linux": "dotnet",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Microsoft.OpenJDK.21",
+      "name": "Microsoft OpenJDK 21",
+      "category": "sdks",
+      "linux": "openjdk",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Oracle.JavaRuntimeEnvironment",
+      "name": "Java Runtime",
+      "category": "sdks",
+      "linux": "openjdk",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "OpenJS.NodeJS.LTS",
+      "name": "Node.js LTS",
+      "category": "sdks",
+      "linux": "fnm",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Python.Python.3.12",
+      "name": "Python 3.12",
+      "category": "sdks",
+      "linux": "uv",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Python.Python.3.13",
+      "name": "Python 3.13",
+      "category": "sdks",
+      "linux": "uv",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Rustlang.Rust.MSVC",
+      "name": "Rust MSVC",
+      "category": "sdks",
+      "linux": "rustup",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "GoLang.Go",
+      "name": "Go",
+      "category": "sdks",
+      "linux": "go",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "astral-sh.uv",
+      "name": "uv",
+      "category": "sdks",
+      "linux": "uv",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Oven-sh.Bun",
+      "name": "Bun",
+      "category": "sdks",
+      "linux": "bun",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "GitHub.cli",
+      "name": "GitHub CLI",
+      "category": "devops",
+      "linux": "gh",
+      "preferLinux": true,
+      "priority": 100
+    },
+    {
+      "id": "Docker.DockerDesktop",
+      "name": "Docker Desktop",
+      "category": "devops",
+      "priority": 80
+    },
+    {
+      "id": "Kubernetes.kubectl",
+      "name": "kubectl",
+      "category": "devops",
+      "linux": "kubectl",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Microsoft.WinDbg",
+      "name": "WinDbg",
+      "category": "devops",
+      "priority": 103
+    },
+    {
+      "id": "Microsoft.WingetCreate",
+      "name": "WingetCreate",
+      "category": "devops",
+      "priority": 104
+    },
+    {
+      "id": "Xmake-io.Xmake",
+      "name": "Xmake",
+      "category": "devops",
+      "priority": 105
+    },
+    {
+      "id": "Microsoft.AzureCLI",
+      "name": "Azure CLI",
+      "category": "cloud",
+      "linux": "azure-cli",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Microsoft.Azd",
+      "name": "Azure Developer CLI",
+      "category": "cloud",
+      "linux": "azure-dev",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Amazon.AWSCLI",
+      "name": "AWS CLI",
+      "category": "cloud",
+      "linux": "awscli",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Google.CloudSDK",
+      "name": "Google Cloud SDK",
+      "category": "cloud",
+      "linux": "gcloud-cli",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "AgileBits.1Password.CLI",
+      "name": "1Password CLI",
+      "category": "integrations",
+      "linux": "1password-cli",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Stripe.StripeCli",
+      "name": "Stripe CLI",
+      "category": "integrations",
+      "linux": "stripe-cli",
+      "preferLinux": true,
+      "priority": 150
+    },
+    {
+      "id": "Tailscale.Tailscale",
+      "name": "Tailscale",
+      "category": "integrations",
+      "priority": 40
+    },
+    {
+      "id": "NordSecurity.NordVPN",
+      "name": "NordVPN",
+      "category": "integrations",
+      "priority": 41
+    },
+    {
+      "id": "Symless.Synergy",
+      "name": "Synergy",
+      "category": "integrations",
+      "priority": 42
+    },
+    {
+      "id": "xAI.GrokBuild",
+      "name": "Grok Build",
+      "category": "agents",
+      "priority": 90
+    },
+    {
+      "id": "Anthropic.Claude",
+      "name": "Claude",
+      "category": "agents",
+      "priority": 91
+    },
+    {
+      "id": "Anthropic.ClaudeCode",
+      "name": "Claude Code",
+      "category": "agents",
+      "linux": "claude-code",
+      "preferLinux": false,
+      "priority": 92
+    },
+    {
+      "id": "GitHub.Copilot",
+      "name": "GitHub Copilot",
+      "category": "agents",
+      "priority": 93
+    },
+    {
+      "id": "Anysphere.Cursor",
+      "name": "Cursor",
+      "category": "editors",
+      "priority": 51
+    },
+    {
+      "id": "Brave.Brave",
+      "name": "Brave",
+      "category": "browsers",
+      "priority": 20
+    },
+    {
+      "id": "Google.Chrome",
+      "name": "Chrome",
+      "category": "browsers",
+      "priority": 21
+    },
+    {
+      "id": "Mozilla.Firefox",
+      "name": "Firefox",
+      "category": "browsers",
+      "priority": 22
+    },
+    {
+      "id": "Microsoft.VisualStudioCode",
+      "name": "VS Code",
+      "category": "editors",
+      "priority": 50
+    },
+    {
+      "id": "Microsoft.Office",
+      "name": "Microsoft 365",
+      "category": "editors",
+      "priority": 35
+    },
+    {
+      "id": "Microsoft.Outlook",
+      "name": "Outlook",
+      "category": "editors",
+      "priority": 36
+    },
+    {
+      "id": "Valve.Steam",
+      "name": "Steam",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "EpicGames.EpicGamesLauncher",
+      "name": "Epic Games",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "Blizzard.BattleNet",
+      "name": "Battle.net",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "ElectronicArts.EADesktop",
+      "name": "EA App",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "Ubisoft.Connect",
+      "name": "Ubisoft Connect",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "GOG.Galaxy",
+      "name": "GOG Galaxy",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "Nvidia.GeForceNow",
+      "name": "GeForce Now",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "RockstarGames.Launcher",
+      "name": "Rockstar Launcher",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "CloudImperiumGames.RSILauncher",
+      "name": "RSI Launcher",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "NexusMods.Vortex",
+      "name": "Vortex",
+      "category": "games",
+      "priority": 200
+    },
+    {
+      "id": "VideoLAN.VLC",
+      "name": "VLC",
+      "category": "media",
+      "priority": 200
+    },
+    {
+      "id": "Plex.Plex",
+      "name": "Plex",
+      "category": "media",
+      "priority": 200
+    },
+    {
+      "id": "Spotify.Spotify",
+      "name": "Spotify",
+      "category": "media",
+      "priority": 200
+    },
+    {
+      "id": "Ytmdesktop.Ytmdesktop",
+      "name": "YouTube Music",
+      "category": "media",
+      "priority": 200
+    },
+    {
+      "id": "AgileBits.1Password",
+      "name": "1Password",
+      "category": "utils",
+      "priority": 10
+    },
+    {
+      "id": "Piriform.CCleaner",
+      "name": "CCleaner",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "Piriform.Speccy",
+      "name": "Speccy",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "SteelSeries.GG",
+      "name": "SteelSeries GG",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "Corsair.iCUE.5",
+      "name": "iCUE",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "BitSum.ProcessLasso",
+      "name": "Process Lasso",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "Klocman.BulkCrapUninstaller",
+      "name": "BCUninstaller",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "7zip.7zip",
+      "name": "7-Zip",
+      "category": "utils",
+      "priority": 30
+    },
+    {
+      "id": "WinSCP.WinSCP",
+      "name": "WinSCP",
+      "category": "utils",
+      "priority": 102
+    },
+    {
+      "id": "Devolutions.UniGetUI",
+      "name": "UniGetUI",
+      "category": "utils",
+      "priority": 200
+    },
+    {
+      "id": "Discord.Discord",
+      "name": "Discord",
+      "category": "utils",
+      "priority": 60
+    },
+    {
+      "id": "TeamViewer.TeamViewer",
+      "name": "TeamViewer",
+      "category": "utils",
+      "priority": 61
+    },
+    {
+      "id": "Yubico.YubikeyManager",
+      "name": "YubiKey Manager",
+      "category": "utils",
+      "priority": 11
+    }
   ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent Ubuntu 26.04 WSL workstation bootstrap.
+# Idempotent WSL workstation bootstrap (Ubuntu/Debian apt, Arch pacman + Homebrew).
 # Installs native Linux tools only. Does not use Windows interop copies.
 # Safe to re-run. Does not install Linux VS Code, Discord, or Oh My Posh.
 # apt = system packages. Homebrew = CLIs and language runtimes.
@@ -268,6 +268,14 @@ ensure_passwordless_sudo() {
 
 install_apt() {
   need_sudo
+  if command -v pacman >/dev/null 2>&1 && ! command -v apt-get >/dev/null 2>&1; then
+    log "pacman packages"
+    mapfile -t pkgs < <(tr -d '\r' <"$ROOT/packages/pacman.txt" | grep -vE '^\s*(#|$)' || true)
+    if ((${#pkgs[@]})); then
+      sudo pacman -Sy --noconfirm --needed "${pkgs[@]}" || true
+    fi
+    return 0
+  fi
   log "apt packages"
   mapfile -t pkgs < <(tr -d '\r' <"$ROOT/packages/apt.txt" | grep -vE '^\s*(#|$)')
   apt_update

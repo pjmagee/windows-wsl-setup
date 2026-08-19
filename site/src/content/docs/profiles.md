@@ -1,35 +1,34 @@
 ---
 title: Profiles
-description: Named lists of Windows winget packages and Linux tools, grouped by category.
-order: 3
+description: Named lists of Windows apps and Linux tools, grouped by category.
+order: 4
 group: Use
 ---
 
-A profile is a JSON ID list. Categories live on the **catalog**, not on the profile.
+A profile is a list of package ids. Categories live on the catalog, not on the profile.
 
 Shipped **bundles**:
 
 | Id | Windows | Linux | When |
 |---|---|---|---|
-| `default` | browsers, Terminal, VS Code, Docker, 1Password, Git | `home` | Fresh PC, no kit |
-| `home` | default + games, media, Grok/Claude | `home` (grok, claude, opencode, …) | Home workstation |
-| `work` | default + Copilot, no games | `work` (Copilot CLI; no grok/claude) | Work laptop |
-
-Linux categories: environment, sdks, devops, cloud, integrations, agents, content.  
-Windows also has browsers, editors, games, media, utils.
+| `default` | Terminal, your browser, password manager, editor, Git | `home` | Fresh PC, no kit |
+| `home` | default + games, media, extra agents | `home` | Home workstation |
+| `work` | default + Copilot, no games | `work` | Work laptop |
 
 ## Customise
 
-In the TUI: **Profiles** → tick by category → `s` saves `custom` under `%USERPROFILE%\.windows-wsl-setup\profiles\`.
+TUI: **Profiles** → tick by category → `s` saves `custom`.
 
-From the CLI (JSON):
+CLI:
 
 ```
 windows-wsl-setup profile new my-dev --from home
-windows-wsl-setup profile add my-dev --linux kubectl --windows Brave.Brave
+windows-wsl-setup profile add my-dev --linux kubectl --windows Google.Chrome
 windows-wsl-setup apply my-dev
 ```
 
-`suggest` reads `winget list` and moves SDKs / cloud CLIs onto Linux when the catalog says `preferLinux` (Node, Azure CLI, Go, JDK, …).
+`suggest` reads what is already installed and moves SDKs / cloud CLIs onto Linux when the catalog says so.
 
-Apply **installs**. It never uninstalls Windows apps. Linux `install.sh` may still prune extras that are not on the chosen linux profile.
+Apply **installs**. It never uninstalls Windows apps. Linux setup may drop extras that are not on the chosen linux profile.
+
+Winget install order is **priority**, not category: password manager → browser → desktop → editors → Git → Docker → agents → later (games, media, cleaners).

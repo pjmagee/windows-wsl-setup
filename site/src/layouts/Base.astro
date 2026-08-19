@@ -36,9 +36,9 @@ const desc =
         </a>
         <nav class="nav-links">
           <a href={`${base}docs/welcome/`} aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
+          <a href={`${base}docs/agents/`} aria-current={current === 'agents' ? 'page' : undefined}>Agents</a>
           <a href={`${base}docs/download/`} aria-current={current === 'download' ? 'page' : undefined}>Download</a>
           <a href={`${base}docs/profiles/`} aria-current={current === 'profiles' ? 'page' : undefined}>Profiles</a>
-          <a href={`${base}docs/automate/`} aria-current={current === 'automate' ? 'page' : undefined}>CLI</a>
           <a href="https://github.com/pjmagee/windows-wsl-setup">GitHub</a>
         </nav>
         <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Get the exe</a>
@@ -46,7 +46,7 @@ const desc =
     </header>
     <slot />
     <footer class="wrap footer">
-      <span>Ubuntu 26.04 · winget · Homebrew · one binary</span>
+      <span>winget · WSL · Homebrew · one binary</span>
       <span>
         <a href="https://github.com/pjmagee/windows-wsl-setup">pjmagee/windows-wsl-setup</a>
       </span>
