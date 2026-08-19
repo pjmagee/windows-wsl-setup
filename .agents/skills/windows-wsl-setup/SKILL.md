@@ -13,23 +13,26 @@ The product is **`windows-wsl-setup.exe`** from GitHub Releases.
 
 Humans and agents **do not clone** this repo to use it. Clone only if you are changing the product.
 
-Install this skill on other agents:
+Install this skill (user scope — do not clone the repo):
 
 ```
-npx skills add pjmagee/windows-wsl-setup
+gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-setup --skill windows-wsl-setup -g -y
 ```
 
 ## Install the CLI
 
-On Windows, download the latest exe (do not build unless developing):
+Confirm the host is Windows (not WSL, not Git Bash). Download the latest exe — do not clone and do not build unless developing:
+
+https://github.com/pjmagee/windows-wsl-setup/releases/latest/download/windows-wsl-setup.exe
 
 ```
 gh release download -R pjmagee/windows-wsl-setup -p windows-wsl-setup.exe --dir $env:USERPROFILE\Downloads
 ```
 
-Or open https://github.com/pjmagee/windows-wsl-setup/releases and take `windows-wsl-setup.exe`.
+If Releases 404s, stop. Do not clone as a substitute.
 
-Then run it. JSON commands print JSON on stdout; errors on stderr.
+JSON commands print JSON on stdout; errors on stderr.
 
 ## Modes
 

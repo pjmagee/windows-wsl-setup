@@ -9,7 +9,8 @@ Site: <https://pjmagee.github.io/windows-wsl-setup/>
 ## Agent-ready
 
 ```
-npx skills add pjmagee/windows-wsl-setup
+gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-setup --skill windows-wsl-setup -g -y
 ```
 
 Then ask Grok, Claude, Codex, or Copilot to collect, restore, or apply a profile. The skill tells them how to download the exe and which commands exist.

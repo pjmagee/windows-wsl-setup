@@ -1,0 +1,12 @@
+{
+  "name": "windows-wsl-setup",
+  "owner": { "name": "pjmagee" },
+  "plugins": [
+    {
+      "name": "windows-wsl-setup",
+      "source": "./",
+      "description": "Collect or restore a Windows 11 PC, create Ubuntu/Debian/Arch WSL, or apply a software profile.",
+      "skills": ["./skills/windows-wsl-setup"]
+    }
+  ]
+}

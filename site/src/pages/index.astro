@@ -78,7 +78,8 @@ const base = import.meta.env.BASE_URL;
           Linux CLIs come from Homebrew on the distro you picked.
         </p>
       </div>
-      <pre><code>npx skills add pjmagee/windows-wsl-setup
+      <pre><code>gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-setup -g -y
 
 windows-wsl-setup collect
 windows-wsl-setup restore
