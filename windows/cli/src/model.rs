@@ -121,6 +121,7 @@ pub struct Inventory {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum LinuxProfile {
     Home,
     Work,

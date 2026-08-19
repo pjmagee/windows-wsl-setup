@@ -144,7 +144,7 @@ impl App {
                 Err(e) => self.log.push(format!("browser: {e}")),
             }
         }
-        self.status = "done. 1Password SSH / Steam library / Docker WSL integration stay manual.".into();
+        self.status = "done. Click 1Password SSH, Steam library, Docker WSL, and Add to Brave if shown.".into();
         self.tab = 4;
     }
 }

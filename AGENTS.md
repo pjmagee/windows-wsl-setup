@@ -1,7 +1,8 @@
 # AGENTS.md
 
-Playbook for coding agents (GitHub Copilot at work; Grok or Claude at home).
-Human overview: [README.md](README.md).
+Playbook for **Linux toolchain / work-laptop** agents.
+
+Home PC reset (Collect / Restore) is **not this file**. That is `windows-wsl-setup.exe`. See [README.md](README.md) and `.agents/skills/windows-wsl-setup/SKILL.md`.
 
 You are bootstrapping the **same WSL 2 Ubuntu 26.04 workstation** this repo
 defines — typically a **clean Windows 11 work laptop** that has none of the

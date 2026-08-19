@@ -9,33 +9,15 @@ use crate::model::{LinuxProfile, LinuxTool};
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
     Dest,
-    Profile,
-    Linux,
+    Apps,
     Wsl,
     Host,
-    Apps,
     Write,
 }
 
-const TABS: [Tab; 7] = [
-    Tab::Dest,
-    Tab::Profile,
-    Tab::Linux,
-    Tab::Wsl,
-    Tab::Host,
-    Tab::Apps,
-    Tab::Write,
-];
+const TABS: [Tab; 5] = [Tab::Dest, Tab::Apps, Tab::Wsl, Tab::Host, Tab::Write];
 
-const TAB_TITLES: [&str; 7] = [
-    "Dest",
-    "Profile",
-    "Linux",
-    "WSL",
-    "Host",
-    "Apps",
-    "Write",
-];
+const TAB_TITLES: [&str; 5] = ["Dest", "Apps", "WSL", "Host", "Write"];
 
 struct App {
     tab: usize,
@@ -123,11 +105,9 @@ impl App {
     fn clamp(&mut self) {
         let n = match self.tab_enum() {
             Tab::Dest => self.inv.destinations.len().max(1),
-            Tab::Profile => 3,
-            Tab::Linux => self.extras.len().max(1),
+            Tab::Apps => self.visible_apps().len().max(1),
             Tab::Wsl => self.inv.wsl.len().max(1),
             Tab::Host => 4,
-            Tab::Apps => self.visible_apps().len().max(1),
             Tab::Write => 1,
         };
         if self.cursor >= n {
@@ -138,18 +118,6 @@ impl App {
     fn toggle(&mut self) {
         match self.tab_enum() {
             Tab::Dest => self.dest = self.cursor,
-            Tab::Profile => {
-                self.profile = match self.cursor {
-                    0 => LinuxProfile::Home,
-                    1 => LinuxProfile::Work,
-                    _ => LinuxProfile::Skip,
-                };
-            }
-            Tab::Linux => {
-                if let Some(v) = self.extra_home.get_mut(self.cursor) {
-                    *v = !*v;
-                }
-            }
             Tab::Wsl => {
                 if let Some(v) = self.wsl_keep.get_mut(self.cursor) {
                     *v = !*v;
@@ -174,22 +142,11 @@ impl App {
         }
     }
 
-    fn toggle_work(&mut self) {
-        if self.tab_enum() == Tab::Linux {
-            if let Some(v) = self.extra_work.get_mut(self.cursor) {
-                *v = !*v;
-            }
-        }
-    }
-
     fn write_now(&mut self) {
         let Some(kit) = self.kit_root() else {
             self.status = "pick a destination first".into();
             return;
         };
-        if self.profile == LinuxProfile::Skip {
-            // still write the Windows kit
-        }
         let sel = Selection {
             kit_root: kit.clone(),
             profile: self.profile,
@@ -322,7 +279,6 @@ pub fn run_collect() -> Result<(), String> {
             KeyCode::Down | KeyCode::Char('j') => app.cursor = app.cursor.saturating_add(1),
             KeyCode::Up | KeyCode::Char('k') => app.cursor = app.cursor.saturating_sub(1),
             KeyCode::Char(' ') | KeyCode::Enter => app.toggle(),
-            KeyCode::Char('w') => app.toggle_work(),
             KeyCode::Char('/') if app.tab_enum() == Tab::Apps => {
                 app.filtering = true;
                 app.app_filter.clear();
@@ -360,16 +316,13 @@ fn draw(f: &mut Frame, app: &App) {
 
     match app.tab_enum() {
         Tab::Dest => f.render_widget(dest_body(app), chunks[1]),
-        Tab::Profile => f.render_widget(profile_body(app), chunks[1]),
-        Tab::Linux => f.render_widget(linux_body(app), chunks[1]),
+        Tab::Apps => f.render_widget(apps_body(app), chunks[1]),
         Tab::Wsl => f.render_widget(wsl_body(app), chunks[1]),
         Tab::Host => f.render_widget(host_body(app), chunks[1]),
-        Tab::Apps => f.render_widget(apps_body(app), chunks[1]),
         Tab::Write => f.render_widget(write_body(app), chunks[1]),
     }
 
     let help = match app.tab_enum() {
-        Tab::Linux => "j/k move  space home  w work  tab section  q quit",
         Tab::Apps => "j/k move  space keep  / filter  tab section  q quit",
         Tab::Write => "Enter or W write kit  tab section  q quit",
         _ => "j/k move  space select  tab section  q quit",
@@ -402,48 +355,6 @@ fn dest_body(app: &App) -> List<'_> {
         })
         .collect();
     list(" kit destination — not C:, not the Dev Drive ", items, app.cursor)
-}
-
-fn profile_body(app: &App) -> List<'_> {
-    let opts = [
-        (LinuxProfile::Home, "home   extras ticked home (Grok / Claude by default)"),
-        (LinuxProfile::Work, "work   extras ticked work (Copilot by default); drops home-only"),
-        (LinuxProfile::Skip, "skip   do not run install.sh after restore"),
-    ];
-    let items: Vec<ListItem> = opts
-        .iter()
-        .map(|(p, label)| {
-            let mark = if app.profile == *p { "(*)" } else { "( )" };
-            ListItem::new(format!("{mark}  {label}"))
-        })
-        .collect();
-    list(" linux profile for this machine ", items, app.cursor)
-}
-
-fn linux_body(app: &App) -> List<'_> {
-    let items: Vec<ListItem> = app
-        .extras
-        .iter()
-        .enumerate()
-        .map(|(i, t)| {
-            let h = if app.extra_home.get(i).copied().unwrap_or(false) {
-                "[x]"
-            } else {
-                "[ ]"
-            };
-            let w = if app.extra_work.get(i).copied().unwrap_or(false) {
-                "[x]"
-            } else {
-                "[ ]"
-            };
-            ListItem::new(format!("{h} home  {w} work   {}", t.name))
-        })
-        .collect();
-    list(
-        " extras — space toggles home, w toggles work. base tools always install ",
-        items,
-        app.cursor,
-    )
 }
 
 fn wsl_body(app: &App) -> List<'_> {
@@ -525,8 +436,7 @@ fn write_body(app: &App) -> Paragraph<'_> {
         .kit_root()
         .unwrap_or_else(|| "(no destination)".into());
     let text = format!(
-        "kit:     {dest}\nprofile: {}\napps:    {} kept\nwsl:     {}\n\nEnter / W  write small files (no VHDX copy yet)",
-        app.profile.as_str(),
+        "kit:  {dest}\napps: {} kept\nwsl:  {}\n\nEnter / W  write the kit. Then take this folder to the new PC.",
         app.app_keep.iter().filter(|k| **k).count(),
         app.inv
             .wsl

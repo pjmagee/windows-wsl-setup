@@ -1,66 +1,35 @@
 ---
 name: windows-wsl-setup
 description: >
-  Collect or restore a Windows 11 PC with Windows WSL Setup (winget kit, Dev Drive, WSL, Brave).
-  Use when the user is about to reset Windows, just reinstalled Windows, says Collect/Restore,
-  mentions a kit on a data drive, or asks an agent to finish leftovers the exe cannot do.
+  Collect or restore a Windows 11 PC with Windows WSL Setup.
+  Use when the user is about to reset Windows, just reinstalled Windows, or
+  asks to finish leftovers the exe cannot click (1Password, Steam, Docker, Brave Add).
 ---
 
 # Windows WSL Setup — agent skill
 
-The product is **`windows-wsl-setup.exe`**. Users download it from this repo’s Releases. They do not clone the repo and they do not run PowerShell for Collect or Restore.
+The product is **`windows-wsl-setup.exe`** from this repo’s Releases.
 
-You are the operator for **leftovers and failures**, not a second installer.
+Users do **not** clone the repo. They do **not** run `install.sh`, PowerShell, or `bootstrap.ps1` for a home PC reset.
+
+Restoring WSL imports the **existing** Linux disk. Homebrew/Node/Git come back with that disk. Do not tell them to clone this repo or run `./install.sh` unless they explicitly want to **rebuild** an empty Ubuntu.
 
 ## Do this first
 
-1. If the human is on **Windows** and wants backup or restore, run or tell them to run `windows-wsl-setup.exe` (Collect or Restore). Do not invent winget/wsl/diskpart commands unless the exe failed.
+1. Run or point them at `windows-wsl-setup.exe` → Collect (old PC) or Restore (new PC).
 2. Never format data drives. Never `wsl --unregister` unless they confirm.
-3. Never install Node, Go, Rust, Python, or Azure CLI on Windows to “fix” a missing tool. Those belong in Ubuntu via `./install.sh`.
+3. Do not invent a second winget/wsl installer.
 
-## When the exe is enough (stay out)
-
-| Job | Who |
-|---|---|
-| Scan winget / WSL / Dev Drive | Collect |
-| Write the kit + winget manifest | Collect |
-| Pick packages and `winget install` | Restore |
-| Remount Dev Drive, import WSL | Restore |
-| Copy Brave bookmarks | Restore |
-| Open `extensions.html` | Restore |
-
-## When you are needed
-
-The CLI cannot click other apps’ UIs or approve UAC for the user.
-
-**After Restore (home PC):**
+## After Restore — only leftovers the exe cannot click
 
 - 1Password → Settings → Developer → Use the SSH agent
-- Disable Windows service **OpenSSH Authentication Agent** (1Password owns the named pipe)
-- Steam → add the existing library on the games drive
-- Docker Desktop → WSL integration → the restored distro (usually Ubuntu-26.04)
-- Brave: user clicks **Add to Brave** on each store link (policy install is optional; do not force it unless they ask)
-- If WSL starts with **Access Denied** on `ext4.vhdx`: grant `NT VIRTUAL MACHINE\Virtual Machines` (SID `S-1-5-83-0`) Full control, then retry
-- If Mount-VHD fails: they need an elevated session / Hyper-V PowerShell
+- OpenSSH Authentication Agent Windows service **off**
+- Steam → add the existing library folder
+- Docker Desktop → WSL integration for the restored distro
+- Brave: **Add to Brave** on the extensions page the exe opened
+- If WSL is Access Denied on `ext4.vhdx`: grant SID `S-1-5-83-0` Full control
+- If Dev Drive did not mount: they need UAC / Hyper-V PowerShell
 
-**After WSL actually opens:** the Windows exe does not run the Linux toolchain. Inside Ubuntu-26.04:
+## Work laptop (new empty Ubuntu, not a C: reset)
 
-```bash
-cd ~/code/windows-wsl-setup && git pull && ./install.sh home
-```
-
-Use `./install.sh work` only on a work laptop (that path is `windows/bootstrap.ps1`, not this skill’s Collect/Restore).
-
-**Collect-time judgement (only if they ask you in chat instead of using the TUI):**
-
-- Kit destination must not be `C:` and should not be the Dev Drive itself
-- Default-off: Docker data VHDX (often huge), Windows copies of language runtimes
-- Default-on: browsers, 1Password, editors, game launchers, Steam, WSL distros that are not `docker-desktop`
-
-## Work laptop (not a C: reset)
-
-If they said “set up WSL on this work laptop”, that is **not** Collect/Restore. Follow [AGENTS.md](../../../AGENTS.md) §1 (`windows/bootstrap.ps1` then `./install.sh work`). Do not run Collect.
-
-## Finding a kit
-
-Restore scans `D:`–`Z:\Backups\*\KIT.json`. If none, look at other letters for `KIT.json`. Read `START-HERE.txt` in that folder. Do not move the kit onto `C:`.
+That is a different job: [AGENTS.md](../../../AGENTS.md) §1.

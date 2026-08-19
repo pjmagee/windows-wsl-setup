@@ -1,52 +1,38 @@
 # Windows WSL Setup
 
-One Windows app. Download `windows-wsl-setup.exe` from this repo’s **Releases**.
+Download `windows-wsl-setup.exe` from **Releases**. Do not clone this repo.
 
-You do not clone the repo. You do not run scripts.
+## 1. Old PC — Collect
 
-## Before you reset Windows
+Run the exe. Choose **Collect**.
 
-1. Put your files on a drive that is **not C:** (games, photos, this kit).
-2. Run `windows-wsl-setup.exe` and choose **Collect**.
-3. Pick that data drive. Tick the winget apps you want later, plus WSL and the Dev Drive if you use them.
-4. Write the kit. Keep that folder. Resetting C: must not delete it.
+- Pick a drive that is **not C:** (the kit must survive a Windows reset).
+- Tick the apps you want later (Steam, Brave, Docker, …).
+- Tick your WSL distro and Dev Drive if you use them.
+- Write the kit. Keep that folder.
 
-## After a fresh Windows 11 install
+## 2. New PC — Restore
 
-1. Sign in. Do **not** wipe the data drives.
-2. Run the same exe (from Releases, or the copy inside the kit folder).
-3. Choose **Restore**. Pick the kit. Tick the apps to install.
-4. Apply. The app:
-   - installs the ticked apps with winget
-   - remounts the Dev Drive
-   - imports your WSL distro
-   - copies Brave bookmarks
-   - opens a page of Chrome Web Store links for extensions (click **Add to Brave**)
+Install Windows 11. Do **not** wipe the data drives.
+
+Run the same exe (from Releases, or the copy in the kit folder). Choose **Restore**.
+
+- Pick the kit.
+- Tick the apps to install.
+- Apply.
+
+The app installs those apps with winget, remounts the Dev Drive, brings WSL back, copies Brave bookmarks, and opens a page of extension links. Click **Add to Brave** on that page.
+
+Your WSL disk is the one you already had. Linux tools come back with it. Nobody runs install scripts.
+
+## 3. A few clicks the app cannot make
+
+- 1Password → Settings → Developer → Use the SSH agent
+- Steam → add your existing library folder
+- Docker Desktop → WSL integration for your distro
 
 ```
-windows-wsl-setup           Collect or Restore
+windows-wsl-setup
 windows-wsl-setup collect
 windows-wsl-setup restore
 ```
-
-## What you still do by hand
-
-The app cannot log into other apps or click browser-store buttons.
-
-- 1Password: Settings → Developer → **Use the SSH agent**
-- Steam: add your existing library folder
-- Docker Desktop: enable WSL integration for your distro
-- Brave extensions: the page it opens
-- NVIDIA App if it was not on winget
-
-## Linux tools (optional, after WSL is back)
-
-The Windows app does not install Node, Git, or language runtimes on Windows. Those live **inside Ubuntu**.
-
-Once Ubuntu opens, from a Linux terminal:
-
-```bash
-cd ~/code/windows-wsl-setup && ./install.sh home    # or: ./install.sh work
-```
-
-Details for that half: [AGENTS.md](AGENTS.md).
