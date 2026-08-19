@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Write a windows-wsl-setup kit from a capture selection.
+  Write a Windows WSL Setup kit from a capture selection.
 
   v1 copies small files (dotfiles, Brave, winget JSON, generated AGENTS.md).
   VHDX / WSL export is recorded in KIT.json but not copied unless -IncludeVhd
@@ -140,7 +140,7 @@ $kit = [ordered]@{
     linuxProfile       = $profile
     linuxTools         = $sel.linuxTools
     kitRoot            = $KitRoot
-    repo               = 'https://github.com/pjmagee/wsl-setup.git'
+    repo               = 'https://github.com/pjmagee/windows-wsl-setup.git'
     selections         = @{
         apps       = $apps
         wsl        = @($sel.wsl)
@@ -168,7 +168,7 @@ drives. Do not ``wsl --unregister`` unless the human confirms.
 - Old computer: $($env:COMPUTERNAME)
 - Windows user: $($env:USERNAME)
 - Linux profile after WSL is up: ``./install.sh $profile`` (inside Ubuntu-26.04)
-- Repo: https://github.com/pjmagee/wsl-setup.git
+- Repo: https://github.com/pjmagee/windows-wsl-setup.git
 
 ## Order
 
@@ -180,7 +180,7 @@ drives. Do not ``wsl --unregister`` unless the human confirms.
 3. ``windows\bootstrap.ps1 -SkipLinuxInstall``
 4. Copy ``inventory/linux-tools.json`` to ``~/.config/wsl-setup/tools.json`` if present
    (home/work ticks from capture).
-5. Inside Ubuntu-26.04: ``cd ~/code/wsl-setup && git pull && ./install.sh $profile``
+5. Inside Ubuntu-26.04: ``cd ~/code/windows-wsl-setup && git pull && ./install.sh $profile``
    Do **not** run ``install.sh work`` on a home kit. There is no universal profile.
 
 ## Selected
@@ -209,12 +209,12 @@ drives. Do not ``wsl --unregister`` unless the human confirms.
 Set-Content -LiteralPath (Join-Path $KitRoot 'AGENTS.md') -Value $agents -Encoding UTF8
 
 $start = @"
-windows-wsl-setup kit — $($env:COMPUTERNAME) $(Get-Date -Format yyyy-MM-dd)
+Windows WSL Setup kit — $($env:COMPUTERNAME) $(Get-Date -Format yyyy-MM-dd)
 
 This folder is the backup. On the new PC:
 
   1. Sign into the same Microsoft account. Do not clean data drives.
-  2. Clone https://github.com/pjmagee/wsl-setup.git
+  2. Download windows-wsl-setup.exe from GitHub Releases (or use the copy in this kit).
   3. Tell the agent:  Read $KitRoot\AGENTS.md and restore this machine.
 
 Small files are in this kit. VHDX copy (Dev Drive / WSL) may still need

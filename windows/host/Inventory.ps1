@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Scan this Windows 11 machine for a windows-wsl-setup capture kit.
+  Scan this Windows 11 machine for a Windows WSL Setup capture kit.
 
 .DESCRIPTION
   No admin required. Does not copy anything. Emits a JSON-ready object:

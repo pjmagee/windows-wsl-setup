@@ -1,8 +1,8 @@
 [package]
-name = "wsl-setup"
+name = "windows-wsl-setup"
 version = "0.1.0"
 edition = "2021"
-description = "Native Windows TUI to capture a used PC into a restore kit"
+description = "Windows WSL Setup — collect a kit on this PC, restore it on a fresh Windows 11 machine"
 license = "MIT"
 publish = false
 

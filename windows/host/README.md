@@ -1,4 +1,4 @@
-# windows-wsl-setup (host)
+# Windows WSL Setup (host helpers)
 
 Capture a used Windows 11 PC into a **kit** on a non-`C:` drive. Restore is agent-driven from that kit's `AGENTS.md`.
 

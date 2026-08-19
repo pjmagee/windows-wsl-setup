@@ -1,18 +1,18 @@
-# wsl-setup
+# Windows WSL Setup
 
 **Windows 11 users: one binary. No git clone. No PowerShell to run.**
 
-Download `wsl-setup.exe` from [Releases](https://github.com/pjmagee/wsl-setup/releases).
+Download `windows-wsl-setup.exe` from [Releases](https://github.com/pjmagee/windows-wsl-setup/releases).
 
 | On | What you do |
 |---|---|
-| Current PC | Run `wsl-setup.exe` → **Collect**. Pick a non-C: drive, tick winget packages, WSL, Dev Drive, Brave. Write the kit. |
-| Fresh Windows 11 | Run the same exe (from Releases, or `wsl-setup.exe` inside the kit) → **Restore**. Tick packages from the manifest, Apply. The tool installs them with winget, remounts the Dev Drive, imports WSL, copies Brave bookmarks, and opens an extensions page (Add to Brave by hand). |
+| Current PC | Run `windows-wsl-setup.exe` → **Collect**. Pick a non-C: drive, tick winget packages, WSL, Dev Drive, Brave. Write the kit. |
+| Fresh Windows 11 | Run the same exe (from Releases, or `windows-wsl-setup.exe` inside the kit) → **Restore**. Tick packages from the manifest, Apply. The tool installs them with winget, remounts the Dev Drive, imports WSL, copies Brave bookmarks, and opens an extensions page (Add to Brave by hand). |
 
 ```
-wsl-setup              Collect or Restore
-wsl-setup collect      scan this PC, write a kit
-wsl-setup restore      install from a kit on a data drive
+windows-wsl-setup              Collect or Restore
+windows-wsl-setup collect      scan this PC, write a kit
+windows-wsl-setup restore      install from a kit on a data drive
 ```
 
 The Linux Ubuntu 26.04 toolchain (`install.sh`) is still in this repo for work laptops and for after WSL is back. End users of the Windows kit never need it.
@@ -42,7 +42,7 @@ The host OS does **not** need the developer CLIs. It only needs:
 
 ## Capture / restore (the Windows exe)
 
-Source: [`windows/cli`](windows/cli). CI builds `wsl-setup.exe` on every `main` push.
+Source: [`windows/cli`](windows/cli). CI builds `windows-wsl-setup.exe` on every `main` push.
 
 Brave extensions cannot be force-installed without policy. Restore copies bookmarks and opens `browser/extensions.html` so you click **Add to Brave** after Brave is installed via winget.
 
@@ -51,14 +51,14 @@ Brave extensions cannot be force-installed without policy. Restore copies bookma
 ### From Windows (work laptop / first time)
 
 ```powershell
-git clone https://github.com/pjmagee/wsl-setup.git
-cd wsl-setup
+git clone https://github.com/pjmagee/windows-wsl-setup.git
+cd windows-wsl-setup
 powershell -NoProfile -ExecutionPolicy Bypass -File .\windows\bootstrap.ps1
 ```
 
 Reboot if Windows asks, then run the same command again.
 
-`bootstrap.ps1` is for a work laptop that **already exists**. It updates WSL if it can (26.04 wants WSL 2.4.10+), installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/wsl-setup` on the Linux disk, and runs `install.sh work` (Copilot CLI; no grok/claude/opencode/devtunnel/changie/hugo/stripe). It does not use cloud-init. It does **not** unregister leftover distros (`Ubuntu-24.04`, Store `Ubuntu`, `docker-desktop`).
+`bootstrap.ps1` is for a work laptop that **already exists**. It updates WSL if it can (26.04 wants WSL 2.4.10+), installs Ubuntu 26.04 only if missing (normal WSL username/password prompt once, then auto sign-in), turns on NOPASSWD sudo for that existing user, makes `wsl` and `ubuntu` open the distro at `~` in Windows Terminal, copies this repo to `~/code/windows-wsl-setup` on the Linux disk, and runs `install.sh work` (Copilot CLI; no grok/claude/opencode/devtunnel/changie/hugo/stripe). It does not use cloud-init. It does **not** unregister leftover distros (`Ubuntu-24.04`, Store `Ubuntu`, `docker-desktop`).
 
 If a **required** host step fails (passwordless sudo, `wsl-open`), the host script exits with an error — it will not print `Done.` A blocked vendor domain skips that tool and the run continues; the summary lists what to retry.
 
@@ -68,8 +68,8 @@ An old Store `ubuntu.exe` can still win over `ubuntu.cmd` in **cmd** (`PATHEXT` 
 
 ```bash
 sudo apt update && sudo apt install -y git curl
-git clone https://github.com/pjmagee/wsl-setup.git ~/code/wsl-setup
-cd ~/code/wsl-setup
+git clone https://github.com/pjmagee/windows-wsl-setup.git ~/code/windows-wsl-setup
+cd ~/code/windows-wsl-setup
 ./install.sh work    # work laptop (Copilot)
 # ./install.sh home  # home machine (Grok / Claude)
 ```
@@ -235,7 +235,7 @@ ssh -T git@github.com      # should prompt 1Password, then authenticate
 ## Updates
 
 ```bash
-cd ~/code/wsl-setup && git pull && ./install.sh          # saved profile (tools.json + post-steps)
+cd ~/code/windows-wsl-setup && git pull && ./install.sh          # saved profile (tools.json + post-steps)
 # ./install.sh home
 # ./install.sh work
 

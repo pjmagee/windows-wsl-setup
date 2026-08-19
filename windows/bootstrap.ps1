@@ -345,9 +345,9 @@ function Invoke-LinuxInstall {
         return
     }
     Write-Step "clone/update repo on the Linux disk and run install.sh"
-    $linuxRepo = '~/code/wsl-setup'
+    $linuxRepo = '~/code/windows-wsl-setup'
     $winRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-    $remote = 'https://github.com/pjmagee/wsl-setup.git'
+    $remote = 'https://github.com/pjmagee/windows-wsl-setup.git'
     $wslWin = (wsl.exe -d $Distro -- wslpath -a $winRoot 2>$null)
     $wslWin = (("$wslWin" -replace [char]0, '').Trim())
     $setup = @"

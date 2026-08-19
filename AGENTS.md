@@ -57,14 +57,14 @@ else echo "windows"; fi
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
 
-### 0a. Capture a used machine (windows-wsl-setup)
+### 0a. Capture a used machine (Windows WSL Setup)
 
-End users download `wsl-setup.exe` from GitHub Releases (no clone).
+End users download `windows-wsl-setup.exe` from GitHub Releases (no clone).
 
 ```
-wsl-setup              Collect or Restore
-wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
-wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
+windows-wsl-setup              Collect or Restore
+windows-wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
+windows-wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
 ```
 
 Do not tell the user to run PowerShell scripts or git clone for this. Maintainers build `windows/cli`.
@@ -88,7 +88,7 @@ it at `~` from Windows Terminal, this repo lives on the **Linux** disk, and
 - Windows 11, virtualization enabled, user can elevate if `wsl --install` needs it.
 - Network can reach GitHub, Microsoft packages, and the other upstreams in `install.sh`.
 - First clone of **this** repo on Windows: **HTTPS**
-  (`https://github.com/pjmagee/wsl-setup.git`). 1Password SSH is not ready yet.
+  (`https://github.com/pjmagee/windows-wsl-setup.git`). 1Password SSH is not ready yet.
 
 If `wsl --install` is blocked by policy, stop and tell the user IT must allow
 WSL 2. Do not try Hyper-V workarounds or a different distro.
@@ -120,7 +120,7 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
 7. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
 8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
    `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
-9. Clones this repo to `~/code/wsl-setup` **inside** the distro and runs
+9. Clones this repo to `~/code/windows-wsl-setup` **inside** the distro and runs
    `install.sh work`. If a required host step fails, the host script
    **throws** (no fake `Done.`).
 
@@ -190,7 +190,7 @@ After a **new** Terminal window:
 ### 1.5 After bootstrap
 
 Tell the user to reopen
-`\\wsl$\Ubuntu-26.04\home\<user>\code\wsl-setup` in VS Code
+`\\wsl$\Ubuntu-26.04\home\<user>\code\windows-wsl-setup` in VS Code
 (**WSL: Reopen Folder in WSL**). Further edits happen there.
 
 ### 1.6 Windows leftovers (this repo does not install them)
@@ -231,10 +231,10 @@ echo "$ID $VERSION_ID"    # must be ubuntu 26.04
 uname -m                  # must be x86_64
 sudo -n true
 mkdir -p ~/code
-if [ ! -d ~/code/wsl-setup/.git ]; then
-  git clone https://github.com/pjmagee/wsl-setup.git ~/code/wsl-setup
+if [ ! -d ~/code/windows-wsl-setup/.git ]; then
+  git clone https://github.com/pjmagee/windows-wsl-setup.git ~/code/windows-wsl-setup
 fi
-cd ~/code/wsl-setup
+cd ~/code/windows-wsl-setup
 # Work laptop (Copilot):
 ./install.sh work
 # Home machine (Grok / Claude):
@@ -246,7 +246,7 @@ Then open a **new** Ubuntu tab. From a Linux path: `code .`
 The chosen profile is saved in `~/.config/wsl-setup/profile`. Later updates:
 
 ```bash
-cd ~/code/wsl-setup && git pull && ./install.sh
+cd ~/code/windows-wsl-setup && git pull && ./install.sh
 brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
@@ -360,7 +360,8 @@ starship.toml              # seed config (scan_timeout for /mnt/c)
 windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
-windows/host/              # capture UI + kit backup (windows-wsl-setup)
+windows/host/              # maintainer helpers for Windows WSL Setup
+windows/cli/               # Windows WSL Setup binary (Collect / Restore)
 schema/kit.schema.json     # KIT.json
 README.md                  # human docs
 AGENTS.md                  # this playbook
@@ -374,7 +375,7 @@ Definition of done for a work-laptop bootstrap:
 2. `sudo -n true` works inside the distro for the existing Linux user.
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
    and **wsl** exist. PowerShell `ubuntu` launches the same session.
-4. `~/code/wsl-setup` is a git checkout on the Linux disk.
+4. `~/code/windows-wsl-setup` is a git checkout on the Linux disk.
 5. `./install.sh work` finished; summary shows `profile work`, Homebrew,
    Copilot CLI, Linux versions, and `sudo passwordless`. No grok/claude/
    opencode/devtunnel/changie/hugo/stripe. Host bootstrap does not print

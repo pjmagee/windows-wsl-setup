@@ -9,7 +9,7 @@ mod tui_restore;
 fn main() {
     #[cfg(not(windows))]
     {
-        eprintln!("wsl-setup capture is a Windows console app.");
+        eprintln!("Windows WSL Setup is a Windows console app.");
         std::process::exit(1);
     }
 
@@ -52,7 +52,7 @@ fn main() {
         },
         "-h" | "--help" | "help" => {
             eprintln!(
-                "wsl-setup — single Windows binary. No git clone. No scripts.\n\n  wsl-setup              Collect or Restore\n  wsl-setup collect      scan this PC, write a kit\n  wsl-setup restore      install from a kit (optional path)\n  wsl-setup inventory    print scan JSON\n"
+                "Windows WSL Setup — one Windows binary. No git clone. No scripts.\n\n  windows-wsl-setup              Collect or Restore\n  windows-wsl-setup collect      scan this PC, write a kit\n  windows-wsl-setup restore      install from a kit (optional path)\n  windows-wsl-setup inventory    print scan JSON\n"
             );
             0
         }

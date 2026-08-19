@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 <#
-  Maintainer helper: build + launch the exe. End users download wsl-setup.exe.
+  Maintainer helper: build + launch the exe. End users download windows-wsl-setup.exe.
 #>
 [CmdletBinding()]
 param()
@@ -15,7 +15,7 @@ if (Test-Path $cargoHome) { $env:Path = "$cargoHome;$env:Path" }
 
 $target = Join-Path $env:LOCALAPPDATA 'wsl-setup-cli-target'
 $env:CARGO_TARGET_DIR = $target
-$exe = Join-Path $target 'release\wsl-setup.exe'
+$exe = Join-Path $target 'release\windows-wsl-setup.exe'
 
 $needBuild = $true
 if (Test-Path -LiteralPath $exe) {
@@ -27,7 +27,7 @@ if (Test-Path -LiteralPath $exe) {
 }
 
 if ($needBuild) {
-    Write-Host 'Building wsl-setup TUI (release)…'
+    Write-Host 'Building Windows WSL Setup TUI (release)…'
     $cargo = Get-Command cargo -ErrorAction SilentlyContinue
     if (-not $cargo) { throw 'cargo not on PATH. Install Rust (rustup) and re-run.' }
     & cargo build --release --manifest-path $manifest

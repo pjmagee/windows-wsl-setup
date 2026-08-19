@@ -191,7 +191,7 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
     };
 
     if let Ok(exe) = std::env::current_exe() {
-        let _ = fs::copy(&exe, root.join("wsl-setup.exe"));
+        let _ = fs::copy(&exe, root.join("windows-wsl-setup.exe"));
     }
 
     let kit = serde_json::json!({
@@ -222,7 +222,7 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
     let mut start = fs::File::create(root.join("START-HERE.txt")).map_err(|e| e.to_string())?;
     writeln!(
         start,
-        "wsl-setup kit — {pc}\n\nOn the new Windows 11 PC:\n  1. Do not wipe this data drive.\n  2. Download wsl-setup.exe from GitHub Releases (or use wsl-setup.exe in this folder).\n  3. Run it and choose Restore.\n  4. Tick the winget packages to install, then Apply.\n\nKit folder: {kit}\n",
+        "Windows WSL Setup kit — {pc}\n\nOn the new Windows 11 PC:\n  1. Do not wipe this data drive.\n  2. Download windows-wsl-setup.exe from GitHub Releases (or use windows-wsl-setup.exe in this folder).\n  3. Run it and choose Restore.\n  4. Tick the winget packages to install, then Apply.\n\nKit folder: {kit}\n",
         pc = sel.inv.computer,
         kit = sel.kit_root,
     )

@@ -250,7 +250,7 @@ fn home_choice() -> Result<HomeChoice, String> {
                 .collect();
             let w = List::new(list_items).block(
                 Block::bordered()
-                    .title(" wsl-setup ")
+                    .title(" Windows WSL Setup ")
                     .border_style(Style::new().fg(Color::DarkGray)),
             );
             let chunks = Layout::vertical([Constraint::Min(6), Constraint::Length(1)]).split(f.area());
@@ -353,7 +353,7 @@ fn draw(f: &mut Frame, app: &App) {
         .highlight_style(Style::new().fg(mint()).bold())
         .block(
             Block::bordered()
-                .title(" windows-wsl-setup  capture ")
+                .title(" Windows WSL Setup  collect ")
                 .border_style(Style::new().fg(Color::DarkGray)),
         );
     f.render_widget(tabs, chunks[0]);
