@@ -144,7 +144,9 @@ impl App {
                 Err(e) => self.log.push(format!("browser: {e}")),
             }
         }
-        self.status = "done. Click 1Password SSH, Steam library, Docker WSL, and Add to Brave if shown.".into();
+        self.status =
+            "done. Click 1Password SSH, Steam library, Docker WSL, and Add to Brave if shown."
+                .into();
         self.tab = 4;
     }
 }
@@ -298,13 +300,17 @@ fn apps_body(app: &App) -> List<'static> {
         })
         .collect();
     let n = app.app_keep.iter().filter(|k| **k).count();
-    List::new(items).block(Block::bordered().title(format!(" winget packages in kit  {n} selected ")))
+    List::new(items)
+        .block(Block::bordered().title(format!(" winget packages in kit  {n} selected ")))
 }
 
 fn disks_body(app: &App) -> List<'static> {
     let rows = [
         (app.remount, "Remount Dev Drive VHDX as D:"),
-        (app.restore_wsl, "Import WSL distros (import-in-place + ACL)"),
+        (
+            app.restore_wsl,
+            "Import WSL distros (import-in-place + ACL)",
+        ),
     ];
     let items: Vec<ListItem> = rows
         .into_iter()

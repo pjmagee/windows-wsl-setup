@@ -5,7 +5,7 @@
 # apt = system packages. Homebrew = CLIs and language runtimes.
 # Compass (Linux GUI) and Cloudflare cf stay as special steps.
 # Optional toolchain steps continue after a blocked host or installer error.
-# Profiles: ./install.sh home|work  (base tools + profiles/tools.json ticks).
+# Profiles: ./install.sh <name>  (shipped: home|work — ID lists in profiles/linux/).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,7 +37,7 @@ is_linux_bin() {
 need_sudo() {
   if ! sudo -n true 2>/dev/null; then
     echo "sudo is required and must be passwordless (sudo -n)." >&2
-    echo "From Windows:  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
+    echo "From Windows:  windows-wsl-setup.exe  (New WSL), or  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
     echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh \"\$(id -un)\"" >&2
     exit 1
   fi
@@ -82,17 +82,20 @@ run_step() {
   return 0
 }
 
-# home = base + extras ticked home in profiles/tools.json (or overlay).
-# work = base + extras ticked work. Work also uninstalls home-only extras.
+# Profile name → profiles/linux/<name>.json (or ~/.config/wsl-setup/profiles/).
+# Overlay ~/.config/wsl-setup/linux-profile.json { "tools": ["id", ...] } replaces the ID list.
 PROFILE=""
+PROFILE_FILE=""
 PROFILE_STEPS=()
 PROFILE_STATE="$HOME/.config/wsl-setup/profile"
-TOOLS_OVERLAY="$HOME/.config/wsl-setup/tools.json"
+TOOLS_OVERLAY="$HOME/.config/wsl-setup/linux-profile.json"
+LEGACY_OVERLAY="$HOME/.config/wsl-setup/tools.json"
 
 usage() {
-  echo "usage: ./install.sh [home|work]"
-  echo "  home  base + extras ticked for home (default if nothing saved)"
-  echo "  work  base + extras ticked for work; drops home-only extras"
+  echo "usage: ./install.sh [profile]"
+  echo "  home   shipped home toolchain (default if nothing saved)"
+  echo "  work   shipped work toolchain; drops home-only extras"
+  echo "  <name> profiles/linux/<name>.json or ~/.config/wsl-setup/profiles/<name>.json"
 }
 
 read_step_file() {
@@ -102,6 +105,19 @@ read_step_file() {
     return 1
   fi
   tr -d '\r' <"$f" | grep -vE '^\s*(#|$)' || true
+}
+
+find_profile_file() {
+  local n="$1"
+  if [ -f "$HOME/.config/wsl-setup/profiles/${n}.json" ]; then
+    printf '%s\n' "$HOME/.config/wsl-setup/profiles/${n}.json"
+    return 0
+  fi
+  if [ -f "$ROOT/profiles/linux/${n}.json" ]; then
+    printf '%s\n' "$ROOT/profiles/linux/${n}.json"
+    return 0
+  fi
+  return 1
 }
 
 resolve_profile() {
@@ -115,14 +131,14 @@ resolve_profile() {
   fi
   requested="${requested:-home}"
   case "$requested" in
-    work|home) PROFILE="$requested" ;;
     -h|--help|help) usage; exit 0 ;;
-    *)
-      echo "unknown profile: $requested" >&2
-      usage >&2
-      exit 1
-      ;;
   esac
+  if ! PROFILE_FILE="$(find_profile_file "$requested")"; then
+    echo "unknown profile: $requested (no profiles/linux/${requested}.json)" >&2
+    usage >&2
+    exit 1
+  fi
+  PROFILE="$requested"
   mkdir -p "$(dirname "$PROFILE_STATE")"
   printf '%s\n' "$PROFILE" >"$PROFILE_STATE"
 }
@@ -164,13 +180,18 @@ ensure_brew_env() {
   return 0
 }
 
-# Uninstall extras not ticked for this profile (from profiles/tools.json).
+# Uninstall catalog packages not on this profile.
 prune_unselected_extras() {
   log "pruning extras not on profile=$PROFILE"
-  local line kind pkg
-  local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/profiles/tools.json")
+  local line kind pkg overlay=""
   if [ -f "$TOOLS_OVERLAY" ]; then
-    args+=("$TOOLS_OVERLAY")
+    overlay="$TOOLS_OVERLAY"
+  elif [ -f "$LEGACY_OVERLAY" ]; then
+    overlay="$LEGACY_OVERLAY"
+  fi
+  local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
+  if [ -n "$overlay" ]; then
+    args+=("$overlay")
   fi
   while IFS=$'\t' read -r kind pkg; do
     [ -n "$pkg" ] || continue
@@ -596,10 +617,16 @@ install_brew() {
   HOMEBREW_NO_AUTO_UPDATE=0 brew update || log "brew update reported errors (GitHub may be blocked); continuing"
   local generated
   generated="$(mktemp)"
+  local overlay=""
   if [ -f "$TOOLS_OVERLAY" ]; then
-    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/tools.json" "$TOOLS_OVERLAY" >"$generated"
+    overlay="$TOOLS_OVERLAY"
+  elif [ -f "$LEGACY_OVERLAY" ]; then
+    overlay="$LEGACY_OVERLAY"
+  fi
+  if [ -n "$overlay" ]; then
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE" "$overlay" >"$generated"
   else
-    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/tools.json" >"$generated"
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE" >"$generated"
   fi
   bundle_brewfile "$generated"
   rm -f "$generated"
@@ -872,10 +899,10 @@ main() {
   echo "CLIs update with:  brew update && brew upgrade"
   case "$PROFILE" in
     work)
-      echo "Work profile: extras from profiles/tools.json with work=true (Copilot CLI by default)."
+      echo "Work profile: profiles/linux/work.json (Copilot CLI; no grok/claude/opencode)."
       ;;
     home)
-      echo "Home profile: extras from profiles/tools.json with home=true (grok/claude/opencode by default)."
+      echo "Home profile: profiles/linux/home.json (grok/claude/opencode)."
       ;;
   esac
   if ((${#FAILED_STEPS[@]} > 0)); then

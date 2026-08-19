@@ -87,6 +87,8 @@ pub struct LinuxTool {
     #[serde(default)]
     pub pkg: String,
     #[serde(default)]
+    pub category: String,
+    #[serde(default)]
     pub layer: String,
     #[serde(default)]
     pub home: bool,
@@ -120,24 +122,6 @@ pub struct Inventory {
     pub linux_tools: LinuxToolsFile,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum LinuxProfile {
-    Home,
-    Work,
-    Skip,
-}
-
-impl LinuxProfile {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Home => "home",
-            Self::Work => "work",
-            Self::Skip => "skip",
-        }
-    }
-}
-
 pub fn default_keep_app(id: &str) -> bool {
     const SKIP: &[&str] = &[
         "Python.Python",
@@ -165,7 +149,7 @@ pub fn default_keep_app(id: &str) -> bool {
 pub fn repo_root() -> Option<std::path::PathBuf> {
     if let Ok(p) = std::env::var("WSL_SETUP_ROOT") {
         let p = std::path::PathBuf::from(p);
-        if p.join("profiles/tools.json").is_file() {
+        if p.join("profiles/linux.json").is_file() {
             return Some(p);
         }
     }
@@ -181,7 +165,7 @@ pub fn repo_root() -> Option<std::path::PathBuf> {
     for start in dirs {
         let mut cur = start;
         for _ in 0..8 {
-            if cur.join("profiles/tools.json").is_file() {
+            if cur.join("profiles/linux.json").is_file() {
                 return Some(cur);
             }
             if !cur.pop() {

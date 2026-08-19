@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "note": "Linux catalog. Profiles are ID lists in profiles/linux/<id>.json. apt is packages/apt.txt, not here.",
+  "tools": [
+    { "id": "starship", "name": "Starship", "kind": "brew", "pkg": "starship", "category": "environment" },
+    { "id": "zoxide", "name": "zoxide", "kind": "brew", "pkg": "zoxide", "category": "environment" },
+    { "id": "atuin", "name": "atuin", "kind": "brew", "pkg": "atuin", "category": "environment" },
+    { "id": "powershell", "name": "PowerShell 7", "kind": "brew", "pkg": "powershell", "category": "environment" },
+    { "id": "sevenzip", "name": "7-Zip (7zz)", "kind": "brew", "pkg": "sevenzip", "category": "environment" },
+
+    { "id": "uv", "name": "uv (Python)", "kind": "brew", "pkg": "uv", "category": "sdks" },
+    { "id": "rustup", "name": "rustup", "kind": "brew", "pkg": "rustup", "category": "sdks" },
+    { "id": "bun", "name": "bun", "kind": "brew", "pkg": "bun", "category": "sdks" },
+    { "id": "fnm", "name": "fnm (Node)", "kind": "brew", "pkg": "fnm", "category": "sdks" },
+    { "id": "go", "name": "Go", "kind": "brew", "pkg": "go", "category": "sdks" },
+    { "id": "dotnet", "name": ".NET SDK", "kind": "brew", "pkg": "dotnet", "category": "sdks" },
+    { "id": "openjdk", "name": "OpenJDK", "kind": "brew", "pkg": "openjdk", "category": "sdks" },
+
+    { "id": "gh", "name": "GitHub CLI", "kind": "brew", "pkg": "gh", "category": "devops" },
+    { "id": "dagger", "name": "Dagger", "kind": "brew", "pkg": "dagger", "category": "devops" },
+    { "id": "helm", "name": "Helm", "kind": "brew", "pkg": "helm", "category": "devops" },
+    { "id": "fluxcd", "name": "Flux CD", "kind": "brew", "pkg": "fluxcd", "category": "devops" },
+    { "id": "mongosh", "name": "mongosh", "kind": "brew", "pkg": "mongosh", "category": "devops" },
+    { "id": "kubectl", "name": "kubectl", "kind": "brew", "pkg": "kubernetes-cli", "category": "devops" },
+
+    { "id": "azure-cli", "name": "Azure CLI", "kind": "brew", "pkg": "azure-cli", "category": "cloud" },
+    { "id": "azure-dev", "name": "Azure Developer CLI", "kind": "brew", "pkg": "azure-dev", "category": "cloud" },
+    { "id": "saml2aws", "name": "saml2aws", "kind": "brew", "pkg": "saml2aws", "category": "cloud" },
+    { "id": "awscli", "name": "AWS CLI", "kind": "brew", "pkg": "awscli", "category": "cloud" },
+    { "id": "cloudflare-wrangler", "name": "Wrangler", "kind": "brew", "pkg": "cloudflare-wrangler", "category": "cloud" },
+    { "id": "cloudflared", "name": "cloudflared", "kind": "brew", "pkg": "cloudflared", "category": "cloud" },
+    { "id": "gcloud-cli", "name": "Google Cloud CLI", "kind": "cask", "pkg": "gcloud-cli", "category": "cloud" },
+
+    { "id": "1password-cli", "name": "1Password CLI", "kind": "cask", "pkg": "1password-cli", "category": "integrations" },
+    { "id": "stripe-cli", "name": "Stripe CLI", "kind": "brew", "pkg": "stripe-cli", "category": "integrations" },
+
+    { "id": "opencode", "name": "OpenCode", "kind": "brew", "pkg": "opencode", "category": "agents" },
+    { "id": "claude-code", "name": "Claude Code", "kind": "cask", "pkg": "claude-code", "category": "agents" },
+    { "id": "grok-build", "name": "Grok Build", "kind": "cask", "pkg": "grok-build", "category": "agents" },
+    { "id": "copilot-cli", "name": "GitHub Copilot CLI", "kind": "cask", "pkg": "copilot-cli", "category": "agents" },
+
+    { "id": "changie", "name": "changie", "kind": "brew", "pkg": "changie", "category": "content" },
+    { "id": "hugo", "name": "Hugo", "kind": "brew", "pkg": "hugo", "category": "content" },
+    { "id": "devtunnel", "name": "Dev Tunnels", "kind": "cask", "pkg": "devtunnel", "category": "content" }
+  ]
+}

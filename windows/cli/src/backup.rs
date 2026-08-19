@@ -8,14 +8,11 @@ use crate::model::*;
 #[allow(dead_code)]
 pub struct Selection<'a> {
     pub kit_root: String,
-    pub profile: LinuxProfile,
+    pub profile: String,
     pub inv: &'a Inventory,
     pub dest_idx: usize, // kept for restore metadata later
     pub app_keep: &'a [bool],
     pub wsl_keep: &'a [bool],
-    pub extra_home: &'a [bool],
-    pub extra_work: &'a [bool],
-    pub extras: &'a [LinuxTool],
     pub dev_drive: bool,
     pub docker: bool,
     pub browser: bool,
@@ -85,8 +82,8 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         }
         html.push_str("</ol></body></html>\n");
         fs::write(root.join("browser/extensions.html"), html).map_err(|e| e.to_string())?;
-        let ext_json = serde_json::to_string_pretty(&sel.inv.brave.extensions)
-            .map_err(|e| e.to_string())?;
+        let ext_json =
+            serde_json::to_string_pretty(&sel.inv.brave.extensions).map_err(|e| e.to_string())?;
         fs::write(root.join("inventory/brave-extensions.json"), ext_json)
             .map_err(|e| e.to_string())?;
     }
@@ -135,21 +132,9 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         ])
         .output();
 
-    let mut tools = sel.inv.linux_tools.clone();
-    let mut ei = 0usize;
-    for t in &mut tools.tools {
-        if t.layer == "base" {
-            continue;
-        }
-        if ei < sel.extra_home.len() {
-            t.home = sel.extra_home[ei];
-            t.work = sel.extra_work[ei];
-        }
-        ei += 1;
-    }
     fs::write(
         root.join("inventory/linux-tools.json"),
-        serde_json::to_string_pretty(&tools).map_err(|e| e.to_string())?,
+        serde_json::to_string_pretty(&sel.inv.linux_tools).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
 
@@ -174,13 +159,11 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         }));
     }
     let dev_drive_disk = if sel.dev_drive {
-        let live = sel
+        let live = sel.inv.dev_drive.vhdx.iter().find(|v| !v.on_c).or(sel
             .inv
             .dev_drive
             .vhdx
-            .iter()
-            .find(|v| !v.on_c)
-            .or(sel.inv.dev_drive.vhdx.first());
+            .first());
         Some(serde_json::json!({
             "keep": true,
             "livePath": live.map(|v| v.path.clone()),
@@ -199,8 +182,8 @@ pub fn write_kit(sel: &Selection<'_>) -> Result<String, String> {
         "computer": sel.inv.computer,
         "user": sel.inv.user,
         "windowsUserProfile": sel.inv.user_profile,
-        "linuxProfile": sel.profile.as_str(),
-        "linuxTools": tools,
+        "linuxProfile": sel.profile,
+        "linuxTools": sel.inv.linux_tools,
         "kitRoot": sel.kit_root,
         "selections": {
             "apps": app_ids,

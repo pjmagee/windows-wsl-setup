@@ -101,14 +101,15 @@ pub fn find_kits() -> Vec<PathBuf> {
 
 pub fn load_kit(dir: &Path) -> Result<LoadedKit, String> {
     let doc_path = dir.join("KIT.json");
-    let raw = fs::read_to_string(&doc_path).map_err(|e| format!("read {}: {e}", doc_path.display()))?;
-    let doc: KitDocument =
-        serde_json::from_str(&raw).map_err(|e| format!("KIT.json: {e}"))?;
+    let raw =
+        fs::read_to_string(&doc_path).map_err(|e| format!("read {}: {e}", doc_path.display()))?;
+    let doc: KitDocument = serde_json::from_str(&raw).map_err(|e| format!("KIT.json: {e}"))?;
     let mut apps = Vec::new();
     let apps_json = dir.join("inventory/apps.json");
     if apps_json.is_file() {
-        if let Ok(v) = serde_json::from_str::<Vec<WingetApp>>(&fs::read_to_string(apps_json).unwrap_or_default())
-        {
+        if let Ok(v) = serde_json::from_str::<Vec<WingetApp>>(
+            &fs::read_to_string(apps_json).unwrap_or_default(),
+        ) {
             apps = v;
         }
     }
@@ -120,7 +121,9 @@ pub fn load_kit(dir: &Path) -> Result<LoadedKit, String> {
                     for src in sources {
                         if let Some(pkgs) = src.get("Packages").and_then(|p| p.as_array()) {
                             for p in pkgs {
-                                if let Some(id) = p.get("PackageIdentifier").and_then(|x| x.as_str()) {
+                                if let Some(id) =
+                                    p.get("PackageIdentifier").and_then(|x| x.as_str())
+                                {
                                     apps.push(WingetApp {
                                         id: id.to_string(),
                                         name: id.to_string(),

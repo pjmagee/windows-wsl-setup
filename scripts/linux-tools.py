@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Render Homebrew files and prune lists from profiles/tools.json.
+"""Render Homebrew files and prune lists from the Linux catalog + a profile.
 
-  linux-tools.py brewfile home|work [catalog.json] [overlay.json]
-  linux-tools.py prune    home|work [catalog.json] [overlay.json]
+  linux-tools.py brewfile <profile> [catalog.json] [profile.json] [overlay.json]
+  linux-tools.py prune    <profile> [catalog.json] [profile.json] [overlay.json]
+
+Profile files are ID lists (profiles/linux/<id>.json). Overlay, if present:
+  { "tools": ["id", ...] }  replaces the profile ID list
 """
 from __future__ import annotations
 
@@ -15,43 +18,51 @@ def load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def merge(catalog: dict, overlay: dict | None) -> list[dict]:
-    tools = [dict(t) for t in catalog.get("tools", [])]
-    if not overlay:
-        return tools
-    by_id = {t["id"]: t for t in overlay.get("tools", []) if "id" in t}
-    out = []
+def profile_ids_from_doc(doc: dict) -> list[str]:
+    tools = doc.get("tools", [])
+    out: list[str] = []
     for t in tools:
-        o = by_id.get(t["id"])
-        if o is None:
-            out.append(t)
-            continue
-        m = dict(t)
-        if "home" in o:
-            m["home"] = bool(o["home"])
-        if "work" in o:
-            m["work"] = bool(o["work"])
-        if "layer" in o:
-            m["layer"] = o["layer"]
-        out.append(m)
+        if isinstance(t, str):
+            if t and t not in out:
+                out.append(t)
+        elif isinstance(t, dict) and t.get("id"):
+            i = str(t["id"])
+            if i not in out:
+                out.append(i)
     return out
 
 
-def selected(tool: dict, profile: str) -> bool:
-    if tool.get("layer") == "base":
-        return True
-    return bool(tool.get(profile, False))
+def resolve_ids(profile: str, catalog: dict, profile_doc: dict | None, overlay: dict | None) -> list[str]:
+    if overlay and isinstance(overlay.get("tools"), list):
+        tools = overlay["tools"]
+        if tools and all(isinstance(t, str) for t in tools):
+            return profile_ids_from_doc(overlay)
+    if profile_doc:
+        ids = profile_ids_from_doc(profile_doc)
+        if ids:
+            return ids
+    # Last resort: old catalog with home/work booleans + layer=base.
+    out: list[str] = []
+    for t in catalog.get("tools", []):
+        tid = t.get("id")
+        if not tid:
+            continue
+        if t.get("layer") == "base" or bool(t.get(profile, False)):
+            out.append(tid)
+    return out
 
 
-def brewfile(tools: list[dict], profile: str) -> str:
+def brewfile(catalog: dict, ids: list[str], profile: str) -> str:
+    wanted = set(ids)
     lines = [
-        f"# Generated for profile={profile} from profiles/tools.json. Do not edit.",
+        f"# Generated for profile={profile} from profiles/linux.json. Do not edit.",
         "",
     ]
-    for t in tools:
-        if not selected(t, profile):
+    for t in catalog.get("tools", []):
+        tid = t.get("id")
+        if tid not in wanted:
             continue
-        pkg = t.get("pkg") or t["id"]
+        pkg = t.get("pkg") or tid
         kind = t.get("kind", "brew")
         if kind == "cask":
             lines.append(f'cask "{pkg}"')
@@ -61,15 +72,14 @@ def brewfile(tools: list[dict], profile: str) -> str:
     return "\n".join(lines)
 
 
-def prune_pkgs(tools: list[dict], profile: str) -> list[tuple[str, str]]:
-    """Packages to uninstall for this profile: extras not ticked for it."""
+def prune_pkgs(catalog: dict, ids: list[str]) -> list[tuple[str, str]]:
+    wanted = set(ids)
     out = []
-    for t in tools:
-        if t.get("layer") == "base":
+    for t in catalog.get("tools", []):
+        tid = t.get("id")
+        if not tid or tid in wanted:
             continue
-        if selected(t, profile):
-            continue
-        out.append((t.get("kind", "brew"), t.get("pkg") or t["id"]))
+        out.append((t.get("kind", "brew"), t.get("pkg") or tid))
     return out
 
 
@@ -78,20 +88,25 @@ def main() -> int:
         print(__doc__.strip(), file=sys.stderr)
         return 2
     cmd, profile = sys.argv[1], sys.argv[2]
-    if profile not in ("home", "work"):
-        print(f"profile must be home or work, not {profile}", file=sys.stderr)
+    if not profile or profile.startswith("-"):
+        print(f"profile must be a name, not {profile!r}", file=sys.stderr)
         return 2
     root = Path(__file__).resolve().parent.parent
-    catalog_path = Path(sys.argv[3]) if len(sys.argv) > 3 else root / "profiles" / "tools.json"
-    overlay_path = Path(sys.argv[4]) if len(sys.argv) > 4 else None
+    catalog_path = Path(sys.argv[3]) if len(sys.argv) > 3 else root / "profiles" / "linux.json"
+    profile_path = Path(sys.argv[4]) if len(sys.argv) > 4 else root / "profiles" / "linux" / f"{profile}.json"
+    overlay_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
     catalog = load(catalog_path)
+    profile_doc = load(profile_path) if profile_path.is_file() else None
     overlay = load(overlay_path) if overlay_path and overlay_path.is_file() else None
-    tools = merge(catalog, overlay)
+    ids = resolve_ids(profile, catalog, profile_doc, overlay)
+    if not ids and cmd in ("brewfile", "prune"):
+        print(f"no tools for profile {profile} (missing {profile_path})", file=sys.stderr)
+        return 1
     if cmd == "brewfile":
-        sys.stdout.write(brewfile(tools, profile))
+        sys.stdout.write(brewfile(catalog, ids, profile))
         return 0
     if cmd == "prune":
-        for kind, pkg in prune_pkgs(tools, profile):
+        for kind, pkg in prune_pkgs(catalog, ids):
             print(f"{kind}\t{pkg}")
         return 0
     print(f"unknown command {cmd}", file=sys.stderr)

@@ -2,7 +2,7 @@
 name = "windows-wsl-setup"
 version = "0.1.0"
 edition = "2021"
-description = "Windows WSL Setup — collect a kit on this PC, restore it on a fresh Windows 11 machine"
+description = "Windows WSL Setup — collect, restore, New WSL, and named software profiles"
 license = "MIT"
 publish = false
 

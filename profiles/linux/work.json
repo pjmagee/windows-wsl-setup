@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "work",
+  "name": "Work",
+  "tools": [
+    "starship", "zoxide", "atuin", "powershell", "sevenzip",
+    "uv", "rustup", "bun", "fnm", "go", "dotnet",
+    "gh", "dagger", "helm", "fluxcd", "mongosh",
+    "azure-cli", "azure-dev", "saml2aws", "awscli",
+    "cloudflare-wrangler", "cloudflared", "gcloud-cli",
+    "1password-cli",
+    "copilot-cli"
+  ]
+}

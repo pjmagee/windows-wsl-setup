@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "home",
+  "name": "Home",
+  "windows": "home",
+  "linux": "home",
+  "wsl": { "distro": "Ubuntu-26.04", "createIfMissing": true }
+}

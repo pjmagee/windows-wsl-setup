@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "work",
+  "name": "Work",
+  "windows": "work",
+  "linux": "work",
+  "wsl": { "distro": "Ubuntu-26.04", "createIfMissing": true }
+}

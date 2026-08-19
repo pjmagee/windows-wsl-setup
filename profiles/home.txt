@@ -1,2 +1,2 @@
 # Extra install_* steps for home (on top of profiles/base.txt).
-# Homebrew extras are ticked in profiles/tools.json (home: true).
+# Homebrew extras for this profile live in profiles/linux/home.json.

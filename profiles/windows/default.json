@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "Default",
+  "packages": [
+    "Microsoft.WindowsTerminal",
+    "Microsoft.PowerShell",
+    "Microsoft.PowerToys",
+    "JanDeDobbeleer.OhMyPosh",
+    "Brave.Brave",
+    "AgileBits.1Password",
+    "Microsoft.VisualStudioCode",
+    "Docker.DockerDesktop",
+    "Git.Git",
+    "7zip.7zip"
+  ]
+}

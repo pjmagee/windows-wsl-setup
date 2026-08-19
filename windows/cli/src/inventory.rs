@@ -25,9 +25,13 @@ pub fn collect() -> Result<Inventory, String> {
     })
 }
 
+pub fn winget_apps_pub() -> Vec<WingetApp> {
+    winget_apps()
+}
+
 fn load_linux_tools() -> LinuxToolsFile {
     if let Some(root) = repo_root() {
-        let p = root.join("profiles/tools.json");
+        let p = root.join("profiles/linux.json");
         if let Ok(raw) = fs::read_to_string(&p) {
             if let Ok(v) = serde_json::from_str::<LinuxToolsFile>(&raw) {
                 return v;
@@ -148,9 +152,8 @@ fn disk_space(root: &str) -> (u64, u64) {
         .collect();
     let mut free = 0u64;
     let mut total = 0u64;
-    let ok = unsafe {
-        GetDiskFreeSpaceExW(wide.as_ptr(), std::ptr::null_mut(), &mut total, &mut free)
-    };
+    let ok =
+        unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), std::ptr::null_mut(), &mut total, &mut free) };
     if ok == 0 {
         (0, 0)
     } else {
@@ -296,7 +299,10 @@ fn wsl_distros() -> Vec<WslDistro> {
 
 fn dev_drive() -> DevDrive {
     let mut vhdx = Vec::new();
-    for p in ["E:\\DevDrive\\Dev Drive.vhdx", "C:\\DevDrive\\Dev Drive.vhdx"] {
+    for p in [
+        "E:\\DevDrive\\Dev Drive.vhdx",
+        "C:\\DevDrive\\Dev Drive.vhdx",
+    ] {
         let path = Path::new(p);
         if path.is_file() {
             vhdx.push(VhdCandidate {
@@ -390,11 +396,15 @@ fn brave(local: &str) -> BraveInfo {
 }
 
 fn dotfiles(user_profile: &str, local: &str) -> Vec<Dotfile> {
-    let docs = PathBuf::from(user_profile).join(r"Documents\PowerShell\Microsoft.PowerShell_profile.ps1");
+    let docs =
+        PathBuf::from(user_profile).join(r"Documents\PowerShell\Microsoft.PowerShell_profile.ps1");
     let items = [
         ("wslconfig", PathBuf::from(user_profile).join(".wslconfig")),
         ("gitconfig", PathBuf::from(user_profile).join(".gitconfig")),
-        ("sshConfig", PathBuf::from(user_profile).join(r".ssh\config")),
+        (
+            "sshConfig",
+            PathBuf::from(user_profile).join(r".ssh\config"),
+        ),
         (
             "sshKnownHosts",
             PathBuf::from(user_profile).join(r".ssh\known_hosts"),
@@ -405,9 +415,8 @@ fn dotfiles(user_profile: &str, local: &str) -> Vec<Dotfile> {
         ),
         (
             "terminal",
-            PathBuf::from(local).join(
-                r"Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
-            ),
+            PathBuf::from(local)
+                .join(r"Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"),
         ),
         ("psProfile", docs),
     ];

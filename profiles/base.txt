@@ -1,5 +1,5 @@
 # Shared toolchain steps. Both home and work run these.
-# Extra Homebrew packages are selected in profiles/tools.json (home/work ticks).
+# Extra Homebrew packages are selected in profiles/linux/<profile>.json.
 # One install_* name per line. Comments and blanks are ignored.
 install_apt
 install_homebrew

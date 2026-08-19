@@ -2,7 +2,9 @@
 
 Playbook for **Linux toolchain / work-laptop** agents.
 
-Home PC reset (Collect / Restore) is **not this file**. That is `windows-wsl-setup.exe`. See [README.md](README.md) and `.agents/skills/windows-wsl-setup/SKILL.md`.
+Home PC reset (**Collect** / **Restore**) and empty-Ubuntu (**New WSL**) are
+**not this file**. That is `windows-wsl-setup.exe`. See [README.md](README.md)
+and `.agents/skills/windows-wsl-setup/SKILL.md`.
 
 You are bootstrapping the **same WSL 2 Ubuntu 26.04 workstation** this repo
 defines — typically a **clean Windows 11 work laptop** that has none of the
@@ -23,9 +25,13 @@ Suggested first message (work laptop / first WSL):
 
 Suggested first message (used PC, about to reset, or fresh PC with a kit):
 
-> Run Windows WSL Setup. Finish anything the exe cannot click (1Password SSH, Steam library, Docker WSL, Brave Add buttons). Then inside Ubuntu: ./install.sh home
+> Run Windows WSL Setup. Collect or Restore. Finish anything the exe cannot click (1Password SSH, Steam library, Docker WSL, Brave Add buttons). Do not clone. Do not run install.sh — the restored WSL disk already has Linux tools.
 
-The exe is Collect/Restore. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/windows-wsl-setup/SKILL.md`.
+Suggested first message (empty Ubuntu / no kit):
+
+> Run Windows WSL Setup → New WSL → home (or work). Always Ubuntu 26.04.
+
+The exe is Collect / Restore / New WSL. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/windows-wsl-setup/SKILL.md`.
 
 ---
 
@@ -49,7 +55,9 @@ else echo "windows"; fi
 |---|---|
 | Windows, human asked to **capture / backup** a used PC | **§0a**. `windows-wsl-setup.exe` **Collect**. Do not run `install.sh`. |
 | Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `windows-wsl-setup.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
-| Windows PowerShell / cmd / Git Bash (normal WSL setup) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
+| Windows, human wants a **new empty Ubuntu** (no kit) | **§0a**. `windows-wsl-setup.exe` **New WSL** (a linux profile). Ubuntu 26.04 only. |
+| Windows, human wants a **default / custom software set** (no kit) | **§0a**. `windows-wsl-setup.exe` **Profiles** or `apply <id>`. |
+| Windows PowerShell / cmd / Git Bash (cloned repo, work laptop) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
@@ -59,14 +67,20 @@ else echo "windows"; fi
 End users download `windows-wsl-setup.exe` from GitHub Releases (no clone).
 
 ```
-windows-wsl-setup              Collect or Restore
+windows-wsl-setup              Collect / Restore / New WSL
 windows-wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
 windows-wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
+windows-wsl-setup new-wsl      Ubuntu 26.04 + passwordless sudo + a linux profile
+windows-wsl-setup profiles     edit / suggest / apply a named software profile
+windows-wsl-setup suggest      draft Windows+Linux profile from winget list (JSON)
+windows-wsl-setup apply home   winget + optional New WSL (not a kit restore)
 ```
 
 Do not tell the user to run PowerShell scripts or git clone for this. Maintainers build `windows/cli`.
 
-Never write the kit on `C:`. Never unregister WSL. Linux toolchains stay inside WSL after restore (`./install.sh home` or `work` from `KIT.json`).
+Never write the kit on `C:`. Never unregister WSL. Restore brings the **existing** Linux disk back; do not run New WSL unless they have no disk to restore.
+
+New WSL does not ask which distro or package manager. apt + Homebrew on Ubuntu 26.04 only.
 
 `uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64.
 Stop on ARM.
@@ -74,6 +88,9 @@ Stop on ARM.
 ---
 
 ## 1. Windows-host playbook (work laptop)
+
+Humans without a clone: `windows-wsl-setup.exe` → **New WSL** → **work**.
+This section is for Copilot (or you) **after this repo is already cloned**.
 
 Goal: Ubuntu 26.04 exists on this **already-present** work laptop, `sudo -n`
 works for the user that is already on that distro, `wsl` and `ubuntu` open
@@ -253,10 +270,11 @@ Profiles (there is no `universal`):
 
 | Profile | Steps | Homebrew |
 |---|---|---|
-| `home` | [`profiles/base.txt`](profiles/base.txt) + [`profiles/home.txt`](profiles/home.txt) | base tools + extras with `home: true` in [`profiles/tools.json`](profiles/tools.json) |
-| `work` | base + [`profiles/work.txt`](profiles/work.txt) | base + extras with `work: true`. Uninstalls home-only extras. |
+| `home` | [`profiles/base.txt`](profiles/base.txt) + [`profiles/home.txt`](profiles/home.txt) | IDs in [`profiles/linux/home.json`](profiles/linux/home.json) |
+| `work` | base + [`profiles/work.txt`](profiles/work.txt) | [`profiles/linux/work.json`](profiles/linux/work.json). Prunes IDs not on that list. |
+| custom | same script steps as the closest shipped name, or base only | `~/.config/wsl-setup/profiles/<name>.json` |
 
-A kit overlay at `~/.config/wsl-setup/tools.json` (from capture ticks) overrides the home/work flags. Edit `profiles/tools.json` to change the repo defaults. Do not invent a third profile.
+Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux.json). Overlay `{ "tools": ["id", ...] }` at `~/.config/wsl-setup/linux-profile.json` replaces the ID list.
 
 ---
 
@@ -273,9 +291,10 @@ A kit overlay at `~/.config/wsl-setup/tools.json` (from capture ticks) overrides
   bottles). `brew update && brew upgrade` is the “update all CLIs” command.
   Do not add a third package manager. Compass (Linux GUI) and Cloudflare `cf`
   are not in Homebrew; those stay as special `install_*` steps.
-- **Only `home` and `work` profiles.** Shared packages are `layer: base` in
-  `profiles/tools.json`. Extras are ticked `home` and/or `work`. Do not
-  reintroduce a `universal` profile.
+- **Shipped linux profiles are `home` and `work`.** They are ID lists in
+  `profiles/linux/`. Custom names are allowed (file must exist). Do not
+  reintroduce a `universal` profile. Categories live on the catalog, not on
+  the profile.
 - **Do not reinstall `wslu` / `wslview`.** Ubuntu 26.04 dropped them. Links go
   through `scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
@@ -327,7 +346,7 @@ laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
-| Add a CLI / runtime | Entry in [`profiles/tools.json`](profiles/tools.json) (`layer: base` or extra with `home`/`work` ticks), line in `print_summary` |
+| Add a CLI / runtime | Entry in [`profiles/linux.json`](profiles/linux.json) + id on the right `profiles/linux/<name>.json`, line in `print_summary` |
 | Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in the right [`profiles/*.txt`](profiles/) file |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
@@ -346,11 +365,15 @@ Do not leave placeholders for unrelated work.
 ```
 .gitattributes             # LF for shell that runs in WSL
 install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
-profiles/tools.json        # base Homebrew + extra ticks (home / work)
+profiles/linux.json        # Linux catalog (category + brew/cask)
+profiles/linux/*.json      # linux profile ID lists (home, work, …)
+profiles/windows.json      # curated winget catalog + linux equivalents
+profiles/windows/*.json    # windows profile ID lists
+profiles/bundles/*.json    # windows + linux + Ubuntu-26.04
 profiles/base.txt          # shared install_* steps (apt, brew, post-steps)
 profiles/work.txt          # extra install_* for work
 profiles/home.txt          # extra install_* for home
-scripts/linux-tools.py     # renders Brewfile / prune list from tools.json
+scripts/linux-tools.py     # renders Brewfile / prune list from catalog + profile
 packages/apt.txt           # apt packages (no language runtimes)
 scripts/wsl-open           # http(s)/mailto → Windows default browser
 starship.toml              # seed config (scan_timeout for /mnt/c)

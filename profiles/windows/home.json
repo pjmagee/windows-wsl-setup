@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "home",
+  "name": "Home",
+  "packages": [
+    "Microsoft.WindowsTerminal",
+    "Microsoft.PowerShell",
+    "Microsoft.PowerToys",
+    "JanDeDobbeleer.OhMyPosh",
+    "Brave.Brave",
+    "AgileBits.1Password",
+    "Microsoft.VisualStudioCode",
+    "Docker.DockerDesktop",
+    "Git.Git",
+    "7zip.7zip",
+    "xAI.GrokBuild",
+    "Anthropic.Claude",
+    "Anthropic.ClaudeCode",
+    "Anysphere.Cursor",
+    "Valve.Steam",
+    "EpicGames.EpicGamesLauncher",
+    "VideoLAN.VLC",
+    "Discord.Discord",
+    "Piriform.CCleaner",
+    "SteelSeries.GG"
+  ]
+}

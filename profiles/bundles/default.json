@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "Default (fresh PC, no kit)",
+  "windows": "default",
+  "linux": "home",
+  "wsl": { "distro": "Ubuntu-26.04", "createIfMissing": true }
+}
