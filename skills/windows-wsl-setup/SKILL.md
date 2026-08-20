@@ -25,7 +25,10 @@ npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 Confirm the host is Windows (not WSL, not Git Bash). Install the latest exe into `~\.wwm` — do not clone and do not build unless developing:
 
 ```
-curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
+New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+$env:Path = "$HOME\.wwm;$env:Path"
+wwm
 ```
 
 If that 404s, stop. Do not clone as a substitute.

@@ -7,12 +7,7 @@ group: Start
 
 The skill teaches an agent to download the exe and run Collect, Restore, New WSL, or Apply. Install it at **user** scope so it works on a used PC and on a fresh Windows 11.
 
-<p class="cta-row">
-  <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe">Download for Windows</a>
-  <a class="btn ghost" href="https://github.com/pjmagee/windows-wsl-manager/releases">View releases</a>
-</p>
-
-## Install
+## Install the skill
 
 **GitHub CLI** 2.90+:
 
@@ -41,11 +36,7 @@ Or ask the agent to read [SKILL.md](https://raw.githubusercontent.com/pjmagee/wi
 ## Drive
 
 1. Confirm Windows (not WSL, not Git Bash).
-2. Install `wwm.exe` into `~\.wwm` (PowerShell):
-
-```
-curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
-```
+2. Install `wwm.exe` into `~\.wwm` with the PowerShell block above.
 3. **Collect** on the used PC. **Restore** on the new PC. **New WSL** or **apply** if there is no kit.
 4. Password manager first, then Brave.
 5. Do not format data drives. Do not unregister a distro unless the human confirms.

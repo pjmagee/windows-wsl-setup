@@ -1,6 +1,7 @@
 ---
 import { render } from 'astro:content';
 import Doc from '../../layouts/Doc.astro';
+import Install from '../../components/Install.astro';
 import { allDocs } from '../../lib/docs';
 
 export async function getStaticPaths() {
@@ -13,10 +14,12 @@ export async function getStaticPaths() {
 
 const { doc } = Astro.props;
 const { Content } = await render(doc);
+const showInstall = doc.id === 'download' || doc.id === 'getting-started' || doc.id === 'agents';
 ---
 <Doc title={doc.data.title} description={doc.data.description} slug={doc.id}>
   <p class="kicker">{doc.data.group}</p>
   <h1>{doc.data.title}</h1>
   <p class="lede">{doc.data.description}</p>
+  {showInstall && <Install />}
   <Content />
 </Doc>

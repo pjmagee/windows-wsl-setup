@@ -5,7 +5,10 @@ Export a messy Windows 11 PC. Restore it after a clean install. Or stand up Linu
 Download `wwm.exe` from **Releases**, or PowerShell:
 
 ```
-curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
+New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+$env:Path = "$HOME\.wwm;$env:Path"
+wwm
 ```
 
 Do not clone this repo to use it. Site: <https://pjmagee.github.io/windows-wsl-manager/>

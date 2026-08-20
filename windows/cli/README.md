@@ -3,7 +3,10 @@
 People download `wwm.exe` from Releases, or:
 
 ```
-curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
+New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+$env:Path = "$HOME\.wwm;$env:Path"
+wwm
 ```
 
 They never clone this folder.

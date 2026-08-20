@@ -335,6 +335,23 @@ h1 {
   font-size: 0.7rem;
 }
 .wt-w.x:hover { background: #e81123; color: #fff; }
+.copy {
+  margin: 6px 10px 6px auto;
+  align-self: center;
+  height: 24px;
+  padding: 0 0.75rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #2d2d2d;
+  color: #eee;
+  font-family: "Segoe UI", var(--font);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.copy:hover { background: #3a3a3a; }
+.wt-install { box-shadow: none; margin: 0 0 1.7rem; }
+.wt-install-body { min-height: 0; }
+.doc .install .cta-row { margin-top: 0; }
 .wt-body {
   padding: 0.65rem 0.85rem 0.9rem;
   min-height: 17rem;

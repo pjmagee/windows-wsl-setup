@@ -1,6 +1,6 @@
 [package]
 name = "wwm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Windows WSL Manager — collect, restore, New WSL, and named software profiles"
 license = "MIT"
