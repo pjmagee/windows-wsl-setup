@@ -1,8 +1,8 @@
 [package]
-name = "windows-wsl-setup"
+name = "wwm"
 version = "0.1.0"
 edition = "2021"
-description = "Windows WSL Setup — collect, restore, New WSL, and named software profiles"
+description = "Windows WSL Manager — collect, restore, New WSL, and named software profiles"
 license = "MIT"
 publish = false
 

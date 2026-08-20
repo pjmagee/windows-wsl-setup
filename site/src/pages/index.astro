@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Terminal from '../components/Terminal.astro';
+import { EXE } from '../lib/links';
 
 const base = import.meta.env.BASE_URL;
 ---
@@ -16,15 +17,14 @@ const base = import.meta.env.BASE_URL;
     <div class="wrap hero-grid">
       <div>
         <p class="kicker">windows 11 + wsl</p>
-        <h1>Manage this PC.<br />And the Linux next to it.</h1>
+        <h1>Manage Windows 11 &amp;<br />WSL Distros</h1>
         <p class="lede">
-          One Windows binary. Snapshot apps, data volumes, and Linux disks.
-          Restore them after a clean install — or stand up Ubuntu, Debian, or
-          Arch from a named software profile.
+          Collect a kit and restore it on a new installation of Windows.
+          Restore existing WSL instances or provision new ones.
         </p>
         <div class="cta-row">
-          <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases">Download the exe</a>
-          <a class="btn ghost" href={`${base}docs/getting-started/`}>Get started</a>
+          <a class="btn" href={EXE}>Download for Windows</a>
+          <a class="btn ghost" href={`${base}docs/getting-started/`}>Documentation</a>
         </div>
       </div>
       <Terminal />
@@ -33,32 +33,27 @@ const base = import.meta.env.BASE_URL;
 
   <section class="section">
     <div class="wrap">
-      <h2>Four modes, same exe</h2>
-      <p class="sub">
-        Run <code>windows-wsl-setup</code> with no arguments. The home screen
-        is the product: Collect, Restore, New WSL, Profiles. A kit is what
-        this machine has. A profile is what you want installed.
-      </p>
+      <h2>Collect, Restore, New WSL, Profiles</h2>
       <div class="cards">
         <article class="card">
           <div class="n">01 · collect</div>
-          <h3>Snapshot this PC</h3>
-          <p>Winget apps, WSL disks, Dev Drive, Docker data, Brave bookmarks. Written off <code>C:</code> so a Windows reinstall cannot eat it.</p>
+          <h3>Collect a kit</h3>
+          <p>Snapshot this PC — apps, WSL disks, Dev Drive, Docker, Brave. Restore it on a new installation of Windows.</p>
         </article>
         <article class="card">
           <div class="n">02 · restore</div>
-          <h3>Bring the kit back</h3>
-          <p>Fresh Windows 11. Install the packages you tick, remount the same disks, copy Brave bookmarks, open the extensions list.</p>
+          <h3>Restore WSL</h3>
+          <p>Restore existing WSL instances. Remount the collected disks and install the packages you tick.</p>
         </article>
         <article class="card">
           <div class="n">03 · new wsl</div>
-          <h3>Or start Linux new</h3>
-          <p>Ubuntu 26.04, Debian, or Arch. User, passwordless sudo, Homebrew CLIs. You never clone; the exe clones the installer inside Linux.</p>
+          <h3>Provision Linux</h3>
+          <p>Ubuntu, Debian, or Arch. Auto-configures passwordless sudo. Homebrew installations.</p>
         </article>
         <article class="card">
           <div class="n">04 · profiles</div>
-          <h3>Named software lists</h3>
-          <p>Shipped <code>default</code>, <code>home</code>, and <code>work</code>. Suggest from what is installed. Apply never uninstalls Windows apps.</p>
+          <h3>Apply a profile</h3>
+          <p><code>default</code>, <code>home</code>, and <code>work</code> — or save your own.</p>
         </article>
       </div>
     </div>
@@ -67,24 +62,23 @@ const base = import.meta.env.BASE_URL;
   <section class="section">
     <div class="wrap split">
       <div>
-        <h2>Hand it to an agent</h2>
+        <h2>Built for agents</h2>
         <p class="sub">
-          Grok, Claude, Codex, Copilot. Install the skill from this GitHub
-          repo, then say “collect this PC” or “apply work.” They download the
-          exe. They do not clone as a substitute.
+          Install the skill. Tell Grok, Claude, Codex, or Copilot to collect
+          this PC, restore a kit, or apply a profile.
         </p>
         <p class="note">
-          Identity first (password manager), then Brave, then the rest.
-          Linux CLIs come from Homebrew on the distro you picked.
+          Winget installs the password manager first, then the browser, then
+          the rest. Linux CLIs come from Homebrew.
         </p>
       </div>
       <pre><code>gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
 npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl
-windows-wsl-setup apply default</code></pre>
+wwm collect
+wwm restore
+wwm new-wsl
+wwm apply default</code></pre
     </div>
   </section>
   <script>

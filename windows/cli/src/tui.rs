@@ -256,7 +256,7 @@ fn home_choice() -> Result<HomeChoice, String> {
                 .collect();
             let w = List::new(list_items).block(
                 Block::bordered()
-                    .title(" Windows WSL Setup ")
+                    .title(" wwm ")
                     .border_style(Style::new().fg(Color::DarkGray)),
             );
             let chunks =
@@ -369,7 +369,7 @@ fn draw(f: &mut Frame, app: &App) {
         .highlight_style(Style::new().fg(mint()).bold())
         .block(
             Block::bordered()
-                .title(" Windows WSL Setup  collect ")
+                .title(" wwm  collect ")
                 .border_style(Style::new().fg(Color::DarkGray)),
         );
     f.render_widget(tabs, chunks[0]);

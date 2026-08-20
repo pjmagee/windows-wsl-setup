@@ -5,12 +5,12 @@ fn main() {
     }
     let mut res = winresource::WindowsResource::new();
     res.set_icon("assets/app.ico");
-    res.set("ProductName", "Windows WSL Setup");
+    res.set("ProductName", "Windows WSL Manager");
     res.set(
         "FileDescription",
         "Collect, restore, New WSL, and named software profiles",
     );
-    res.set("OriginalFilename", "windows-wsl-setup.exe");
-    res.set("InternalName", "windows-wsl-setup");
+    res.set("OriginalFilename", "wwm.exe");
+    res.set("InternalName", "wwm");
     res.compile().expect("embed Windows resources");
 }

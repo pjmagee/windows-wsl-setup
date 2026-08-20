@@ -59,7 +59,7 @@ SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 
 
 def load_font_bytes() -> bytes:
-    cache = Path.home() / ".cache" / "windows-wsl-setup" / "IBMPlexMono-Medium.ttf"
+    cache = Path.home() / ".cache" / "wwm" / "IBMPlexMono-Medium.ttf"
     if cache.is_file() and cache.stat().st_size > 10_000:
         return cache.read_bytes()
     last_err: Exception | None = None

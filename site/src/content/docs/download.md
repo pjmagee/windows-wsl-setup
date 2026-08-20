@@ -1,26 +1,32 @@
 ---
 title: Download
-description: Get the Windows binary. Do not clone the repo.
+description: Collect a kit. Restore Windows 11 and WSL.
 order: 2
 group: Start
 ---
 
-1. Open [Releases](https://github.com/pjmagee/windows-wsl-manager/releases).
-2. Download `windows-wsl-setup.exe`.
-3. Run it. Home screen: **Collect**, **Restore**, **New WSL**, **Profiles**.
+<p class="cta-row">
+  <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe">Download for Windows</a>
+  <a class="btn ghost" href="https://github.com/pjmagee/windows-wsl-manager/releases">View releases</a>
+</p>
 
-That filename is the current release artifact of **Windows WSL Manager**. There is no MSI. Agents download the same file from:
+<p class="cta-meta">wwm.exe · Windows 11 · x86_64 · installs to ~\.wwm</p>
 
-`https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/windows-wsl-setup.exe`
+PowerShell — download, put it on PATH for this session, run:
 
 ```
-windows-wsl-setup
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl
-windows-wsl-setup profiles
+curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
 ```
 
-JSON commands (catalog, profile, suggest, apply, map, search, distros) are listed under [Automate](../automate/). First-run leftovers and which mode to pick: [Getting started](../getting-started/).
+Then:
 
-If Windows just enabled WSL, reboot when asked, then run the exe again.
+```
+wwm collect
+wwm restore
+wwm new-wsl
+wwm profiles
+```
+
+Which mode: [Getting started](../getting-started/). JSON CLI: [Automate](../automate/).
+
+If Windows just enabled WSL, reboot when asked and run `wwm` again.

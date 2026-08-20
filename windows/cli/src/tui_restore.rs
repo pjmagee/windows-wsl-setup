@@ -237,7 +237,7 @@ fn draw(f: &mut Frame, app: &App) {
             .highlight_style(Style::new().fg(mint()).bold())
             .block(
                 Block::bordered()
-                    .title(" Windows WSL Setup  restore ")
+                    .title(" wwm  restore ")
                     .border_style(Style::new().fg(Color::DarkGray)),
             ),
         chunks[0],

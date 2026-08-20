@@ -288,7 +288,7 @@ fn draw(f: &mut Frame, app: &App) {
     f.render_widget(
         Paragraph::new(head).block(
             Block::bordered()
-                .title(" Windows WSL Setup  new WSL ")
+                .title(" wwm  new WSL ")
                 .border_style(Style::new().fg(Color::DarkGray)),
         ),
         chunks[0],

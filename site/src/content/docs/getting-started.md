@@ -1,62 +1,59 @@
 ---
 title: Getting started
-description: Download the exe, pick a path, and finish what the binary cannot click.
+description: Collect a kit. Restore existing WSL instances or provision new ones.
 order: 1
 group: Start
 ---
 
-**Windows WSL Manager** is one Windows console app. You do not clone this repo to use it.
+<p class="cta-row">
+  <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe">Download for Windows</a>
+  <a class="btn ghost" href="https://github.com/pjmagee/windows-wsl-manager/releases">View releases</a>
+</p>
 
-Four modes, same binary:
+```
+curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
+```
 
 | You have | You want | Run |
 |---|---|---|
-| A used Windows 11 PC | A snapshot that survives a reinstall | **Collect** |
-| That snapshot on a data drive | The same apps and disks on a fresh Windows 11 | **Restore** |
-| No snapshot | A new Linux environment | **New WSL** |
-| A named software list | Winget packages and/or Linux CLIs | **Profiles** → **Apply** |
+| A used Windows 11 PC | A kit that survives a reinstall | **Collect** |
+| That kit on a data drive | The same apps and disks on fresh Windows 11 | **Restore** |
+| No kit | A new Linux environment | **New WSL** |
+| A named software list | Winget packages and Linux CLIs | **Profiles** |
 
-A **kit** is a snapshot of *this* machine. A **profile** is a list of *what you want*. Restore wins when the Linux disk still exists. Apply does not remount disks.
-
-## 1. Get the exe
-
-1. Open [Releases](https://github.com/pjmagee/windows-wsl-manager/releases).
-2. Download `windows-wsl-setup.exe` (current release name of the manager).
-3. Run it. The home screen is Collect / Restore / New WSL / Profiles.
+**Collect** writes a kit. **Restore** remounts its WSL VHDX. **New WSL** provisions a distro. **Profiles** apply a list.
 
 ```
-windows-wsl-setup
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl
-windows-wsl-setup profiles
+wwm
+wwm collect
+wwm restore
+wwm new-wsl
+wwm profiles
 ```
 
-No installer wizard. If Windows just enabled WSL, it may ask to reboot — reboot, then run the exe again.
+If Windows just enabled WSL, reboot when asked and run `wwm` again.
 
-Prefer an agent? [Install the skill](../agents/), then ask it to download the latest release and drive Collect, Restore, New WSL, or Apply.
+Prefer an agent? [Install the skill](../agents/).
 
-## 2. Pick the path
+## Paths
 
-**Collect** (used PC). Destination must **not** be `C:` and should not be a volume you might format later. Tick winget apps by category, Linux disks to keep, and host leftovers (Dev Drive, Docker data, Brave bookmarks, dotfiles). The kit folder gets `KIT.json`, a copy of the exe, and `START-HERE.txt`.
+**Collect** — destination must not be the system drive. Tick winget apps, WSL disks, and host leftovers (Dev Drive, Docker data, Brave, Windows dotfiles). The kit folder contains KIT.json, a copy of the exe, and START-HERE.txt.
 
-**Restore** (fresh Windows 11 + a kit). Leave data drives alone. The exe looks for `KIT.json` under `D:`–`Z:\Backups`. Tick packages, confirm remounting disks, then Apply. Brave bookmarks are copied; `extensions.html` opens so you click **Add** yourself.
+**Restore** — leave data drives intact. The TUI finds KIT.json in a Backups folder on a data drive. Tick packages, remount disks, Apply. Brave bookmarks are copied. extensions.html opens for extensions.
 
-**New WSL** (no disk to bring back). Pick a distro still listed in `wsl --list --online`: **Ubuntu-26.04** (default), **Debian**, or **archlinux**. Then a linux profile (`home`, `work`, or custom). The exe enables WSL if needed, installs that distro, creates a Linux user from your Windows username, turns on passwordless sudo, clones the Linux installer inside the distro, and runs it.
+**New WSL** — Ubuntu, Debian, or Arch, plus a linux profile. Enables WSL, installs the distro, auto-configures passwordless sudo, and applies the profile. Homebrew installations follow.
 
-**Profiles** (no kit). Tick Windows and Linux packages, optionally create WSL, then Apply. `g` drafts a profile from what is already installed. `s` saves a user profile. Apply **installs**; it never uninstalls Windows apps. Linux setup may drop CLIs that are not on the chosen linux profile.
+**Profiles** — tick Windows and Linux packages, optionally create WSL, Apply. Suggest from this PC (`g`). Save a user profile (`s`).
 
-Details: [Kits](../kits/), [Profiles](../profiles/), [New Linux vs restore](../wsl/).
+Details: [Kits](../kits/), [Profiles](../profiles/), [WSL](../wsl/).
 
-## 3. What the exe cannot click
-
-Do these once, after Restore or New WSL:
+## After Restore or New WSL
 
 - **1Password** — sign in, enable **Use the SSH agent**. Turn the Windows OpenSSH Authentication Agent service **off**.
-- **Brave** — click **Add** on each store page from `extensions.html`.
-- **Steam / Epic** — add the existing library folder; do not re-download games that already sit on a data drive.
-- **Docker Desktop** — enable WSL integration for the distro you restored or created (**Ubuntu-26.04** if that is the new default).
-- **VS Code** — install the WSL extension; open a Linux path, not `/mnt/c`.
-- Linux disk **Access Denied** after remount: grant SID `S-1-5-83-0` Full control on that VHDX.
+- **Brave** — **Add** each extension from extensions.html.
+- **Steam / Epic** — point at the existing library folder.
+- **Docker Desktop** — enable WSL integration for the distro you restored or created.
+- **VS Code** — WSL extension; open a Linux path.
+- **Access Denied** on a remounted VHDX — grant SID `S-1-5-83-0` Full control.
 
-Never format a data drive to “clean up.” Never `wsl --unregister` unless you meant to delete that disk.
+<p class="note">Do not format data drives. Do not <code>wsl --unregister</code> unless you intend to delete that disk.</p>

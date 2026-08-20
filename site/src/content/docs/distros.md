@@ -1,26 +1,29 @@
 ---
 title: Distros
-description: Official Linux targets, and what we bootstrap on each.
+description: Ubuntu, Debian, and Arch.
 order: 7
 group: Reference
 ---
 
-| Situation | Distro |
-|---|---|
-| Restore a kit | Whatever disk you collected. We do not convert it. |
-| New WSL / Apply linux | **Ubuntu 26.04** (default), **Debian**, or **Arch** (`archlinux`) |
-| Other distros already installed | Left alone. We never unregister them. |
+New WSL provisions **Ubuntu** (default), **Debian**, or **Arch**. Restore remounts existing WSL instances. Distros already on the machine stay installed.
 
-CLIs (uv, bun, rust, git extras, cloud tools, agents) come from **Homebrew** on every supported distro. Only the bootstrap set uses the distro package manager (`apt` on Ubuntu/Debian, `pacman` on Arch).
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Distro</th><th>Name</th><th>Bootstrap</th></tr>
+</thead>
+<tbody>
+<tr><td>Ubuntu</td><td>Ubuntu-26.04</td><td>apt</td></tr>
+<tr><td>Debian</td><td>Debian</td><td>apt</td></tr>
+<tr><td>Arch</td><td>archlinux</td><td>pacman</td></tr>
+</tbody>
+</table>
+</div>
 
-| Distro | WSL name | Package manager | Notes |
-|---|---|---|---|
-| Ubuntu 26.04 LTS | `Ubuntu-26.04` | apt | Default. Best Homebrew-on-Linux fit. |
-| Debian | `Debian` | apt | Same bootstrap as Ubuntu. |
-| Arch | `archlinux` | pacman | amd64 only. First boot is often root until we create a user. |
+CLIs come from Homebrew. The distro package manager is bootstrap only.
 
-Fedora, Kali, and openSUSE stay **unsupported** as new-instance targets (different package managers, or the wrong job). You can still **restore** a kit that already has them.
+Fedora, Kali, and openSUSE are restore-only. Requires x86_64.
 
-`uname -m` should be `x86_64`. Ubuntu and Debian also have ARM images; Homebrew bottles in this project are amd64.
-
-`windows-wsl-setup distros` prints the supported names intersected with `wsl --list --online`.
+```
+wwm distros
+```

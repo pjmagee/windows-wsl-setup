@@ -19,7 +19,7 @@ mod winget_search;
 fn main() {
     #[cfg(not(windows))]
     {
-        eprintln!("Windows WSL Setup is a Windows console app.");
+        eprintln!("wwm is a Windows console app.");
         std::process::exit(1);
     }
 
@@ -114,24 +114,24 @@ fn main() {
         }
         "-h" | "--help" | "help" => {
             eprintln!(
-                "Windows WSL Setup — one Windows binary. No git clone.\n\n\
-  windows-wsl-setup                 Collect / Restore / New WSL / Profiles\n\
-  windows-wsl-setup collect         scan this PC, write a kit\n\
-  windows-wsl-setup restore         install from a kit (optional path)\n\
-  windows-wsl-setup new-wsl         pick a supported distro + linux profile\n\
-  windows-wsl-setup new-wsl --profile home --distro Debian\n\
-  windows-wsl-setup distros         supported ∩ wsl --list --online\n\
-  windows-wsl-setup profiles        edit / suggest / apply a profile\n\n\
+                "wwm — Windows WSL Manager\n\n\
+  wwm                 Collect / Restore / New WSL / Profiles\n\
+  wwm collect         scan this PC, write a kit\n\
+  wwm restore         install from a kit (optional path)\n\
+  wwm new-wsl         pick a supported distro + linux profile\n\
+  wwm new-wsl --profile home --distro Debian\n\
+  wwm distros         supported ∩ wsl --list --online\n\
+  wwm profiles        edit / suggest / apply a profile\n\n\
   JSON (agents):\n\
-  windows-wsl-setup catalog linux|windows\n\
-  windows-wsl-setup distros\n\
-  windows-wsl-setup profile list|show <id>|new <id> --from home [--name \"Media PC\"]\n\
-  windows-wsl-setup profile add <id> --linux kubectl --windows Brave.Brave\n\
-  windows-wsl-setup profile delete <id>\n\
-  windows-wsl-setup search linux <q> | search winget <q>\n\
-  windows-wsl-setup map <winget-id>\n\
-  windows-wsl-setup suggest\n\
-  windows-wsl-setup apply <id> [--windows-only|--linux-only] [--distro Debian]\n"
+  wwm catalog linux|windows\n\
+  wwm distros\n\
+  wwm profile list|show <id>|new <id> --from home [--name \"Media PC\"]\n\
+  wwm profile add <id> --linux kubectl --windows Brave.Brave\n\
+  wwm profile delete <id>\n\
+  wwm search linux <q> | search winget <q>\n\
+  wwm map <winget-id>\n\
+  wwm suggest\n\
+  wwm apply <id> [--windows-only|--linux-only] [--distro Debian]\n"
             );
             0
         }

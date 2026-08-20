@@ -37,7 +37,7 @@ is_linux_bin() {
 need_sudo() {
   if ! sudo -n true 2>/dev/null; then
     echo "sudo is required and must be passwordless (sudo -n)." >&2
-    echo "From Windows:  windows-wsl-setup.exe  (New WSL), or  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
+    echo "From Windows:  wwm.exe  (New WSL), or  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
     echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh \"\$(id -un)\"" >&2
     exit 1
   fi

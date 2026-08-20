@@ -668,7 +668,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "windows-wsl-setup"
+name = "wwm"
 version = "0.1.0"
 dependencies = [
  "crossterm",

@@ -1,12 +1,13 @@
 ---
 import '../styles/global.css';
+import { REPO } from '../lib/links';
 
 const { title, description, current } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const fullTitle = title ? `${title} · Windows WSL Manager` : 'Windows WSL Manager';
 const desc =
   description ??
-  'One Windows binary. Collect a kit, restore it after a clean install, stand up Ubuntu/Debian/Arch, or apply a software profile.';
+  'Collect a kit and restore it on a new installation of Windows. Restore existing WSL instances or provision Ubuntu, Debian, or Arch.';
 ---
 <!doctype html>
 <html lang="en">
@@ -32,22 +33,21 @@ const desc =
       <div class="wrap nav-inner">
         <a class="brand" href={base}>
           <span class="mark">wm</span>
-          Windows WSL Manager
+          <span class="brand-name">Windows WSL Manager</span>
         </a>
         <nav class="nav-links">
-          <a href={`${base}docs/getting-started/`} aria-current={current === 'docs' || current === 'start' ? 'page' : undefined}>Get started</a>
+          <a href={`${base}docs/getting-started/`} aria-current={current === 'docs' || current === 'start' ? 'page' : undefined}>Docs</a>
           <a href={`${base}docs/agents/`} aria-current={current === 'agents' ? 'page' : undefined}>Agents</a>
-          <a href={`${base}docs/download/`} aria-current={current === 'download' ? 'page' : undefined}>Download</a>
-          <a href="https://github.com/pjmagee/windows-wsl-manager">GitHub</a>
+          <a href={REPO}>GitHub</a>
         </nav>
-        <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases">Get the exe</a>
+        <a class="btn" href={`${base}docs/download/`} aria-current={current === 'download' ? 'page' : undefined}>Download</a>
       </div>
     </header>
     <slot />
     <footer class="wrap footer">
-      <span>winget · WSL · Homebrew · one binary</span>
+      <span>winget · WSL · Homebrew</span>
       <span>
-        <a href="https://github.com/pjmagee/windows-wsl-manager">pjmagee/windows-wsl-manager</a>
+        <a href={REPO}>pjmagee/windows-wsl-manager</a>
       </span>
     </footer>
   </body>

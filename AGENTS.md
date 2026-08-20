@@ -3,7 +3,7 @@
 Playbook for **Linux toolchain / work-laptop** agents.
 
 Home PC reset (**Collect** / **Restore**) and empty-Ubuntu (**New WSL**) are
-**not this file**. That is `windows-wsl-setup.exe`. See [README.md](README.md)
+**not this file**. That is `wwm.exe`. See [README.md](README.md)
 and `.agents/skills/windows-wsl-setup/SKILL.md`.
 
 You are bootstrapping the **same WSL 2 Ubuntu 26.04 workstation** this repo
@@ -25,11 +25,11 @@ Suggested first message (work laptop / first WSL):
 
 Suggested first message (used PC, about to reset, or fresh PC with a kit):
 
-> Run Windows WSL Setup. Collect or Restore. Finish anything the exe cannot click (1Password SSH, Steam library, Docker WSL, Brave Add buttons). Do not clone. Do not run install.sh — the restored WSL disk already has Linux tools.
+> Run wwm. Collect or Restore. Finish anything the exe cannot click (1Password SSH, Steam library, Docker WSL, Brave Add buttons). Do not clone. Do not run install.sh — the restored WSL disk already has Linux tools.
 
 Suggested first message (empty Ubuntu / no kit):
 
-> Run Windows WSL Setup → New WSL → home (or work). Always Ubuntu 26.04.
+> Run wwm → New WSL → home (or work). Always Ubuntu.
 
 The exe is Collect / Restore / New WSL. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/windows-wsl-setup/SKILL.md`.
 
@@ -53,27 +53,27 @@ else echo "windows"; fi
 
 | You are | Do this |
 |---|---|
-| Windows, human asked to **capture / backup** a used PC | **§0a**. `windows-wsl-setup.exe` **Collect**. Do not run `install.sh`. |
-| Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `windows-wsl-setup.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
-| Windows, human wants a **new empty Linux** (no kit) | **§0a**. `windows-wsl-setup.exe` **New WSL**. User picks Ubuntu-26.04, Debian, or archlinux. |
-| Windows, human wants a **default / custom software set** (no kit) | **§0a**. `windows-wsl-setup.exe` **Profiles** or `apply <id>`. |
+| Windows, human asked to **capture / backup** a used PC | **§0a**. `wwm.exe` **Collect**. Do not run `install.sh`. |
+| Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `wwm.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
+| Windows, human wants a **new empty Linux** (no kit) | **§0a**. `wwm.exe` **New WSL**. User picks Ubuntu-26.04, Debian, or archlinux. |
+| Windows, human wants a **default / custom software set** (no kit) | **§0a**. `wwm.exe` **Profiles** or `apply <id>`. |
 | Windows PowerShell / cmd / Git Bash (cloned repo, work laptop) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
 | WSL, any other distro (`Ubuntu`, `Ubuntu-24.04`, …) | Wrong distro. Do **not** run `install.sh` here. Do **not** `wsl --unregister`. Run `windows\bootstrap.ps1` from **Windows PowerShell** (from this shell: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <windows-clone>/windows/bootstrap.ps1` if the repo is on `/mnt/c` or `/mnt/d`). That adds `Ubuntu-26.04` beside this distro. Then continue in 26.04. |
 | Linux that is not WSL | Stop. This is a WSL workstation, not a bare-metal Linux install. |
 
-### 0a. Capture a used machine (Windows WSL Setup)
+### 0a. Capture a used machine (Windows WSL Manager)
 
-End users download `windows-wsl-setup.exe` from GitHub Releases (no clone).
+End users download `wwm.exe` from GitHub Releases (no clone).
 
 ```
-windows-wsl-setup              Collect / Restore / New WSL
-windows-wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
-windows-wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
-windows-wsl-setup new-wsl      pick Ubuntu-26.04 / Debian / archlinux + a linux profile
-windows-wsl-setup profiles     edit / suggest / apply a named software profile
-windows-wsl-setup suggest      draft Windows+Linux profile from winget list (JSON)
-windows-wsl-setup apply home   winget + optional New WSL (not a kit restore)
+wwm              Collect / Restore / New WSL
+wwm collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
+wwm restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
+wwm new-wsl      pick Ubuntu / Debian / archlinux + a linux profile
+wwm profiles     edit / suggest / apply a named software profile
+wwm suggest      draft Windows+Linux profile from winget list (JSON)
+wwm apply home   winget + optional New WSL (not a kit restore)
 ```
 
 Do not tell the user to run PowerShell scripts or git clone for this. Maintainers build `windows/cli`.
@@ -89,7 +89,7 @@ Stop on ARM.
 
 ## 1. Windows-host playbook (work laptop)
 
-Humans without a clone: `windows-wsl-setup.exe` → **New WSL** → **work**.
+Humans without a clone: `wwm.exe` → **New WSL** → **work**.
 This section is for Copilot (or you) **after this repo is already cloned**.
 
 Goal: Ubuntu 26.04 exists on this **already-present** work laptop, `sudo -n`
@@ -381,8 +381,8 @@ starship.toml              # seed config (scan_timeout for /mnt/c)
 windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
-windows/host/              # maintainer helpers for Windows WSL Setup
-windows/cli/               # Windows WSL Setup binary (Collect / Restore)
+windows/host/              # maintainer helpers for Windows WSL Manager
+windows/cli/               # wwm.exe (Collect / Restore / New WSL / Profiles)
 schema/kit.schema.json     # KIT.json
 README.md                  # human docs
 AGENTS.md                  # this playbook

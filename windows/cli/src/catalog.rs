@@ -1,4 +1,4 @@
-//! Shipped catalogs + profiles, merged with `%USERPROFILE%\.windows-wsl-setup\`.
+//! Shipped catalogs + profiles, merged with `%USERPROFILE%\.wwm\`.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -144,10 +144,20 @@ pub struct Store {
 }
 
 pub fn user_root() -> PathBuf {
-    let home = std::env::var_os("USERPROFILE")
-        .or_else(|| std::env::var_os("HOME"))
-        .unwrap_or_default();
-    PathBuf::from(home).join(".windows-wsl-setup")
+    let home = PathBuf::from(
+        std::env::var_os("USERPROFILE")
+            .or_else(|| std::env::var_os("HOME"))
+            .unwrap_or_default(),
+    );
+    let neu = home.join(".wwm");
+    if neu.exists() {
+        return neu;
+    }
+    let old = home.join(".windows-wsl-setup");
+    if old.exists() {
+        return old;
+    }
+    neu
 }
 
 pub fn user_profiles() -> PathBuf {

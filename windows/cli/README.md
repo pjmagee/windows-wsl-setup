@@ -1,25 +1,21 @@
-# Windows WSL Setup (binary)
+# wwm (Windows WSL Manager)
 
-People download `windows-wsl-setup.exe` from Releases. They never clone this folder.
-
-```
-windows-wsl-setup
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl
-windows-wsl-setup new-wsl --profile home --distro Debian
-windows-wsl-setup distros
-windows-wsl-setup profiles
-windows-wsl-setup suggest
-windows-wsl-setup apply default --distro Ubuntu-26.04
-```
-
-Maintainers:
+People download `wwm.exe` from Releases, or:
 
 ```
-cargo build --release --manifest-path windows/cli/Cargo.toml
+curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
 ```
 
-Explorer icon: [`assets/app.ico`](assets/app.ico). Regenerate with `python assets/gen_icon.py` (Pillow).
+They never clone this folder.
 
-Catalogs and shipped profiles are `include_str!` from `profiles/` at compile time.
+```
+wwm
+wwm collect
+wwm restore
+wwm new-wsl
+wwm new-wsl --profile home --distro Debian
+wwm distros
+wwm profiles
+wwm suggest
+wwm apply default --distro Ubuntu-26.04
+```

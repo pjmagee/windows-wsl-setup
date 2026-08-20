@@ -7,9 +7,9 @@ description: >
   or mentions kits, profiles, WSL disks, or data volumes.
 ---
 
-# Windows WSL Setup — agent skill
+# Windows WSL Manager — agent skill
 
-The product is **`windows-wsl-setup.exe`** from GitHub Releases.
+The product is **`wwm.exe`** from GitHub Releases.
 
 Humans and agents **do not clone** this repo to use it. Clone only if you are changing the product.
 
@@ -22,15 +22,13 @@ npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 
 ## Install the CLI
 
-Confirm the host is Windows (not WSL, not Git Bash). Download the latest exe — do not clone and do not build unless developing:
-
-https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/windows-wsl-setup.exe
+Confirm the host is Windows (not WSL, not Git Bash). Install the latest exe into `~\.wwm` — do not clone and do not build unless developing:
 
 ```
-gh release download -R pjmagee/windows-wsl-manager -p windows-wsl-setup.exe --dir $env:USERPROFILE\Downloads
+curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
 ```
 
-If Releases 404s, stop. Do not clone as a substitute.
+If that 404s, stop. Do not clone as a substitute.
 
 JSON commands print JSON on stdout; errors on stderr.
 
@@ -70,20 +68,20 @@ Do not offer Fedora, Kali, or openSUSE as a new-instance target. Restoring a kit
 ## CLI
 
 ```
-windows-wsl-setup suggest
-windows-wsl-setup map <winget-id>
-windows-wsl-setup search winget <query>
-windows-wsl-setup search linux <query>
-windows-wsl-setup catalog linux|windows
-windows-wsl-setup profile list|show|new|add|remove|delete
-windows-wsl-setup profile new <id> [--from home] [--name "Media PC"]
-windows-wsl-setup profile delete <id>
-windows-wsl-setup apply <id>
-windows-wsl-setup apply <id> --windows-only|--linux-only --distro Debian
-windows-wsl-setup distros
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl --profile home --distro Ubuntu-26.04
+wwm suggest
+wwm map <winget-id>
+wwm search winget <query>
+wwm search linux <query>
+wwm catalog linux|windows
+wwm profile list|show|new|add|remove|delete
+wwm profile new <id> [--from home] [--name "Media PC"]
+wwm profile delete <id>
+wwm apply <id>
+wwm apply <id> --windows-only|--linux-only --distro Debian
+wwm distros
+wwm collect
+wwm restore
+wwm new-wsl --profile home --distro Ubuntu-26.04
 ```
 
 Prefer Linux for SDKs and cloud CLIs (`map` / `preferLinux`). Games, browsers, editors, password managers, and Docker Desktop stay on Windows.

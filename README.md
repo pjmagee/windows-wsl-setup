@@ -1,10 +1,14 @@
-# Windows WSL Setup
+# Windows WSL Manager
 
 Export a messy Windows 11 PC. Restore it after a clean install. Or stand up Linux (Ubuntu, Debian, or Arch) from a software profile.
 
-Download `windows-wsl-setup.exe` from **Releases**. Do not clone this repo to use it.
+Download `wwm.exe` from **Releases**, or PowerShell:
 
-Site: <https://pjmagee.github.io/windows-wsl-manager/>
+```
+curl.exe -L --create-dirs -o $HOME\.wwm\wwm.exe https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe; $env:Path = "$HOME\.wwm;$env:Path"; wwm
+```
+
+Do not clone this repo to use it. Site: <https://pjmagee.github.io/windows-wsl-manager/>
 
 ## Agent-ready
 
@@ -23,9 +27,9 @@ Then ask Grok, Claude, Codex, or Copilot to collect, restore, or apply a profile
 4. **Profiles** when you want a named software list instead of a snapshot.
 
 ```
-windows-wsl-setup
-windows-wsl-setup collect
-windows-wsl-setup restore
-windows-wsl-setup new-wsl
-windows-wsl-setup profiles
+wwm
+wwm collect
+wwm restore
+wwm new-wsl
+wwm profiles
 ```

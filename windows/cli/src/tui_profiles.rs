@@ -194,7 +194,7 @@ impl App {
                 self.dirty = false;
                 self.naming = false;
                 self.status = format!(
-                    "saved {} — {}  (%USERPROFILE%\\.windows-wsl-setup\\profiles)",
+                    "saved {} — {}  (%USERPROFILE%\\.wwm\\profiles)",
                     r.bundle.id, r.bundle.name
                 );
             }
@@ -525,7 +525,7 @@ fn draw(f: &mut Frame, app: &App) {
         .highlight_style(Style::new().fg(mint()).bold())
         .block(
             Block::bordered()
-                .title(" Windows WSL Setup  profiles ")
+                .title(" wwm  profiles ")
                 .border_style(Style::new().fg(Color::DarkGray)),
         );
     f.render_widget(tabs, chunks[0]);

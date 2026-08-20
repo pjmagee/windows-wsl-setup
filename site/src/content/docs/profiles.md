@@ -1,38 +1,36 @@
 ---
 title: Profiles
-description: Named lists of Windows apps and Linux tools. Apply installs; it never uninstalls Windows apps.
+description: Named Windows and Linux software lists. Apply installs.
 order: 4
 group: Use
 ---
 
-A profile is a list of package ids. Categories live on the catalog, not on the profile.
+A profile is a list of package ids. Categories live on the catalog.
 
-Shipped **bundles** (Windows list + linux list + default distro `Ubuntu-26.04`):
+Shipped bundles (Windows + Linux + Ubuntu):
 
-| Id | Windows | Linux | When |
-|---|---|---|---|
-| `default` | Terminal, PowerShell, PowerToys, Oh My Posh, Brave, 1Password, VS Code, Docker Desktop, Git, 7-Zip | `home` | Fresh PC, no kit |
-| `home` | default + Grok, Claude, Cursor, Steam, Epic, VLC, Discord, CCleaner, SteelSeries | `home` | Home workstation |
-| `work` | default + GitHub Copilot; no games or home agents | `work` | Work laptop |
+| Id | Windows | Linux |
+|---|---|---|
+| default | Terminal, PowerShell, PowerToys, Brave, 1Password, VS Code, Docker Desktop, Git | home |
+| home | default + Grok, Claude, Cursor, Steam, Epic, VLC, Discord | home |
+| work | default + GitHub Copilot | work |
 
-Linux `home` includes grok-build, claude-code, opencode, hugo, stripe, and similar. Linux `work` is Copilot CLI plus the shared shell/runtime/cloud set; `install.sh work` prunes the home-only agents.
+Linux **home** includes grok-build, claude-code, opencode, hugo, and stripe. Linux **work** is Copilot CLI plus the shared toolchain; home-only agents are pruned.
 
 ## Customise
 
-TUI: **Profiles** → tick by category → `s` → type a name → Enter. `"Media PC"` is saved as id `media-pc` under `%USERPROFILE%\.windows-wsl-setup\profiles`. `d` deletes a **user** profile (Enter to confirm). Shipped `home` / `work` / `default` stay. `g` runs **suggest**.
-
-CLI:
+In the TUI, tick packages by category. Save (`s`), delete (`d`), or suggest (`g`). `"Media PC"` is stored as `media-pc`.
 
 ```
-windows-wsl-setup profile new "Media PC" --from home
-windows-wsl-setup profile new my-dev --from home --name "My Dev"
-windows-wsl-setup profile add my-dev --linux kubectl --windows Google.Chrome
-windows-wsl-setup apply media-pc
-windows-wsl-setup profile delete media-pc
+wwm profile new "Media PC" --from home
+wwm profile new my-dev --from home --name "My Dev"
+wwm profile add my-dev --linux kubectl --windows Google.Chrome
+wwm apply media-pc
+wwm profile delete media-pc
 ```
 
-`suggest` reads what is already installed and moves SDKs / cloud CLIs onto Linux when the catalog says `preferLinux` (for example Azure CLI → `azure-cli` in WSL).
+`suggest` reads what is installed and maps SDKs / cloud CLIs onto Linux when the catalog says `preferLinux` (Azure CLI → `azure-cli` in WSL).
 
-Apply **installs**. It never uninstalls Windows apps. Linux setup may drop extras that are not on the chosen linux profile.
+Apply installs. It does not uninstall Windows apps. Linux setup may drop CLIs that are not on the chosen linux profile.
 
-Winget install order is **priority**, not category: password manager → browser → desktop → editors → Git → Docker → agents → later (games, media, cleaners).
+Winget order is **priority**: password manager, browser, desktop, editors, Git, Docker, agents, then the rest.
