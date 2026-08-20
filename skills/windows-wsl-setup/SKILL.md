@@ -13,10 +13,13 @@ The product is **`wwm.exe`** from GitHub Releases.
 
 Humans and agents **do not clone** this repo to use it. Clone only if you are changing the product.
 
-Install this skill (user scope — do not clone the repo):
+Install this skill at **user** scope (do not clone the repo). Pick **one**:
 
 ```
 gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+```
+
+```
 npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 ```
 

@@ -15,12 +15,21 @@ Do not clone this repo to use it. Site: <https://pjmagee.github.io/windows-wsl-m
 
 ## Agent-ready
 
+The skill id is `windows-wsl-setup`. Pick **one** installer.
+
+GitHub CLI (this one is Grok only — pass `--agent claude-code`, `github-copilot`, or `codex` for those):
+
 ```
 gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+```
+
+skills.sh (any detected agent; needs Node):
+
+```
 npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 ```
 
-Then ask Grok, Claude, Codex, or Copilot to collect, restore, or apply a profile. The skill tells them how to download the exe and which commands exist.
+Then ask the agent to collect, restore, or apply a profile. The skill tells it how to download the exe.
 
 ## Paths
 

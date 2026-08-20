@@ -9,7 +9,9 @@ The skill teaches an agent to download the exe and run Collect, Restore, New WSL
 
 ## Install the skill
 
-**GitHub CLI** 2.90+:
+The skill id is `windows-wsl-setup`. Pick **one** installer.
+
+**GitHub CLI** 2.90+ — `--agent` is required; default is Copilot, not Grok:
 
 ```
 gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
@@ -18,13 +20,20 @@ gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --ag
 gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent codex
 ```
 
-**skills.sh**:
+**skills.sh** (any detected agent; needs Node):
 
 ```
 npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 ```
 
-**Claude / Grok plugin marketplace:**
+**Grok plugin marketplace:**
+
+```
+grok plugin marketplace add pjmagee/windows-wsl-manager
+grok plugin install windows-wsl-setup --trust
+```
+
+**Claude Code plugin marketplace:**
 
 ```
 /plugin marketplace add pjmagee/windows-wsl-manager
