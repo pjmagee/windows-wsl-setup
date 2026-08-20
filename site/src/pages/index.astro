@@ -15,16 +15,16 @@ const base = import.meta.env.BASE_URL;
     </div>
     <div class="wrap hero-grid">
       <div>
-        <p class="kicker">messy pc → fresh windows 11</p>
-        <h1>Export what you use.<br />Restore it clean.</h1>
+        <p class="kicker">windows 11 + wsl</p>
+        <h1>Manage this PC.<br />And the Linux next to it.</h1>
         <p class="lede">
-          Collect a snapshot of this machine: apps, data volumes, Linux disks.
-          On a new Windows 11 install, restore that snapshot — or let
-          <strong>Grok, Claude, or Codex</strong> drive the setup with our skill.
+          One Windows binary. Snapshot apps, data volumes, and Linux disks.
+          Restore them after a clean install — or stand up Ubuntu, Debian, or
+          Arch from a named software profile.
         </p>
         <div class="cta-row">
-          <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Download the exe</a>
-          <a class="btn ghost" href={`${base}docs/welcome/`}>Read the docs</a>
+          <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases">Download the exe</a>
+          <a class="btn ghost" href={`${base}docs/getting-started/`}>Get started</a>
         </div>
       </div>
       <Terminal />
@@ -33,33 +33,32 @@ const base = import.meta.env.BASE_URL;
 
   <section class="section">
     <div class="wrap">
-      <h2>The problem we solve</h2>
+      <h2>Four modes, same exe</h2>
       <p class="sub">
-        A used PC is a pile of installers, browser logins, and maybe a Linux
-        environment. A reset throws that away. We export it first, then put
-        the important parts back in a sensible order: password manager, your
-        browser, then everything else.
+        Run <code>windows-wsl-setup</code> with no arguments. The home screen
+        is the product: Collect, Restore, New WSL, Profiles. A kit is what
+        this machine has. A profile is what you want installed.
       </p>
       <div class="cards">
         <article class="card">
           <div class="n">01 · collect</div>
-          <h3>Snapshot</h3>
-          <p>Apps, Linux disks, data volumes, browser bookmarks. Written to a drive that survives a Windows reinstall.</p>
+          <h3>Snapshot this PC</h3>
+          <p>Winget apps, WSL disks, Dev Drive, Docker data, Brave bookmarks. Written off <code>C:</code> so a Windows reinstall cannot eat it.</p>
         </article>
         <article class="card">
           <div class="n">02 · restore</div>
-          <h3>Bring it back</h3>
-          <p>Fresh Windows 11. Install the apps you ticked, remount your disks, open your browser with the extensions list.</p>
+          <h3>Bring the kit back</h3>
+          <p>Fresh Windows 11. Install the packages you tick, remount the same disks, copy Brave bookmarks, open the extensions list.</p>
         </article>
         <article class="card">
-          <div class="n">03 · new linux</div>
+          <div class="n">03 · new wsl</div>
           <h3>Or start Linux new</h3>
-          <p>Ubuntu, Debian, or Arch. A software profile bootstraps the CLIs that make sense on that distro.</p>
+          <p>Ubuntu 26.04, Debian, or Arch. User, passwordless sudo, Homebrew CLIs. You never clone; the exe clones the installer inside Linux.</p>
         </article>
         <article class="card">
-          <div class="n">04 · agents</div>
-          <h3>Agent-ready</h3>
-          <p>Install our skill. The agent downloads the CLI, runs collect or restore, and talks JSON the whole way.</p>
+          <div class="n">04 · profiles</div>
+          <h3>Named software lists</h3>
+          <p>Shipped <code>default</code>, <code>home</code>, and <code>work</code>. Suggest from what is installed. Apply never uninstalls Windows apps.</p>
         </article>
       </div>
     </div>
@@ -70,16 +69,17 @@ const base = import.meta.env.BASE_URL;
       <div>
         <h2>Hand it to an agent</h2>
         <p class="sub">
-          Grok, Claude, Codex, Copilot — any of them. Install the skill from
-          GitHub, then say “set up this PC.” They already know the commands.
+          Grok, Claude, Codex, Copilot. Install the skill from this GitHub
+          repo, then say “collect this PC” or “apply work.” They download the
+          exe. They do not clone as a substitute.
         </p>
         <p class="note">
-          Identity first (password manager), then your browser, then the rest.
+          Identity first (password manager), then Brave, then the rest.
           Linux CLIs come from Homebrew on the distro you picked.
         </p>
       </div>
-      <pre><code>gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
-npx skills add pjmagee/windows-wsl-setup -g -y
+      <pre><code>gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 
 windows-wsl-setup collect
 windows-wsl-setup restore

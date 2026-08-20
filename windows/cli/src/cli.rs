@@ -57,7 +57,13 @@ fn positional(args: &[String]) -> Vec<&str> {
             skip = false;
             continue;
         }
-        if a == "--from" || a == "--linux" || a == "--windows" || a == "--profile" {
+        if a == "--from"
+            || a == "--linux"
+            || a == "--windows"
+            || a == "--profile"
+            || a == "--distro"
+            || a == "--name"
+        {
             skip = true;
             continue;
         }
@@ -77,6 +83,7 @@ pub fn dispatch(cmd: &str, args: &[String]) -> i32 {
         "map" => map_cmd(args),
         "suggest" => suggest_cmd(),
         "apply" => apply_cmd(args),
+        "distros" => distros_cmd(),
         _ => {
             eprintln!("unknown command {cmd}");
             2
@@ -102,7 +109,9 @@ fn catalog(args: &[String]) -> i32 {
 
 fn profiles(args: &[String]) -> i32 {
     if args.is_empty() {
-        return crate::tui_profiles::run().map(|_| 0).unwrap_or_else(|e| err(e));
+        return crate::tui_profiles::run()
+            .map(|_| 0)
+            .unwrap_or_else(|e| err(e));
     }
     let sub = args[0].as_str();
     let rest = &args[1..];
@@ -124,13 +133,16 @@ fn profiles(args: &[String]) -> i32 {
         "new" => {
             let pos = positional(rest);
             let Some(id) = pos.first() else {
-                return err("profile new <id> [--from home]");
+                return err("profile new <id> [--from home] [--name \"Media PC\"]");
             };
             let from = take_named(rest, "--from")
                 .into_iter()
                 .next()
                 .unwrap_or_else(|| "default".into());
-            match profile::new_from(&mut s, id, &from).and_then(|_| profile::save(&s, id)) {
+            let name = take_named(rest, "--name").into_iter().next();
+            match profile::new_from(&mut s, id, &from, name.as_deref())
+                .and_then(|r| profile::save(&s, &r.bundle.id))
+            {
                 Ok(v) => print_json(&v),
                 Err(e) => err(e),
             }
@@ -154,7 +166,8 @@ fn profiles(args: &[String]) -> i32 {
             };
             let linux = take_named(rest, "--linux");
             let windows = take_named(rest, "--windows");
-            match profile::remove(&mut s, id, &linux, &windows).and_then(|_| profile::save(&s, id)) {
+            match profile::remove(&mut s, id, &linux, &windows).and_then(|_| profile::save(&s, id))
+            {
                 Ok(v) => print_json(&v),
                 Err(e) => err(e),
             }
@@ -168,9 +181,21 @@ fn profiles(args: &[String]) -> i32 {
                 Err(e) => err(e),
             }
         }
-        "tui" => crate::tui_profiles::run().map(|_| 0).unwrap_or_else(|e| err(e)),
+        "delete" => {
+            let pos = positional(rest);
+            let Some(id) = pos.first() else {
+                return err("profile delete <id>");
+            };
+            match profile::delete(&mut s, id) {
+                Ok(v) => print_json(&v),
+                Err(e) => err(e),
+            }
+        }
+        "tui" => crate::tui_profiles::run()
+            .map(|_| 0)
+            .unwrap_or_else(|e| err(e)),
         other => err(format!(
-            "profile list|show|new|add|remove|save, not {other}"
+            "profile list|show|new|add|remove|delete|save, not {other}"
         )),
     }
 }
@@ -218,18 +243,31 @@ fn suggest_cmd() -> i32 {
 fn apply_cmd(args: &[String]) -> i32 {
     let pos = positional(args);
     let Some(id) = pos.first() else {
-        return err("apply <profile> [--windows-only|--linux-only]");
+        return err("apply <profile> [--windows-only|--linux-only] [--distro Ubuntu-26.04|Debian|archlinux]");
     };
     let windows_only = flag(args, "--windows-only");
     let linux_only = flag(args, "--linux-only");
     let do_win = !linux_only;
     let do_lin = !windows_only;
+    let distro = take_named(args, "--distro").into_iter().next();
     let s = match store() {
         Ok(s) => s,
         Err(e) => return err(e),
     };
-    match crate::apply::apply_id(&s, id, do_win, do_lin) {
+    match crate::apply::apply_id(&s, id, do_win, do_lin, distro.as_deref()) {
         Ok(steps) => print_json(&steps),
         Err(e) => err(e),
     }
+}
+
+fn distros_cmd() -> i32 {
+    print_json(&serde_json::json!({
+        "supported": crate::new_wsl::SUPPORTED.iter().map(|d| serde_json::json!({
+            "id": d.id,
+            "label": d.label,
+        })).collect::<Vec<_>>(),
+        "online": crate::new_wsl::online_names(),
+        "installed": crate::new_wsl::distro_names(),
+        "choices": crate::new_wsl::distro_choices(),
+    }))
 }

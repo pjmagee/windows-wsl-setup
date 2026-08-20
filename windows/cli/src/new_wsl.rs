@@ -10,26 +10,115 @@ use std::thread;
 use std::time::Duration;
 
 pub const DISTRO: &str = "Ubuntu-26.04";
-pub const SUPPORTED: &[&str] = &["Ubuntu-26.04", "Debian", "archlinux"];
 
-pub fn normalize_distro(name: &str) -> &str {
+#[derive(Debug, Clone, Copy)]
+pub struct DistroKind {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub aliases: &'static [&'static str],
+}
+
+/// Distros this product can bootstrap (apt or pacman + Homebrew).
+/// Fedora / Kali / openSUSE are restore-only, not Create targets.
+pub const SUPPORTED: &[DistroKind] = &[
+    DistroKind {
+        id: "Ubuntu-26.04",
+        label: "Ubuntu 26.04 LTS",
+        aliases: &["ubuntu", "ubuntu-26.04"],
+    },
+    DistroKind {
+        id: "Debian",
+        label: "Debian",
+        aliases: &["debian"],
+    },
+    DistroKind {
+        id: "archlinux",
+        label: "Arch Linux",
+        aliases: &["arch", "archlinux"],
+    },
+];
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DistroChoice {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub online: bool,
+    pub installed: bool,
+}
+
+/// Canonical WSL name, or an error. Empty string → Ubuntu-26.04.
+/// Unknown names (Fedora, Kali, …) do **not** silently become Ubuntu.
+pub fn parse_distro(name: &str) -> Result<&'static str, String> {
     let n = name.trim();
     if n.is_empty() {
-        return DISTRO;
+        return Ok(DISTRO);
     }
-    if n.eq_ignore_ascii_case("ubuntu") || n.eq_ignore_ascii_case("ubuntu-26.04") {
-        return "Ubuntu-26.04";
+    for d in SUPPORTED {
+        if d.id.eq_ignore_ascii_case(n) || d.aliases.iter().any(|a| a.eq_ignore_ascii_case(n)) {
+            return Ok(d.id);
+        }
     }
-    if n.eq_ignore_ascii_case("debian") {
-        return "Debian";
-    }
-    if n.eq_ignore_ascii_case("arch") || n.eq_ignore_ascii_case("archlinux") {
-        return "archlinux";
-    }
-    DISTRO
+    let ids: Vec<&str> = SUPPORTED.iter().map(|d| d.id).collect();
+    Err(format!(
+        "unsupported distro {name:?}. Pick one of: {}",
+        ids.join(", ")
+    ))
 }
-const LINUX_REPO: &str = "$HOME/code/windows-wsl-setup";
-const GIT_REMOTE: &str = "https://github.com/pjmagee/windows-wsl-setup.git";
+
+/// Names from `wsl --list --online` (NAME column). Empty if WSL is missing or the table could not be parsed.
+pub fn parse_online_names(text: &str) -> Vec<String> {
+    let text = text.replace('\0', "");
+    let mut names = Vec::new();
+    let mut started = false;
+    for line in text.lines() {
+        let line = line.trim();
+        if !started {
+            let u = line.to_ascii_uppercase();
+            if u.starts_with("NAME") && u.contains("FRIENDLY") {
+                started = true;
+            }
+            continue;
+        }
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(name) = line.split_whitespace().next() {
+            if name.eq_ignore_ascii_case("NAME") {
+                continue;
+            }
+            if !names.iter().any(|n: &String| n.eq_ignore_ascii_case(name)) {
+                names.push(name.to_string());
+            }
+        }
+    }
+    names
+}
+
+pub fn online_names() -> Vec<String> {
+    let text = Command::new("wsl.exe")
+        .args(["--list", "--online"])
+        .output()
+        .map(|o| decode(&o.stdout) + &decode(&o.stderr))
+        .unwrap_or_default();
+    parse_online_names(&text)
+}
+
+pub fn distro_choices() -> Vec<DistroChoice> {
+    let online = online_names();
+    let listed = distro_names();
+    let parsed = !online.is_empty();
+    SUPPORTED
+        .iter()
+        .map(|d| DistroChoice {
+            id: d.id,
+            label: d.label,
+            online: !parsed || online.iter().any(|n| n.eq_ignore_ascii_case(d.id)),
+            installed: listed.iter().any(|n| n.eq_ignore_ascii_case(d.id)),
+        })
+        .collect()
+}
+const LINUX_REPO: &str = "$HOME/code/windows-wsl-manager";
+const GIT_REMOTE: &str = "https://github.com/pjmagee/windows-wsl-manager.git";
 
 const ENSURE_USER: &str = include_str!("../../ensure-user.sh");
 
@@ -66,7 +155,9 @@ pub fn has_distro() -> bool {
 }
 
 pub fn has_named(distro: &str) -> bool {
-    let d = normalize_distro(distro);
+    let Ok(d) = parse_distro(distro) else {
+        return false;
+    };
     distro_names().iter().any(|n| n.eq_ignore_ascii_case(d))
 }
 
@@ -107,19 +198,15 @@ pub fn ensure_wsl() -> Result<String, String> {
 }
 
 fn online_has(distro: &str) -> bool {
-    Command::new("wsl.exe")
-        .args(["--list", "--online"])
-        .output()
-        .map(|o| {
-            let text = decode(&o.stdout) + &decode(&o.stderr);
-            text.to_ascii_lowercase()
-                .contains(&distro.to_ascii_lowercase())
-        })
-        .unwrap_or(true)
+    let names = online_names();
+    if names.is_empty() {
+        return true;
+    }
+    names.iter().any(|n| n.eq_ignore_ascii_case(distro))
 }
 
 pub fn install_distro(distro: &str) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     if has_named(distro) {
         return Ok(format!("{distro} already installed"));
     }
@@ -159,7 +246,7 @@ pub fn install_distro(distro: &str) -> Result<String, String> {
 }
 
 pub fn wait_for_root(distro: &str) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     let mut last = String::new();
     for _ in 0..45 {
         match wsl(&["-d", distro, "-u", "root", "--", "echo", "ok"]) {
@@ -182,7 +269,7 @@ pub fn linux_user() -> Option<String> {
 }
 
 pub fn linux_user_on(distro: &str) -> Option<String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro).ok()?;
     wsl(&[
         "-d",
         distro,
@@ -217,7 +304,7 @@ fn linux_name_from_windows() -> String {
 
 /// Create uid 1000 from the Windows username when the distro has no user yet.
 pub fn create_user_if_needed(distro: &str) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     if let Some(u) = linux_user_on(distro) {
         return Ok(format!("linux user already exists: {u}"));
     }
@@ -242,7 +329,7 @@ echo "created {name} (uid 1000, empty password)"
 }
 
 pub fn ensure_passwordless_sudo(distro: &str) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     if linux_user_on(distro).is_none() {
         return Err(
             "no Linux user yet — New WSL should have created one. Retry, or open the distro once."
@@ -273,7 +360,7 @@ pub fn ensure_passwordless_sudo(distro: &str) -> Result<String, String> {
 }
 
 pub fn set_default_distro(distro: &str) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     wsl(&["--set-default", distro]).map(|_| format!("default distro = {distro}"))
 }
 
@@ -283,7 +370,7 @@ pub fn install_toolchain(
     profile: &str,
     profile_json: Option<&str>,
 ) -> Result<String, String> {
-    let distro = normalize_distro(distro);
+    let distro = parse_distro(distro)?;
     let profile = crate::catalog::sanitize_id(profile)?;
     let mut copy = String::new();
     if let Some(json) = profile_json {
@@ -339,5 +426,47 @@ cd {repo}
         Ok(text)
     } else {
         Err(text)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn aliases_resolve() {
+        assert_eq!(parse_distro("ubuntu").unwrap(), "Ubuntu-26.04");
+        assert_eq!(parse_distro("Debian").unwrap(), "Debian");
+        assert_eq!(parse_distro("arch").unwrap(), "archlinux");
+        assert_eq!(parse_distro("").unwrap(), "Ubuntu-26.04");
+    }
+
+    #[test]
+    fn fedora_is_not_ubuntu() {
+        let e = parse_distro("FedoraLinux-42").unwrap_err();
+        assert!(e.contains("unsupported"));
+        assert!(!e.to_ascii_lowercase().contains("became"));
+    }
+
+    #[test]
+    fn parses_wsl_list_online() {
+        let sample = "\
+The following is a list of valid distributions that can be installed.\n\
+Install using 'wsl.exe --install <Distro>'.\n\
+\n\
+NAME                            FRIENDLY NAME\n\
+Ubuntu                          Ubuntu\n\
+Debian                          Debian GNU/Linux\n\
+kali-linux                      Kali Linux Rolling\n\
+Ubuntu-24.04                    Ubuntu 24.04 LTS\n\
+Ubuntu-26.04                    Ubuntu 26.04 LTS\n\
+archlinux                       Arch Linux\n\
+FedoraLinux-42                  Fedora Linux 42\n";
+        let names = parse_online_names(sample);
+        assert!(names.iter().any(|n| n == "Ubuntu-26.04"));
+        assert!(names.iter().any(|n| n == "Debian"));
+        assert!(names.iter().any(|n| n == "archlinux"));
+        assert!(names.iter().any(|n| n == "FedoraLinux-42"));
+        assert!(!names.iter().any(|n| n == "NAME"));
     }
 }

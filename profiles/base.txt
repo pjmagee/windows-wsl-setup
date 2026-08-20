@@ -7,6 +7,7 @@ install_brew
 install_uv_python
 install_rust
 install_fnm_node
+install_npm_tools
 install_starship_config
 install_cloudflare_cf
 install_compass

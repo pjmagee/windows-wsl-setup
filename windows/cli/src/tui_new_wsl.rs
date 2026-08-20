@@ -8,7 +8,7 @@ use crate::new_wsl;
 struct App {
     profiles: Vec<String>,
     profile: usize,
-    distros: Vec<String>,
+    distros: Vec<new_wsl::DistroChoice>,
     distro: usize,
     store: Store,
     log: Vec<String>,
@@ -16,21 +16,33 @@ struct App {
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(prefer: Option<&str>) -> Self {
         let store = Store::load().unwrap_or_else(|_| Store::shipped().expect("shipped"));
         let mut profiles: Vec<String> = store.linux.keys().cloned().collect();
         if profiles.is_empty() {
             profiles = vec!["home".into(), "work".into()];
         }
-        let distros: Vec<String> = new_wsl::SUPPORTED.iter().map(|s| (*s).to_string()).collect();
+        let distros = new_wsl::distro_choices();
+        let distro = prefer
+            .and_then(|p| new_wsl::parse_distro(p).ok())
+            .and_then(|id| distros.iter().position(|d| d.id == id))
+            .or_else(|| distros.iter().position(|d| d.online && !d.installed))
+            .or_else(|| distros.iter().position(|d| d.online))
+            .unwrap_or(0);
         let have = distros
             .iter()
             .map(|d| {
-                if new_wsl::has_named(d) {
-                    format!("{d} is installed")
+                let inst = if d.installed {
+                    "installed"
                 } else {
-                    format!("{d} is not installed yet")
-                }
+                    "not installed"
+                };
+                let avail = if d.online {
+                    "available"
+                } else {
+                    "not in wsl --list --online"
+                };
+                format!("{} ({inst}, {avail})", d.id)
             })
             .collect::<Vec<_>>()
             .join(" · ");
@@ -38,11 +50,10 @@ impl App {
             profiles,
             profile: 0,
             distros,
-            distro: 0,
+            distro,
             store,
             log: vec![have],
-            status: "Enter = create the selected distro and install tools. You never clone a repo."
-                .into(),
+            status: "j/k distro  ← → profile  Enter = install that distro + tools.".into(),
         }
     }
 
@@ -56,8 +67,15 @@ impl App {
     fn distro_id(&self) -> &str {
         self.distros
             .get(self.distro)
-            .map(|s| s.as_str())
+            .map(|s| s.id)
             .unwrap_or(new_wsl::DISTRO)
+    }
+
+    fn distro_ok(&self) -> bool {
+        self.distros
+            .get(self.distro)
+            .map(|d| d.online)
+            .unwrap_or(false)
     }
 
     fn push(&mut self, line: impl Into<String>) {
@@ -103,6 +121,13 @@ impl App {
     }
 
     fn run_setup(&mut self, term: &mut ratatui::DefaultTerminal) {
+        if !self.distro_ok() {
+            self.status = format!(
+                "{} is not in `wsl --list --online`. Update WSL and retry.",
+                self.distro_id()
+            );
+            return;
+        }
         let profile = self.profile_id().to_string();
         let distro = self.distro_id().to_string();
         self.push(new_wsl::ensure_wslconfig());
@@ -172,8 +197,8 @@ impl App {
     }
 }
 
-pub fn run() -> Result<(), String> {
-    let mut app = App::new();
+pub fn run(prefer: Option<&str>) -> Result<(), String> {
+    let mut app = App::new(prefer);
     let mut term = ratatui::init();
     let result = loop {
         term.draw(|f| draw(f, &app)).map_err(|e| e.to_string())?;
@@ -219,7 +244,7 @@ fn mint() -> Color {
 
 fn draw(f: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
-        Constraint::Length(6),
+        Constraint::Length(9),
         Constraint::Min(6),
         Constraint::Length(2),
     ])
@@ -242,18 +267,22 @@ fn draw(f: &mut Frame, app: &App) {
         .distros
         .iter()
         .enumerate()
-        .map(|(i, p)| {
-            if i == app.distro {
-                format!("(*) {p}")
+        .map(|(i, d)| {
+            let mark = if i == app.distro { "(*)" } else { "( )" };
+            let st = if d.installed {
+                "installed"
+            } else if d.online {
+                "available"
             } else {
-                format!("( ) {p}")
-            }
+                "not on this PC"
+            };
+            format!("{mark} {} — {}  [{st}]", d.id, d.label)
         })
         .collect::<Vec<_>>()
-        .join("   ");
+        .join("\n         ");
     let head = format!(
-        "New WSL = a Linux distro + a software profile (Homebrew CLIs).\n\
-         {distros}     j/k distro\n\
+        "Pick a supported distro (Ubuntu / Debian / Arch). Fedora is restore-only.\n\
+         {distros}\n\
          {names}     ← → profile"
     );
     f.render_widget(

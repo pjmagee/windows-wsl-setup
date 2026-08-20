@@ -2,6 +2,7 @@
 """Render Homebrew files and prune lists from the Linux catalog + a profile.
 
   linux-tools.py brewfile <profile> [catalog.json] [profile.json] [overlay.json]
+  linux-tools.py npm      <profile> [catalog.json] [profile.json] [overlay.json]
   linux-tools.py prune    <profile> [catalog.json] [profile.json] [overlay.json]
 
 Profile files are ID lists (profiles/linux/<id>.json). Overlay, if present:
@@ -66,8 +67,9 @@ def brewfile(catalog: dict, ids: list[str], profile: str) -> str:
         kind = t.get("kind", "brew")
         if kind == "cask":
             lines.append(f'cask "{pkg}"')
-        else:
+        elif kind in ("brew", ""):
             lines.append(f'brew "{pkg}"')
+        # npm and other kinds are installed by install.sh, not Homebrew.
     lines.append("")
     return "\n".join(lines)
 
@@ -104,6 +106,12 @@ def main() -> int:
         return 1
     if cmd == "brewfile":
         sys.stdout.write(brewfile(catalog, ids, profile))
+        return 0
+    if cmd == "npm":
+        wanted = set(ids)
+        for t in catalog.get("tools", []):
+            if t.get("id") in wanted and t.get("kind") == "npm":
+                print(t.get("pkg") or t.get("id"))
         return 0
     if cmd == "prune":
         for kind, pkg in prune_pkgs(catalog, ids):

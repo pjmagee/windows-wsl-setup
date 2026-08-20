@@ -171,7 +171,9 @@ impl App {
                                 AppRow::App(i) => idxs.push(*i),
                             }
                         }
-                        let all_on = idxs.iter().all(|&i| self.app_keep.get(i).copied().unwrap_or(false));
+                        let all_on = idxs
+                            .iter()
+                            .all(|&i| self.app_keep.get(i).copied().unwrap_or(false));
                         for i in idxs {
                             if let Some(v) = self.app_keep.get_mut(i) {
                                 *v = !all_on;
@@ -213,7 +215,7 @@ pub fn run() -> Result<(), String> {
     match home_choice()? {
         HomeChoice::Collect => run_collect(),
         HomeChoice::Restore => crate::tui_restore::run(None),
-        HomeChoice::NewWsl => crate::tui_new_wsl::run(),
+        HomeChoice::NewWsl => crate::tui_new_wsl::run(None),
         HomeChoice::Profiles => crate::tui_profiles::run(),
         HomeChoice::Quit => Ok(()),
     }

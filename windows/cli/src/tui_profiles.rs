@@ -1,12 +1,11 @@
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, List, ListItem, Paragraph, Tabs};
 
 use crate::apply;
-use crate::catalog::{
-    BundleDoc, LinuxProfileDoc, Store, WindowsProfileDoc, WslSpec,
-};
+use crate::catalog::{BundleDoc, LinuxProfileDoc, Store, WindowsProfileDoc, WslSpec};
 use crate::classify;
+use crate::new_wsl;
 use crate::profile;
 use crate::suggest;
 
@@ -34,7 +33,13 @@ struct App {
     bundle_idx: usize,
     windows_sel: Vec<String>,
     linux_sel: Vec<String>,
+    distros: Vec<new_wsl::DistroChoice>,
+    distro: usize,
+    create_wsl: bool,
     dirty: bool,
+    naming: bool,
+    name_buf: String,
+    pending_delete: Option<String>,
     log: Vec<String>,
     status: String,
 }
@@ -51,9 +56,15 @@ impl App {
             bundle_idx: 0,
             windows_sel: Vec::new(),
             linux_sel: Vec::new(),
+            distros: new_wsl::distro_choices(),
+            distro: 0,
+            create_wsl: true,
             dirty: false,
+            naming: false,
+            name_buf: String::new(),
+            pending_delete: None,
             log: Vec::new(),
-            status: "Pick a bundle. Space ticks. s save custom. g suggest from this PC.".into(),
+            status: "Pick a bundle. Space ticks. s save as. d delete. g suggest.".into(),
         };
         app.load_bundle();
         Ok(app)
@@ -71,64 +82,165 @@ impl App {
         if let Ok(r) = profile::resolve(&self.store, &id) {
             self.windows_sel = r.windows.packages;
             self.linux_sel = r.linux.tools;
+            self.create_wsl = r.bundle.wsl.create_if_missing;
+            if let Ok(d) = new_wsl::parse_distro(&r.bundle.wsl.distro) {
+                if let Some(i) = self.distros.iter().position(|c| c.id == d) {
+                    self.distro = i;
+                }
+            }
             self.dirty = false;
             self.status = format!("loaded {id}");
         }
     }
 
-    fn working_docs(&self) -> (WindowsProfileDoc, LinuxProfileDoc, BundleDoc) {
-        let id = if self.dirty {
-            "custom".into()
-        } else {
-            self.current_id()
-        };
+    fn distro_id(&self) -> &str {
+        self.distros
+            .get(self.distro)
+            .map(|d| d.id)
+            .unwrap_or(new_wsl::DISTRO)
+    }
+
+    fn label(&self) -> (String, String) {
+        let id = self.current_id();
+        let name = self
+            .store
+            .bundles
+            .get(&id)
+            .map(|b| {
+                if b.name.is_empty() {
+                    b.id.clone()
+                } else {
+                    b.name.clone()
+                }
+            })
+            .unwrap_or_else(|| id.clone());
+        (id, name)
+    }
+
+    fn snapshot(&self, id: &str, name: &str) -> (WindowsProfileDoc, LinuxProfileDoc, BundleDoc) {
         (
             WindowsProfileDoc {
                 schema_version: 1,
-                id: id.clone(),
-                name: id.clone(),
+                id: id.into(),
+                name: name.into(),
                 packages: self.windows_sel.clone(),
             },
             LinuxProfileDoc {
                 schema_version: 1,
-                id: id.clone(),
-                name: id.clone(),
+                id: id.into(),
+                name: name.into(),
                 tools: self.linux_sel.clone(),
             },
             BundleDoc {
                 schema_version: 1,
-                id: id.clone(),
-                name: id,
-                windows: "custom".into(),
-                linux: "custom".into(),
-                wsl: WslSpec::default(),
+                id: id.into(),
+                name: name.into(),
+                windows: id.into(),
+                linux: id.into(),
+                wsl: WslSpec {
+                    distro: self.distro_id().into(),
+                    create_if_missing: self.create_wsl,
+                },
             },
         )
     }
 
-    fn save_custom(&mut self) {
-        let (w, l, mut b) = self.working_docs();
-        b.windows = "custom".into();
-        b.linux = "custom".into();
-        b.id = "custom".into();
-        self.store.windows.insert("custom".into(), w.clone());
-        self.store.linux.insert("custom".into(), l.clone());
-        self.store.bundles.insert("custom".into(), b);
-        self.store.windows_source.insert("custom".into(), "user");
-        self.store.linux_source.insert("custom".into(), "user");
-        self.store.bundle_source.insert("custom".into(), "user");
-        match profile::save(&self.store, "custom") {
-            Ok(_) => {
-                if !self.bundle_ids.iter().any(|x| x == "custom") {
-                    self.bundle_ids.push("custom".into());
+    fn begin_save(&mut self) {
+        let id = self.current_id();
+        self.name_buf = if self.store.bundle_source.get(&id) == Some(&"user") {
+            self.store
+                .bundles
+                .get(&id)
+                .map(|b| {
+                    if b.name.is_empty() {
+                        b.id.clone()
+                    } else {
+                        b.name.clone()
+                    }
+                })
+                .unwrap_or(id)
+        } else {
+            String::new()
+        };
+        self.naming = true;
+        self.status = "Type a name, then Enter.".into();
+    }
+
+    fn confirm_save(&mut self) {
+        if self.name_buf.trim().is_empty() {
+            self.status = "type a name, then Enter".into();
+            return;
+        }
+        let wsl = WslSpec {
+            distro: self.distro_id().into(),
+            create_if_missing: self.create_wsl,
+        };
+        let windows = self.windows_sel.clone();
+        let linux = self.linux_sel.clone();
+        let raw = self.name_buf.clone();
+        match profile::put_user(&mut self.store, &raw, windows, linux, wsl)
+            .and_then(|r| profile::save(&self.store, &r.bundle.id).map(|_| r))
+        {
+            Ok(r) => {
+                let id = r.bundle.id.clone();
+                if !self.bundle_ids.iter().any(|x| x == &id) {
+                    self.bundle_ids.push(id.clone());
                 }
                 self.bundle_idx = self
                     .bundle_ids
                     .iter()
-                    .position(|x| x == "custom")
+                    .position(|x| x == &id)
                     .unwrap_or(self.bundle_idx);
                 self.dirty = false;
-                self.status = "saved custom under %USERPROFILE%\\.windows-wsl-setup\\profiles".into();
+                self.naming = false;
+                self.status = format!(
+                    "saved {} — {}  (%USERPROFILE%\\.windows-wsl-setup\\profiles)",
+                    r.bundle.id, r.bundle.name
+                );
+            }
+            Err(e) => self.status = e,
+        }
+    }
+
+    fn delete_target(&self) -> String {
+        if TABS[self.tab] == Tab::Pick {
+            self.bundle_ids
+                .get(self.cursor)
+                .cloned()
+                .unwrap_or_else(|| self.current_id())
+        } else {
+            self.current_id()
+        }
+    }
+
+    fn begin_delete(&mut self) {
+        let id = self.delete_target();
+        if self.store.bundle_source.get(&id) != Some(&"user") {
+            self.status = format!("{id} is shipped — only user profiles can be deleted");
+            return;
+        }
+        self.pending_delete = Some(id);
+        self.status = "Enter deletes this profile. Esc cancels.".into();
+    }
+
+    fn confirm_delete(&mut self) {
+        let Some(id) = self.pending_delete.take() else {
+            return;
+        };
+        match profile::delete(&mut self.store, &id) {
+            Ok(_) => {
+                let present: Vec<String> = self.store.bundles.keys().cloned().collect();
+                self.bundle_ids.retain(|x| present.iter().any(|k| k == x));
+                if self.bundle_idx >= self.bundle_ids.len() {
+                    self.bundle_idx = self.bundle_ids.len().saturating_sub(1);
+                }
+                self.dirty = false;
+                self.load_bundle();
+                self.status = if self.store.bundle_source.get(&id) == Some(&"shipped") {
+                    format!("removed user overlay — {id} is shipped again")
+                } else {
+                    format!("deleted {id}")
+                };
             }
             Err(e) => self.status = e,
         }
@@ -141,7 +253,7 @@ impl App {
         self.linux_sel = s.linux;
         self.dirty = true;
         self.status = format!(
-            "suggested {} windows / {} linux (s to save as custom)",
+            "suggested {} windows / {} linux (s to name and save)",
             self.windows_sel.len(),
             self.linux_sel.len()
         );
@@ -151,7 +263,13 @@ impl App {
     fn windows_rows(&self) -> Vec<Row> {
         catalog_rows(
             classify::WINDOWS_CATEGORIES,
-            &self.store.windows_catalog.packages.iter().map(|p| (p.category.as_str(), p.id.as_str(), p.name.as_str())).collect::<Vec<_>>(),
+            &self
+                .store
+                .windows_catalog
+                .packages
+                .iter()
+                .map(|p| (p.category.as_str(), p.id.as_str(), p.name.as_str()))
+                .collect::<Vec<_>>(),
             &self.windows_sel,
         )
     }
@@ -159,7 +277,13 @@ impl App {
     fn linux_rows(&self) -> Vec<Row> {
         catalog_rows(
             classify::LINUX_CATEGORIES,
-            &self.store.linux_catalog.tools.iter().map(|t| (t.category.as_str(), t.id.as_str(), t.name.as_str())).collect::<Vec<_>>(),
+            &self
+                .store
+                .linux_catalog
+                .tools
+                .iter()
+                .map(|t| (t.category.as_str(), t.id.as_str(), t.name.as_str()))
+                .collect::<Vec<_>>(),
             &self.linux_sel,
         )
     }
@@ -169,7 +293,7 @@ impl App {
             Tab::Pick => self.bundle_ids.len().max(1),
             Tab::Windows => self.windows_rows().len().max(1),
             Tab::Linux => self.linux_rows().len().max(1),
-            Tab::Apply => 1,
+            Tab::Apply => self.distros.len() + 2,
         };
         if self.cursor >= n {
             self.cursor = n - 1;
@@ -184,21 +308,57 @@ impl App {
                     self.load_bundle();
                 }
             }
-            Tab::Windows => toggle_row(&self.windows_rows(), self.cursor, &mut self.windows_sel, &mut self.dirty),
-            Tab::Linux => toggle_row(&self.linux_rows(), self.cursor, &mut self.linux_sel, &mut self.dirty),
-            Tab::Apply => {}
+            Tab::Windows => toggle_row(
+                &self.windows_rows(),
+                self.cursor,
+                &mut self.windows_sel,
+                &mut self.dirty,
+            ),
+            Tab::Linux => toggle_row(
+                &self.linux_rows(),
+                self.cursor,
+                &mut self.linux_sel,
+                &mut self.dirty,
+            ),
+            Tab::Apply => {
+                if self.cursor < self.distros.len() {
+                    self.distro = self.cursor;
+                } else if self.cursor == self.distros.len() {
+                    self.create_wsl = !self.create_wsl;
+                }
+            }
         }
     }
 
     fn apply_now(&mut self, term: &mut ratatui::DefaultTerminal) {
-        let (w, l, b) = self.working_docs();
+        if self.create_wsl {
+            if let Some(d) = self.distros.get(self.distro) {
+                if !d.online {
+                    self.status = format!(
+                        "{} is not in `wsl --list --online`. Pick another distro.",
+                        d.id
+                    );
+                    return;
+                }
+            }
+        }
+        let (id, name) = self.label();
+        let (w, l, b) = self.snapshot(&id, &name);
         let r = profile::Resolved {
             bundle: b,
             windows: w,
             linux: l,
             source: "tui".into(),
         };
-        self.status = "applying (winget + optional New WSL)…".into();
+        self.status = format!(
+            "applying (winget + {} {})…",
+            if self.create_wsl {
+                "New WSL"
+            } else {
+                "existing"
+            },
+            self.distro_id()
+        );
         let _ = term.draw(|f| draw(f, self));
         let steps = apply::apply_resolved(&self.store, &r, true, true);
         for st in &steps {
@@ -284,6 +444,36 @@ pub fn run() -> Result<(), String> {
         if key.kind != KeyEventKind::Press {
             continue;
         }
+        if app.naming {
+            match key.code {
+                KeyCode::Esc => {
+                    app.naming = false;
+                    app.status = "save cancelled".into();
+                }
+                KeyCode::Enter => app.confirm_save(),
+                KeyCode::Backspace => {
+                    app.name_buf.pop();
+                }
+                KeyCode::Char(c) if !key.modifiers.intersects(KeyModifiers::CONTROL) => {
+                    if app.name_buf.len() < 60 {
+                        app.name_buf.push(c);
+                    }
+                }
+                _ => {}
+            }
+            continue;
+        }
+        if app.pending_delete.is_some() {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('q') => {
+                    app.pending_delete = None;
+                    app.status = "delete cancelled".into();
+                }
+                KeyCode::Enter | KeyCode::Char('y') => app.confirm_delete(),
+                _ => {}
+            }
+            continue;
+        }
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
             KeyCode::Tab => {
@@ -297,11 +487,18 @@ pub fn run() -> Result<(), String> {
             KeyCode::Down | KeyCode::Char('j') => app.cursor = app.cursor.saturating_add(1),
             KeyCode::Up | KeyCode::Char('k') => app.cursor = app.cursor.saturating_sub(1),
             KeyCode::Char(' ') => app.toggle(),
-            KeyCode::Char('s') => app.save_custom(),
+            KeyCode::Char('s') => app.begin_save(),
+            KeyCode::Char('d') => app.begin_delete(),
             KeyCode::Char('g') => app.suggest_now(),
             KeyCode::Enter => match TABS[app.tab] {
                 Tab::Pick => app.toggle(),
-                Tab::Apply => app.apply_now(&mut term),
+                Tab::Apply => {
+                    if app.cursor == app.distros.len() + 1 {
+                        app.apply_now(&mut term);
+                    } else {
+                        app.toggle();
+                    }
+                }
                 _ => app.toggle(),
             },
             _ => {}
@@ -334,15 +531,76 @@ fn draw(f: &mut Frame, app: &App) {
     f.render_widget(tabs, chunks[0]);
     match TABS[app.tab] {
         Tab::Pick => f.render_widget(pick_body(app), chunks[1]),
-        Tab::Windows => f.render_widget(tick_body(" windows (winget) ", &app.windows_rows(), &app.windows_sel, app.cursor), chunks[1]),
-        Tab::Linux => f.render_widget(tick_body(" linux (Ubuntu 26.04 + Homebrew) ", &app.linux_rows(), &app.linux_sel, app.cursor), chunks[1]),
+        Tab::Windows => f.render_widget(
+            tick_body(
+                " windows (winget) ",
+                &app.windows_rows(),
+                &app.windows_sel,
+                app.cursor,
+            ),
+            chunks[1],
+        ),
+        Tab::Linux => f.render_widget(
+            tick_body(
+                " linux (Homebrew on the selected distro) ",
+                &app.linux_rows(),
+                &app.linux_sel,
+                app.cursor,
+            ),
+            chunks[1],
+        ),
         Tab::Apply => f.render_widget(apply_body(app), chunks[1]),
     }
-    f.render_widget(
-        Paragraph::new("j/k move  space tick  s save custom  g suggest  tab section  Enter apply  q quit")
+    if let Some(id) = app.pending_delete.as_deref() {
+        let name = app
+            .store
+            .bundles
+            .get(id)
+            .map(|b| b.name.as_str())
+            .filter(|n| !n.is_empty() && *n != id)
+            .unwrap_or(id);
+        let extra = if name == id {
+            String::new()
+        } else {
+            format!(" — {name}")
+        };
+        f.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(vec![
+                    Span::raw("Delete "),
+                    Span::styled(id.to_string(), Style::new().fg(mint()).bold()),
+                    Span::raw(extra),
+                    Span::raw("?"),
+                ]),
+                Line::from("Enter yes   Esc / n no").style(Style::new().fg(Color::DarkGray)),
+            ])),
+            chunks[2],
+        );
+    } else if app.naming {
+        let preview = match crate::catalog::sanitize_id(&app.name_buf) {
+            Ok(id) => format!("id {id}  —  Enter save  Esc cancel"),
+            Err(_) if app.name_buf.trim().is_empty() => "type a name  —  Esc cancel".into(),
+            Err(e) => format!("{e}  —  Esc cancel"),
+        };
+        f.render_widget(
+            Paragraph::new(Text::from(vec![
+                Line::from(vec![
+                    Span::raw("Save as: "),
+                    Span::styled(format!("{}_", app.name_buf), Style::new().fg(mint())),
+                ]),
+                Line::from(preview).style(Style::new().fg(Color::DarkGray)),
+            ])),
+            chunks[2],
+        );
+    } else {
+        f.render_widget(
+            Paragraph::new(
+                "j/k move  space tick  s save as  d delete  g suggest  tab  Enter apply  q quit",
+            )
             .style(Style::new().fg(Color::DarkGray)),
-        chunks[2],
-    );
+            chunks[2],
+        );
+    }
     f.render_widget(
         Paragraph::new(app.status.as_str()).style(Style::new().fg(mint())),
         chunks[3],
@@ -371,41 +629,78 @@ fn pick_body(app: &App) -> List<'_> {
 }
 
 fn tick_body<'a>(title: &'a str, rows: &'a [Row], sel: &'a [String], cursor: usize) -> List<'a> {
-    let items: Vec<ListItem> = rows
-        .iter()
-        .enumerate()
-        .map(|(i, row)| {
-            let it = match row {
-                Row::Header(cat) => {
-                    ListItem::new(format!("── {cat} ──")).style(Style::new().fg(Color::DarkGray))
+    let items: Vec<ListItem> =
+        rows.iter()
+            .enumerate()
+            .map(|(i, row)| {
+                let it = match row {
+                    Row::Header(cat) => ListItem::new(format!("── {cat} ──"))
+                        .style(Style::new().fg(Color::DarkGray)),
+                    Row::Item(id) => {
+                        let mark = if sel.iter().any(|x| x == id) {
+                            "[x]"
+                        } else {
+                            "[ ]"
+                        };
+                        ListItem::new(format!("{mark}  {id}"))
+                    }
+                };
+                if i == cursor {
+                    it.style(Style::new().bg(Color::Rgb(28, 38, 48)).fg(mint()))
+                } else {
+                    it
                 }
-                Row::Item(id) => {
-                    let mark = if sel.iter().any(|x| x == id) { "[x]" } else { "[ ]" };
-                    ListItem::new(format!("{mark}  {id}"))
-                }
-            };
-            if i == cursor {
-                it.style(Style::new().bg(Color::Rgb(28, 38, 48)).fg(mint()))
-            } else {
-                it
-            }
-        })
-        .collect();
+            })
+            .collect();
     List::new(items).block(Block::bordered().title(title))
 }
 
-fn apply_body(app: &App) -> Paragraph<'_> {
-    let mut lines = vec![
-        format!(
-            "bundle: {}{}\nwindows packages: {}\nlinux tools: {}\n\nEnter = winget install + New WSL (Ubuntu 26.04) + install.sh\nDoes not remount disks. Collect/Restore is the kit path.\n",
-            app.current_id(),
-            if app.dirty { " (edited)" } else { "" },
-            app.windows_sel.len(),
-            app.linux_sel.len()
-        ),
-    ];
-    for l in app.log.iter().rev().take(8).collect::<Vec<_>>().into_iter().rev() {
-        lines.push(l.clone());
+fn apply_body(app: &App) -> List<'_> {
+    let mut items: Vec<ListItem> = Vec::new();
+    for (i, d) in app.distros.iter().enumerate() {
+        let mark = if i == app.distro { "(*)" } else { "( )" };
+        let st = if d.installed {
+            "installed"
+        } else if d.online {
+            "available"
+        } else {
+            "not on this PC"
+        };
+        let mut it = ListItem::new(format!("{mark}  {}  —  {}  [{st}]", d.id, d.label));
+        if app.cursor == i {
+            it = it.style(Style::new().bg(Color::Rgb(28, 38, 48)).fg(mint()));
+        }
+        items.push(it);
     }
-    Paragraph::new(lines.join("\n")).block(Block::bordered().title(" apply "))
+    let create_i = app.distros.len();
+    let cmark = if app.create_wsl { "[x]" } else { "[ ]" };
+    let mut create = ListItem::new(format!("{cmark}  create WSL if missing"));
+    if app.cursor == create_i {
+        create = create.style(Style::new().bg(Color::Rgb(28, 38, 48)).fg(mint()));
+    }
+    items.push(create);
+    let go_i = app.distros.len() + 1;
+    let mut go = ListItem::new(">>>  Apply  (winget + selected distro + install.sh)");
+    if app.cursor == go_i {
+        go = go.style(Style::new().bg(Color::Rgb(28, 38, 48)).fg(mint()));
+    }
+    items.push(go);
+    for l in app
+        .log
+        .iter()
+        .rev()
+        .take(6)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+    {
+        items.push(ListItem::new(l.as_str()).style(Style::new().fg(Color::DarkGray)));
+    }
+    List::new(items).block(Block::bordered().title(format!(
+        " apply — {}{}  {} win / {} linux — pick a distro ",
+        app.current_id(),
+        if app.dirty { " (edited)" } else { "" },
+        app.windows_sel.len(),
+        app.linux_sel.len()
+    )))
 }

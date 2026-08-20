@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "note": "Linux catalog. Profiles are ID lists in profiles/linux/<id>.json. apt is packages/apt.txt, not here.",
+  "note": "Linux catalog. Profiles are ID lists in profiles/linux/<id>.json. apt is packages/apt.txt, not here. kind npm is not Homebrew — do not brew install astro (that is Astronomer).",
   "tools": [
     { "id": "starship", "name": "Starship", "kind": "brew", "pkg": "starship", "category": "environment" },
     { "id": "zoxide", "name": "zoxide", "kind": "brew", "pkg": "zoxide", "category": "environment" },
@@ -8,13 +8,13 @@
     { "id": "powershell", "name": "PowerShell 7", "kind": "brew", "pkg": "powershell", "category": "environment" },
     { "id": "sevenzip", "name": "7-Zip (7zz)", "kind": "brew", "pkg": "sevenzip", "category": "environment" },
 
-    { "id": "uv", "name": "uv (Python)", "kind": "brew", "pkg": "uv", "category": "sdks" },
-    { "id": "rustup", "name": "rustup", "kind": "brew", "pkg": "rustup", "category": "sdks" },
-    { "id": "bun", "name": "bun", "kind": "brew", "pkg": "bun", "category": "sdks" },
-    { "id": "fnm", "name": "fnm (Node)", "kind": "brew", "pkg": "fnm", "category": "sdks" },
-    { "id": "go", "name": "Go", "kind": "brew", "pkg": "go", "category": "sdks" },
-    { "id": "dotnet", "name": ".NET SDK", "kind": "brew", "pkg": "dotnet", "category": "sdks" },
-    { "id": "openjdk", "name": "OpenJDK", "kind": "brew", "pkg": "openjdk", "category": "sdks" },
+    { "id": "uv", "name": "uv (Python)", "kind": "brew", "pkg": "uv", "category": "build" },
+    { "id": "rustup", "name": "rustup", "kind": "brew", "pkg": "rustup", "category": "build" },
+    { "id": "bun", "name": "bun", "kind": "brew", "pkg": "bun", "category": "build" },
+    { "id": "fnm", "name": "fnm (Node)", "kind": "brew", "pkg": "fnm", "category": "build" },
+    { "id": "go", "name": "Go", "kind": "brew", "pkg": "go", "category": "build" },
+    { "id": "dotnet", "name": ".NET SDK", "kind": "brew", "pkg": "dotnet", "category": "build" },
+    { "id": "openjdk", "name": "OpenJDK", "kind": "brew", "pkg": "openjdk", "category": "build" },
 
     { "id": "gh", "name": "GitHub CLI", "kind": "brew", "pkg": "gh", "category": "devops" },
     { "id": "dagger", "name": "Dagger", "kind": "brew", "pkg": "dagger", "category": "devops" },
@@ -39,8 +39,10 @@
     { "id": "grok-build", "name": "Grok Build", "kind": "cask", "pkg": "grok-build", "category": "agents" },
     { "id": "copilot-cli", "name": "GitHub Copilot CLI", "kind": "cask", "pkg": "copilot-cli", "category": "agents" },
 
-    { "id": "changie", "name": "changie", "kind": "brew", "pkg": "changie", "category": "content" },
-    { "id": "hugo", "name": "Hugo", "kind": "brew", "pkg": "hugo", "category": "content" },
-    { "id": "devtunnel", "name": "Dev Tunnels", "kind": "cask", "pkg": "devtunnel", "category": "content" }
+    { "id": "changie", "name": "changie", "kind": "brew", "pkg": "changie", "category": "environment" },
+    { "id": "devtunnel", "name": "Dev Tunnels", "kind": "cask", "pkg": "devtunnel", "category": "environment" },
+
+    { "id": "hugo", "name": "Hugo", "kind": "brew", "pkg": "hugo", "category": "web" },
+    { "id": "astro", "name": "Astro", "kind": "npm", "pkg": "astro", "category": "web" }
   ]
 }

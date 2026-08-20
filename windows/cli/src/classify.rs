@@ -8,6 +8,7 @@ pub const WINDOWS_CATEGORIES: &[&str] = &[
     "integrations",
     "agents",
     "browsers",
+    "general",
     "editors",
     "games",
     "media",
@@ -17,12 +18,12 @@ pub const WINDOWS_CATEGORIES: &[&str] = &[
 
 pub const LINUX_CATEGORIES: &[&str] = &[
     "environment",
-    "sdks",
+    "build",
     "devops",
     "cloud",
     "integrations",
     "agents",
-    "content",
+    "web",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,12 +130,7 @@ fn prefix_class(id: &str) -> Option<Class> {
             });
         }
     }
-    const AGENTS: &[&str] = &[
-        "xAI.",
-        "Anthropic.",
-        "GitHub.Copilot",
-        "Anysphere.Cursor",
-    ];
+    const AGENTS: &[&str] = &["xAI.", "Anthropic.", "GitHub.Copilot", "Anysphere.Cursor"];
     for p in AGENTS {
         if starts(id, p) {
             return Some(Class {
@@ -154,11 +150,13 @@ fn prefix_class(id: &str) -> Option<Class> {
             prefer_linux: starts(id, "Atuinsh.") || starts(id, "Starship."),
         });
     }
-    if starts(id, "Microsoft.VisualStudioCode")
-        || starts(id, "Microsoft.Office")
-        || starts(id, "Microsoft.Outlook")
-        || starts(id, "Microsoft.VisualStudio.202")
-    {
+    if starts(id, "Microsoft.Office") || starts(id, "Microsoft.Outlook") {
+        return Some(Class {
+            category: "general",
+            prefer_linux: false,
+        });
+    }
+    if starts(id, "Microsoft.VisualStudioCode") || starts(id, "Microsoft.VisualStudio.202") {
         return Some(Class {
             category: "editors",
             prefer_linux: false,
@@ -188,10 +186,7 @@ fn prefix_class(id: &str) -> Option<Class> {
             prefer_linux: starts(id, "AgileBits.1Password.CLI"),
         });
     }
-    if starts(id, "Stripe.")
-        || starts(id, "Tailscale.")
-        || starts(id, "NordSecurity.")
-    {
+    if starts(id, "Stripe.") || starts(id, "Tailscale.") || starts(id, "NordSecurity.") {
         return Some(Class {
             category: "integrations",
             prefer_linux: starts(id, "Stripe."),
@@ -226,6 +221,13 @@ mod tests {
     #[test]
     fn brave_is_browser() {
         assert_eq!(windows_id("Brave.Brave").category, "browsers");
+    }
+
+    #[test]
+    fn office_and_outlook_are_general() {
+        assert_eq!(windows_id("Microsoft.Office").category, "general");
+        assert_eq!(windows_id("Microsoft.Outlook").category, "general");
+        assert_eq!(windows_id("Microsoft.VisualStudioCode").category, "editors");
     }
 
     #[test]

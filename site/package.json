@@ -1,5 +1,5 @@
 {
-  "name": "windows-wsl-setup-site",
+  "name": "windows-wsl-manager-site",
   "type": "module",
   "private": true,
   "scripts": {

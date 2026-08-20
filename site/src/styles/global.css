@@ -72,6 +72,7 @@ pre code { background: none; padding: 0; }
   color: var(--ink);
   font-weight: 600;
   letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 .brand:hover { text-decoration: none; }
 .mark {

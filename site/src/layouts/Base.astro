@@ -3,10 +3,10 @@ import '../styles/global.css';
 
 const { title, description, current } = Astro.props;
 const base = import.meta.env.BASE_URL;
-const fullTitle = title ? `${title} · Windows WSL Setup` : 'Windows WSL Setup';
+const fullTitle = title ? `${title} · Windows WSL Manager` : 'Windows WSL Manager';
 const desc =
   description ??
-  'One Windows binary. Collect a kit, restore disks, create Ubuntu 26.04, or apply a software profile.';
+  'One Windows binary. Collect a kit, restore it after a clean install, stand up Ubuntu/Debian/Arch, or apply a software profile.';
 ---
 <!doctype html>
 <html lang="en">
@@ -31,24 +31,23 @@ const desc =
     <header class="nav">
       <div class="wrap nav-inner">
         <a class="brand" href={base}>
-          <span class="mark">ww</span>
-          Windows WSL Setup
+          <span class="mark">wm</span>
+          Windows WSL Manager
         </a>
         <nav class="nav-links">
-          <a href={`${base}docs/welcome/`} aria-current={current === 'docs' ? 'page' : undefined}>Docs</a>
+          <a href={`${base}docs/getting-started/`} aria-current={current === 'docs' || current === 'start' ? 'page' : undefined}>Get started</a>
           <a href={`${base}docs/agents/`} aria-current={current === 'agents' ? 'page' : undefined}>Agents</a>
           <a href={`${base}docs/download/`} aria-current={current === 'download' ? 'page' : undefined}>Download</a>
-          <a href={`${base}docs/profiles/`} aria-current={current === 'profiles' ? 'page' : undefined}>Profiles</a>
-          <a href="https://github.com/pjmagee/windows-wsl-setup">GitHub</a>
+          <a href="https://github.com/pjmagee/windows-wsl-manager">GitHub</a>
         </nav>
-        <a class="btn" href="https://github.com/pjmagee/windows-wsl-setup/releases">Get the exe</a>
+        <a class="btn" href="https://github.com/pjmagee/windows-wsl-manager/releases">Get the exe</a>
       </div>
     </header>
     <slot />
     <footer class="wrap footer">
       <span>winget · WSL · Homebrew · one binary</span>
       <span>
-        <a href="https://github.com/pjmagee/windows-wsl-setup">pjmagee/windows-wsl-setup</a>
+        <a href="https://github.com/pjmagee/windows-wsl-manager">pjmagee/windows-wsl-manager</a>
       </span>
     </footer>
   </body>

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/pjmagee/windows-wsl-setup/schema/kit.schema.json",
+  "$id": "https://github.com/pjmagee/windows-wsl-manager/schema/kit.schema.json",
   "title": "Windows WSL Setup kit",
   "type": "object",
   "required": ["schemaVersion", "createdAt", "computer", "user", "linuxProfile", "kitRoot"],

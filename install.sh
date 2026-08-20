@@ -195,6 +195,13 @@ prune_unselected_extras() {
   fi
   while IFS=$'\t' read -r kind pkg; do
     [ -n "$pkg" ] || continue
+    if [ "$kind" = npm ]; then
+      eval "$(fnm env --shell bash 2>/dev/null)" || true
+      if is_linux_bin npm; then
+        npm uninstall -g "$pkg" >/dev/null 2>&1 || true
+      fi
+      continue
+    fi
     case "$pkg" in
       opencode)
         rm -f "$HOME/.local/bin/opencode" "$HOME/.opencode/bin/opencode"
@@ -675,6 +682,35 @@ install_fnm_node() {
   fnm default lts-latest
 }
 
+# Catalog kind npm (e.g. astro). Not Homebrew — brew install astro is Astronomer.
+install_npm_tools() {
+  log "npm globals (profile=$PROFILE)"
+  eval "$(fnm env --shell bash 2>/dev/null)" || true
+  local overlay="" args=() pkg
+  if [ -f "$TOOLS_OVERLAY" ]; then
+    overlay="$TOOLS_OVERLAY"
+  elif [ -f "$LEGACY_OVERLAY" ]; then
+    overlay="$LEGACY_OVERLAY"
+  fi
+  args=("$ROOT/scripts/linux-tools.py" npm "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
+  if [ -n "$overlay" ]; then
+    args+=("$overlay")
+  fi
+  local pkgs=()
+  mapfile -t pkgs < <(python3 "${args[@]}")
+  if ((${#pkgs[@]} == 0)); then
+    return 0
+  fi
+  if ! is_linux_bin npm; then
+    echo "Linux npm is required for catalog npm tools (install_fnm_node first)" >&2
+    return 1
+  fi
+  for pkg in "${pkgs[@]}"; do
+    [ -n "$pkg" ] || continue
+    npm install -g "${pkg}@latest"
+  done
+}
+
 install_starship_config() {
   log "starship config"
   mkdir -p "$HOME/.config"
@@ -846,6 +882,7 @@ print_summary() {
   printf 'changie    %s\n' "$(fmt_ver changie --version)"
   printf 'helm       %s\n' "$(fmt_ver helm version --short)"
   printf 'hugo       %s\n' "$(fmt_ver hugo version)"
+  printf 'astro      %s\n' "$(fmt_ver astro --version)"
   printf 'stripe     %s\n' "$(fmt_ver stripe version)"
   if is_linux_bin 7zz; then
     printf '7zz        %s\n' "$(7zz 2>&1 | head -n1 || true)"

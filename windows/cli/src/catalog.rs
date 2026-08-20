@@ -154,15 +154,27 @@ pub fn user_profiles() -> PathBuf {
     user_root().join("profiles")
 }
 
+/// File / `apply` id. `"Media PC"` → `media-pc`. Must start with a letter.
 pub fn sanitize_id(raw: &str) -> Result<String, String> {
-    let n: String = raw
-        .trim()
-        .to_ascii_lowercase()
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
-        .collect();
+    let mut n = String::new();
+    let mut dash = false;
+    for c in raw.trim().chars() {
+        let c = c.to_ascii_lowercase();
+        if c.is_ascii_alphanumeric() || c == '_' {
+            n.push(c);
+            dash = false;
+        } else if c == '-' || c.is_ascii_whitespace() {
+            if !n.is_empty() && !dash {
+                n.push('-');
+                dash = true;
+            }
+        }
+    }
+    if n.ends_with('-') {
+        n.pop();
+    }
     if n.is_empty() || !n.starts_with(|c: char| c.is_ascii_lowercase()) {
-        return Err("profile id must start with a letter (a-z, 0-9, -, _)".into());
+        return Err("name must start with a letter (a-z)".into());
     }
     if n.len() > 40 {
         return Err("profile id is too long".into());
@@ -340,5 +352,28 @@ mod tests {
         let brave = s.windows_pkg("Brave.Brave").unwrap().priority;
         let steam = s.windows_pkg("Valve.Steam").unwrap().priority;
         assert!(one < brave && brave < steam);
+        assert_eq!(s.windows_category("Microsoft.Office"), "general");
+        assert_eq!(s.windows_category("Microsoft.Outlook"), "general");
+        assert_eq!(s.windows_category("Microsoft.VisualStudioCode"), "editors");
+        assert_eq!(s.linux_tool("uv").unwrap().category, "build");
+        assert_eq!(s.linux_tool("changie").unwrap().category, "environment");
+        assert_eq!(s.linux_tool("devtunnel").unwrap().category, "environment");
+        assert_eq!(s.linux_tool("hugo").unwrap().category, "web");
+        assert_eq!(s.linux_tool("astro").unwrap().category, "web");
+        assert_eq!(s.linux_tool("astro").unwrap().kind, "npm");
+        assert!(home.tools.contains(&"astro".into()));
+        assert!(!work.tools.contains(&"astro".into()));
+    }
+
+    #[test]
+    fn profile_id_from_display_name() {
+        assert_eq!(sanitize_id("Media PC").unwrap(), "media-pc");
+        assert_eq!(sanitize_id("my-dev").unwrap(), "my-dev");
+        assert_eq!(sanitize_id("  Home_lab  ").unwrap(), "home_lab");
+        assert_eq!(sanitize_id("media--pc").unwrap(), "media-pc");
+        assert_eq!(sanitize_id("a - b").unwrap(), "a-b");
+        assert!(sanitize_id("").is_err());
+        assert!(sanitize_id("123").is_err());
+        assert!(sanitize_id("2nd PC").is_err());
     }
 }

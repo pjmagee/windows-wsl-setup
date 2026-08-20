@@ -6,8 +6,9 @@ const { title, description, slug } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const docs = await allDocs();
 const grouped = groups(docs);
+const current = slug === 'agents' ? 'agents' : slug === 'download' ? 'download' : 'docs';
 ---
-<Base title={title} description={description} current="docs">
+<Base title={title} description={description} current={current}>
   <div class="wrap doc-shell">
     <aside class="side">
       {grouped.map(([name, items]) => (

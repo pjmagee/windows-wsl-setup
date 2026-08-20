@@ -55,7 +55,7 @@ else echo "windows"; fi
 |---|---|
 | Windows, human asked to **capture / backup** a used PC | **§0a**. `windows-wsl-setup.exe` **Collect**. Do not run `install.sh`. |
 | Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `windows-wsl-setup.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
-| Windows, human wants a **new empty Ubuntu** (no kit) | **§0a**. `windows-wsl-setup.exe` **New WSL** (a linux profile). Ubuntu 26.04 only. |
+| Windows, human wants a **new empty Linux** (no kit) | **§0a**. `windows-wsl-setup.exe` **New WSL**. User picks Ubuntu-26.04, Debian, or archlinux. |
 | Windows, human wants a **default / custom software set** (no kit) | **§0a**. `windows-wsl-setup.exe` **Profiles** or `apply <id>`. |
 | Windows PowerShell / cmd / Git Bash (cloned repo, work laptop) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
@@ -70,7 +70,7 @@ End users download `windows-wsl-setup.exe` from GitHub Releases (no clone).
 windows-wsl-setup              Collect / Restore / New WSL
 windows-wsl-setup collect      scan this PC, write a kit (winget manifest, WSL, Dev Drive, Brave)
 windows-wsl-setup restore      tick packages from the kit → winget install; remount Dev Drive / WSL; bookmarks + extensions.html
-windows-wsl-setup new-wsl      Ubuntu 26.04 + passwordless sudo + a linux profile
+windows-wsl-setup new-wsl      pick Ubuntu-26.04 / Debian / archlinux + a linux profile
 windows-wsl-setup profiles     edit / suggest / apply a named software profile
 windows-wsl-setup suggest      draft Windows+Linux profile from winget list (JSON)
 windows-wsl-setup apply home   winget + optional New WSL (not a kit restore)
@@ -80,7 +80,7 @@ Do not tell the user to run PowerShell scripts or git clone for this. Maintainer
 
 Never write the kit on `C:`. Never unregister WSL. Restore brings the **existing** Linux disk back; do not run New WSL unless they have no disk to restore.
 
-New WSL does not ask which distro or package manager. apt + Homebrew on Ubuntu 26.04 only.
+New WSL asks which **supported** distro Microsoft still lists (`wsl --list --online`): Ubuntu-26.04 (default), Debian, or archlinux. Fedora / Kali / openSUSE are restore-only. apt or pacman bootstrap, then Homebrew.
 
 `uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64.
 Stop on ARM.
@@ -102,7 +102,7 @@ it at `~` from Windows Terminal, this repo lives on the **Linux** disk, and
 - Windows 11, virtualization enabled, user can elevate if `wsl --install` needs it.
 - Network can reach GitHub, Microsoft packages, and the other upstreams in `install.sh`.
 - First clone of **this** repo on Windows: **HTTPS**
-  (`https://github.com/pjmagee/windows-wsl-setup.git`). 1Password SSH is not ready yet.
+  (`https://github.com/pjmagee/windows-wsl-manager.git`). 1Password SSH is not ready yet.
 
 If `wsl --install` is blocked by policy, stop and tell the user IT must allow
 WSL 2. Do not try Hyper-V workarounds or a different distro.
@@ -134,7 +134,7 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
 7. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
 8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
    `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
-9. Clones this repo to `~/code/windows-wsl-setup` **inside** the distro and runs
+9. Clones this repo to `~/code/windows-wsl-manager` **inside** the distro and runs
    `install.sh work`. If a required host step fails, the host script
    **throws** (no fake `Done.`).
 
@@ -204,7 +204,7 @@ After a **new** Terminal window:
 ### 1.5 After bootstrap
 
 Tell the user to reopen
-`\\wsl$\Ubuntu-26.04\home\<user>\code\windows-wsl-setup` in VS Code
+`\\wsl$\Ubuntu-26.04\home\<user>\code\windows-wsl-manager` in VS Code
 (**WSL: Reopen Folder in WSL**). Further edits happen there.
 
 ### 1.6 Windows leftovers (this repo does not install them)
@@ -245,10 +245,10 @@ echo "$ID $VERSION_ID"    # must be ubuntu 26.04
 uname -m                  # must be x86_64
 sudo -n true
 mkdir -p ~/code
-if [ ! -d ~/code/windows-wsl-setup/.git ]; then
-  git clone https://github.com/pjmagee/windows-wsl-setup.git ~/code/windows-wsl-setup
+if [ ! -d ~/code/windows-wsl-manager/.git ]; then
+  git clone https://github.com/pjmagee/windows-wsl-manager.git ~/code/windows-wsl-manager
 fi
-cd ~/code/windows-wsl-setup
+cd ~/code/windows-wsl-manager
 # Work laptop (Copilot):
 ./install.sh work
 # Home machine (Grok / Claude):
@@ -260,7 +260,7 @@ Then open a **new** Ubuntu tab. From a Linux path: `code .`
 The chosen profile is saved in `~/.config/wsl-setup/profile`. Later updates:
 
 ```bash
-cd ~/code/windows-wsl-setup && git pull && ./install.sh
+cd ~/code/windows-wsl-manager && git pull && ./install.sh
 brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
@@ -354,6 +354,7 @@ laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 | WSL / Terminal / passwordless user | [`windows/bootstrap.ps1`](windows/bootstrap.ps1), [`windows/ensure-user.sh`](windows/ensure-user.sh) |
 
 Do not `brew install grok` (unrelated regex tool). xAI Grok Build is `cask "grok-build"`. Flux CD is `fluxcd`, not `flux`.
+Do not `brew install astro` (Astronomer). withastro is catalog kind `npm`, package `astro`.
 
 Comments: short, factual, only for non-obvious constraints.
 Do not leave placeholders for unrelated work.
@@ -395,7 +396,7 @@ Definition of done for a work-laptop bootstrap:
 2. `sudo -n true` works inside the distro for the existing Linux user.
 3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
    and **wsl** exist. PowerShell `ubuntu` launches the same session.
-4. `~/code/windows-wsl-setup` is a git checkout on the Linux disk.
+4. `~/code/windows-wsl-manager` is a git checkout on the Linux disk.
 5. `./install.sh work` finished; summary shows `profile work`, Homebrew,
    Copilot CLI, Linux versions, and `sudo passwordless`. No grok/claude/
    opencode/devtunnel/changie/hugo/stripe. Host bootstrap does not print

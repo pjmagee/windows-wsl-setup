@@ -30,7 +30,10 @@ pub fn apply_windows(store: &Store, ids: &[String]) -> Vec<Step> {
 }
 
 pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> Vec<Step> {
-    let distro = new_wsl::normalize_distro(distro);
+    let distro = match new_wsl::parse_distro(distro) {
+        Ok(d) => d,
+        Err(e) => return vec![fail("distro", e)],
+    };
     let mut out = Vec::new();
     if create_wsl {
         match new_wsl::ensure_wsl() {
@@ -76,11 +79,27 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
     let json = serde_json::to_string(linux).ok();
     match new_wsl::install_toolchain(distro, &linux.id, json.as_deref()) {
         Ok(s) => {
-            let tail: String = s.lines().rev().take(8).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+            let tail: String = s
+                .lines()
+                .rev()
+                .take(8)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join("\n");
             out.push(ok("install.sh", tail));
         }
         Err(e) => {
-            let tail: String = e.lines().rev().take(12).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+            let tail: String = e
+                .lines()
+                .rev()
+                .take(12)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>()
+                .join("\n");
             out.push(fail("install.sh", tail));
         }
     }
@@ -102,8 +121,19 @@ pub fn apply_resolved(store: &Store, r: &Resolved, windows: bool, linux: bool) -
     out
 }
 
-pub fn apply_id(store: &Store, id: &str, windows: bool, linux: bool) -> Result<Vec<Step>, String> {
-    let r = profile::resolve(store, id)?;
+pub fn apply_id(
+    store: &Store,
+    id: &str,
+    windows: bool,
+    linux: bool,
+    distro: Option<&str>,
+) -> Result<Vec<Step>, String> {
+    let mut r = profile::resolve(store, id)?;
+    if let Some(d) = distro {
+        r.bundle.wsl.distro = new_wsl::parse_distro(d)?.to_string();
+    } else {
+        r.bundle.wsl.distro = new_wsl::parse_distro(&r.bundle.wsl.distro)?.to_string();
+    }
     Ok(apply_resolved(store, &r, windows, linux))
 }
 

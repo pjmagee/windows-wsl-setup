@@ -59,6 +59,7 @@ fn main() {
         }
         "new-wsl" | "new_wsl" => {
             let profile = named(&args, "--profile");
+            let distro = named(&args, "--distro");
             if let Some(p) = profile {
                 match crate::apply::apply_id(
                     &match crate::catalog::Store::load() {
@@ -71,9 +72,13 @@ fn main() {
                     &p,
                     false,
                     true,
+                    distro.as_deref(),
                 ) {
                     Ok(steps) => {
-                        println!("{}", serde_json::to_string_pretty(&steps).unwrap_or_default());
+                        println!(
+                            "{}",
+                            serde_json::to_string_pretty(&steps).unwrap_or_default()
+                        );
                         0
                     }
                     Err(e) => {
@@ -82,7 +87,13 @@ fn main() {
                     }
                 }
             } else {
-                match tui_new_wsl::run() {
+                if let Some(d) = &distro {
+                    if let Err(e) = crate::new_wsl::parse_distro(d) {
+                        eprintln!("{e}");
+                        std::process::exit(1);
+                    }
+                }
+                match tui_new_wsl::run(distro.as_deref()) {
                     Ok(()) => 0,
                     Err(e) => {
                         eprintln!("{e}");
@@ -98,7 +109,7 @@ fn main() {
                 1
             }
         },
-        "catalog" | "profile" | "profiles" | "search" | "map" | "suggest" | "apply" => {
+        "catalog" | "profile" | "profiles" | "search" | "map" | "suggest" | "apply" | "distros" => {
             cli::dispatch(&cmd, &args)
         }
         "-h" | "--help" | "help" => {
@@ -107,17 +118,20 @@ fn main() {
   windows-wsl-setup                 Collect / Restore / New WSL / Profiles\n\
   windows-wsl-setup collect         scan this PC, write a kit\n\
   windows-wsl-setup restore         install from a kit (optional path)\n\
-  windows-wsl-setup new-wsl         empty Ubuntu 26.04 + linux profile\n\
-  windows-wsl-setup new-wsl --profile home\n\
+  windows-wsl-setup new-wsl         pick a supported distro + linux profile\n\
+  windows-wsl-setup new-wsl --profile home --distro Debian\n\
+  windows-wsl-setup distros         supported ∩ wsl --list --online\n\
   windows-wsl-setup profiles        edit / suggest / apply a profile\n\n\
   JSON (agents):\n\
   windows-wsl-setup catalog linux|windows\n\
-  windows-wsl-setup profile list|show <id>|new <id> --from home\n\
+  windows-wsl-setup distros\n\
+  windows-wsl-setup profile list|show <id>|new <id> --from home [--name \"Media PC\"]\n\
   windows-wsl-setup profile add <id> --linux kubectl --windows Brave.Brave\n\
+  windows-wsl-setup profile delete <id>\n\
   windows-wsl-setup search linux <q> | search winget <q>\n\
   windows-wsl-setup map <winget-id>\n\
   windows-wsl-setup suggest\n\
-  windows-wsl-setup apply <id> [--windows-only|--linux-only]\n"
+  windows-wsl-setup apply <id> [--windows-only|--linux-only] [--distro Debian]\n"
             );
             0
         }

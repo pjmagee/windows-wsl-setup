@@ -1,17 +1,17 @@
 ---
 title: Download
-description: Get the exe. Or let an agent install it.
+description: Get the Windows binary. Do not clone the repo.
 order: 2
 group: Start
 ---
 
-1. Open [Releases](https://github.com/pjmagee/windows-wsl-setup/releases).
+1. Open [Releases](https://github.com/pjmagee/windows-wsl-manager/releases).
 2. Download `windows-wsl-setup.exe`.
-3. Run it. Collect / Restore / New WSL / Profiles.
+3. Run it. Home screen: **Collect**, **Restore**, **New WSL**, **Profiles**.
 
-No clone. No installer wizard.
+That filename is the current release artifact of **Windows WSL Manager**. There is no MSI. Agents download the same file from:
 
-Prefer an agent? Install the skill, then ask it to download the latest release and run Collect or Restore. See [Agents](../agents/).
+`https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/windows-wsl-setup.exe`
 
 ```
 windows-wsl-setup
@@ -21,4 +21,6 @@ windows-wsl-setup new-wsl
 windows-wsl-setup profiles
 ```
 
-If Windows just enabled WSL, it may ask to reboot. Reboot, then continue.
+JSON commands (catalog, profile, suggest, apply, map, search, distros) are listed under [Automate](../automate/). First-run leftovers and which mode to pick: [Getting started](../getting-started/).
+
+If Windows just enabled WSL, reboot when asked, then run the exe again.

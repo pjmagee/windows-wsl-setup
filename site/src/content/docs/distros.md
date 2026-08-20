@@ -11,7 +11,7 @@ group: Reference
 | New WSL / Apply linux | **Ubuntu 26.04** (default), **Debian**, or **Arch** (`archlinux`) |
 | Other distros already installed | Left alone. We never unregister them. |
 
-CLIs (uv, bun, rust, git extras, cloud tools) come from **Homebrew** on every supported distro. Only the bootstrap set uses the distro package manager (`apt` on Ubuntu/Debian, `pacman` on Arch).
+CLIs (uv, bun, rust, git extras, cloud tools, agents) come from **Homebrew** on every supported distro. Only the bootstrap set uses the distro package manager (`apt` on Ubuntu/Debian, `pacman` on Arch).
 
 | Distro | WSL name | Package manager | Notes |
 |---|---|---|---|
@@ -21,4 +21,6 @@ CLIs (uv, bun, rust, git extras, cloud tools) come from **Homebrew** on every su
 
 Fedora, Kali, and openSUSE stay **unsupported** as new-instance targets (different package managers, or the wrong job). You can still **restore** a kit that already has them.
 
-`uname -m` should be `x86_64` for Arch. Ubuntu and Debian also have ARM images; Homebrew is most reliable on Ubuntu.
+`uname -m` should be `x86_64`. Ubuntu and Debian also have ARM images; Homebrew bottles in this project are amd64.
+
+`windows-wsl-setup distros` prints the supported names intersected with `wsl --list --online`.

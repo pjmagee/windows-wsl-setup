@@ -313,13 +313,13 @@
     {
       "id": "Microsoft.Office",
       "name": "Microsoft 365",
-      "category": "editors",
+      "category": "general",
       "priority": 35
     },
     {
       "id": "Microsoft.Outlook",
       "name": "Outlook",
-      "category": "editors",
+      "category": "general",
       "priority": 36
     },
     {

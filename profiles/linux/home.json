@@ -11,6 +11,7 @@
     "1password-cli",
     "opencode", "claude-code", "grok-build",
     "stripe-cli",
-    "changie", "hugo", "devtunnel"
+    "changie", "devtunnel",
+    "hugo", "astro"
   ]
 }

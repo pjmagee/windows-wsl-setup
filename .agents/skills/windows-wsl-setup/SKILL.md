@@ -16,18 +16,18 @@ Humans and agents **do not clone** this repo to use it. Clone only if you are ch
 Install this skill (user scope — do not clone the repo):
 
 ```
-gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
-npx skills add pjmagee/windows-wsl-setup --skill windows-wsl-setup -g -y
+gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 ```
 
 ## Install the CLI
 
 Confirm the host is Windows (not WSL, not Git Bash). Download the latest exe — do not clone and do not build unless developing:
 
-https://github.com/pjmagee/windows-wsl-setup/releases/latest/download/windows-wsl-setup.exe
+https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/windows-wsl-setup.exe
 
 ```
-gh release download -R pjmagee/windows-wsl-setup -p windows-wsl-setup.exe --dir $env:USERPROFILE\Downloads
+gh release download -R pjmagee/windows-wsl-manager -p windows-wsl-setup.exe --dir $env:USERPROFILE\Downloads
 ```
 
 If Releases 404s, stop. Do not clone as a substitute.
@@ -40,7 +40,7 @@ JSON commands print JSON on stdout; errors on stderr.
 |---|---|
 | **Collect** | Used PC. Snapshot apps, Linux disks, data volumes to a non-system drive. |
 | **Restore** | Fresh Windows 11 + a kit. Install apps, remount disks, restore browser bookmarks. |
-| **New WSL** | No kit. Create **Ubuntu-26.04** (default), **Debian**, or **archlinux**, then a linux profile. |
+| **New WSL** | No kit. User picks a **supported** distro still in `wsl --list --online` (Ubuntu-26.04, Debian, archlinux), then a linux profile. |
 | **Profiles / Apply** | Named software lists. Shipped `default` / `home` / `work`. |
 
 A **kit** is what this PC has. A **profile** is what they want. Restore wins when the Linux disk still exists. Apply does not remount disks.
@@ -75,12 +75,15 @@ windows-wsl-setup map <winget-id>
 windows-wsl-setup search winget <query>
 windows-wsl-setup search linux <query>
 windows-wsl-setup catalog linux|windows
-windows-wsl-setup profile list|show|new|add|remove
+windows-wsl-setup profile list|show|new|add|remove|delete
+windows-wsl-setup profile new <id> [--from home] [--name "Media PC"]
+windows-wsl-setup profile delete <id>
 windows-wsl-setup apply <id>
-windows-wsl-setup apply <id> --windows-only|--linux-only
+windows-wsl-setup apply <id> --windows-only|--linux-only --distro Debian
+windows-wsl-setup distros
 windows-wsl-setup collect
 windows-wsl-setup restore
-windows-wsl-setup new-wsl
+windows-wsl-setup new-wsl --profile home --distro Ubuntu-26.04
 ```
 
 Prefer Linux for SDKs and cloud CLIs (`map` / `preferLinux`). Games, browsers, editors, password managers, and Docker Desktop stay on Windows.

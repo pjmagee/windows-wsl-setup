@@ -4,13 +4,13 @@ Export a messy Windows 11 PC. Restore it after a clean install. Or stand up Linu
 
 Download `windows-wsl-setup.exe` from **Releases**. Do not clone this repo to use it.
 
-Site: <https://pjmagee.github.io/windows-wsl-setup/>
+Site: <https://pjmagee.github.io/windows-wsl-manager/>
 
 ## Agent-ready
 
 ```
-gh skill install pjmagee/windows-wsl-setup windows-wsl-setup --scope user --agent grok
-npx skills add pjmagee/windows-wsl-setup --skill windows-wsl-setup -g -y
+gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
 ```
 
 Then ask Grok, Claude, Codex, or Copilot to collect, restore, or apply a profile. The skill tells them how to download the exe and which commands exist.
