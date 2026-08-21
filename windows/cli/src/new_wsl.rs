@@ -117,8 +117,9 @@ pub fn distro_choices() -> Vec<DistroChoice> {
         })
         .collect()
 }
-const LINUX_REPO: &str = "$HOME/code/windows-wsl-manager";
-const GIT_REMOTE: &str = "https://github.com/pjmagee/windows-wsl-manager.git";
+const LINUX_REPO: &str = "$HOME/code/wwm";
+const GIT_REMOTE: &str = "https://github.com/pjmagee/wwm.git";
+const LEGACY_LINUX_REPO: &str = "$HOME/code/windows-wsl-manager";
 
 const ENSURE_USER: &str = include_str!("../../ensure-user.sh");
 
@@ -147,6 +148,77 @@ pub fn distro_names() -> Vec<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect()
+}
+
+pub fn is_helper_distro(name: &str) -> bool {
+    name.trim().to_ascii_lowercase().starts_with("docker-desktop")
+}
+
+/// WSL default (`*` in `wsl -l -v`).
+pub fn default_distro_name() -> Option<String> {
+    let text = Command::new("wsl.exe")
+        .args(["-l", "-v"])
+        .output()
+        .ok()
+        .map(|o| decode(&o.stdout) + &decode(&o.stderr))?;
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix('*') {
+            return rest.split_whitespace().next().map(|s| s.to_string());
+        }
+    }
+    None
+}
+
+/// Set this distro as default only when there isn't already a real default.
+pub fn maybe_set_default_distro(distro: &str) -> Result<(bool, String), String> {
+    let distro = parse_distro(distro)?;
+    let current = default_distro_name();
+    let others: Vec<String> = distro_names()
+        .into_iter()
+        .filter(|n| !is_helper_distro(n) && !n.eq_ignore_ascii_case(distro))
+        .collect();
+    match current.as_deref() {
+        None => set_default_distro(distro).map(|s| (true, s)),
+        Some(c) if is_helper_distro(c) => set_default_distro(distro).map(|s| (true, s)),
+        Some(_) if others.is_empty() => set_default_distro(distro).map(|s| (true, s)),
+        Some(c) if c.eq_ignore_ascii_case(distro) => {
+            Ok((false, format!("default distro already {distro}")))
+        }
+        Some(c) => Ok((
+            false,
+            format!("left default as {c} (added {distro} beside it)"),
+        )),
+    }
+}
+
+fn windows_checkout() -> Option<PathBuf> {
+    let mut starts = Vec::new();
+    // Cargo build dir: .../windows/cli → repo root. Exists on this PC after
+    // copying wwm.exe to ~/.wwm; missing on other machines (GitHub clone).
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    if let Some(root) = manifest.parent().and_then(|p| p.parent()) {
+        starts.push(root.to_path_buf());
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(p) = exe.parent() {
+            starts.push(p.to_path_buf());
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        starts.push(cwd);
+    }
+    for mut dir in starts {
+        for _ in 0..12 {
+            if dir.join("install.sh").is_file() {
+                return Some(dir);
+            }
+            if !dir.pop() {
+                break;
+            }
+        }
+    }
+    None
 }
 
 #[allow(dead_code)]
@@ -359,9 +431,43 @@ pub fn ensure_passwordless_sudo(distro: &str) -> Result<String, String> {
     Ok(text.trim().to_string())
 }
 
+pub fn is_blank_profile(id: &str) -> bool {
+    id.eq_ignore_ascii_case("blank")
+}
+
+/// Save ~/.wwm/profile=blank. No Homebrew, no clone.
+pub fn mark_blank_profile(distro: &str) -> Result<String, String> {
+    let distro = parse_distro(distro)?;
+    let script = r#"
+set -euo pipefail
+mkdir -p "$(getent passwd 1000 | cut -d: -f6)/.wwm"
+printf 'blank\n' >"$(getent passwd 1000 | cut -d: -f6)/.wwm/profile"
+echo "blank: distro + passwordless sudo only"
+"#;
+    wsl(&["-d", distro, "--", "bash", "-lc", script]).map(|s| s.trim().to_string())
+}
+
 pub fn set_default_distro(distro: &str) -> Result<String, String> {
     let distro = parse_distro(distro)?;
     wsl(&["--set-default", distro]).map(|_| format!("default distro = {distro}"))
+}
+
+/// Deletes the distro disk. Caller must have confirmed (`--yes`).
+pub fn unregister_distro(name: &str) -> Result<String, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("distro name required".into());
+    }
+    if is_helper_distro(name) {
+        return Err("will not unregister docker-desktop".into());
+    }
+    let names = distro_names();
+    let canonical = names
+        .iter()
+        .find(|n| n.eq_ignore_ascii_case(name))
+        .cloned()
+        .ok_or_else(|| format!("{name} is not installed"))?;
+    wsl(&["--unregister", &canonical]).map(|_| format!("unregistered {canonical}"))
 }
 
 /// Clone this project's Linux installer inside the distro and run it.
@@ -374,19 +480,69 @@ pub fn install_toolchain(
     let profile = crate::catalog::sanitize_id(profile)?;
     let mut copy = String::new();
     if let Some(json) = profile_json {
-        let tmp = std::env::temp_dir().join(format!("wsl-setup-linux-{profile}.json"));
+        let tmp = std::env::temp_dir().join(format!("wwm-linux-{profile}.json"));
         std::fs::write(&tmp, json).map_err(|e| format!("write linux profile: {e}"))?;
         let win = tmp.to_string_lossy().replace('\'', "");
         copy = format!(
             r#"
-mkdir -p "$HOME/.config/wsl-setup/profiles"
+mkdir -p "$HOME/.wwm/profiles"
 src="$(wslpath -a '{win}' 2>/dev/null || true)"
 if [ -n "$src" ] && [ -f "$src" ]; then
-  cp "$src" "$HOME/.config/wsl-setup/profiles/{profile}.json"
+  cp "$src" "$HOME/.wwm/profiles/{profile}.json"
 fi
 "#
         );
     }
+    let checkout = windows_checkout();
+    let win_src = checkout
+        .as_ref()
+        .map(|p| p.display().to_string().replace('\\', "/").replace('\'', ""))
+        .unwrap_or_default();
+    let linux_src = if win_src.is_empty() {
+        String::new()
+    } else {
+        wsl(&["-d", distro, "--", "wslpath", "-a", &win_src])
+            .ok()
+            .map(|s| s.trim().replace('\'', ""))
+            .filter(|s| !s.is_empty() && !s.contains('\n'))
+            .unwrap_or_default()
+    };
+    let fetch = if linux_src.is_empty() {
+        format!(
+            r#"
+if [ ! -d {repo}/.git ]; then
+  echo "wwm installer git clone {remote}"
+  if [ -d {legacy}/.git ]; then
+    git clone {legacy} {repo}
+  else
+    git clone {remote} {repo}
+  fi
+else
+  echo "wwm installer git pull"
+  git -C {repo} pull --ff-only || true
+fi
+"#,
+            repo = LINUX_REPO,
+            legacy = LEGACY_LINUX_REPO,
+            remote = GIT_REMOTE,
+        )
+    } else {
+        format!(
+            r#"
+echo "wwm installer from {src}"
+mkdir -p {repo}
+tar -C '{src}' \
+  --exclude='windows/cli/target' \
+  --exclude='site/node_modules' \
+  --exclude='site/dist' \
+  --exclude='site/.astro' \
+  --exclude='.git' \
+  -cf - . | tar -C {repo} -xf -
+"#,
+            src = linux_src,
+            repo = LINUX_REPO,
+        )
+    };
     let script = format!(
         r#"
 set -euo pipefail
@@ -399,14 +555,11 @@ elif command -v pacman >/dev/null; then
 fi
 {copy}
 mkdir -p "$HOME/code"
-if [ ! -d {repo}/.git ]; then
-  git clone {remote} {repo}
-else
-  git -C {repo} pull --ff-only || true
-fi
-if [ -f "$HOME/.config/wsl-setup/profiles/{profile}.json" ]; then
+{fetch}
+git -C {repo} remote set-url origin {remote} 2>/dev/null || true
+if [ -f "$HOME/.wwm/profiles/{profile}.json" ]; then
   mkdir -p {repo}/profiles/linux
-  cp "$HOME/.config/wsl-setup/profiles/{profile}.json" {repo}/profiles/linux/{profile}.json
+  cp "$HOME/.wwm/profiles/{profile}.json" {repo}/profiles/linux/{profile}.json
 fi
 chmod +x {repo}/install.sh {repo}/scripts/wsl-open {repo}/windows/ensure-user.sh
 cd {repo}
@@ -416,6 +569,7 @@ cd {repo}
         remote = GIT_REMOTE,
         profile = profile,
         copy = copy,
+        fetch = fetch,
     );
     let out = Command::new("wsl.exe")
         .args(["-d", distro, "--", "bash", "-lc", &script])
@@ -434,11 +588,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn blank_profile_id() {
+        assert!(is_blank_profile("blank"));
+        assert!(is_blank_profile("Blank"));
+        assert!(!is_blank_profile("home"));
+    }
+
+    #[test]
     fn aliases_resolve() {
         assert_eq!(parse_distro("ubuntu").unwrap(), "Ubuntu-26.04");
         assert_eq!(parse_distro("Debian").unwrap(), "Debian");
         assert_eq!(parse_distro("arch").unwrap(), "archlinux");
         assert_eq!(parse_distro("").unwrap(), "Ubuntu-26.04");
+    }
+
+    #[test]
+    fn checkout_has_install_sh() {
+        let root = windows_checkout().expect("repo root with install.sh");
+        assert!(root.join("install.sh").is_file());
+        assert!(root.join("profiles").is_dir());
+    }
+
+    #[test]
+    fn helper_distros() {
+        assert!(is_helper_distro("docker-desktop"));
+        assert!(is_helper_distro("docker-desktop-data"));
+        assert!(!is_helper_distro("Debian"));
     }
 
     #[test]

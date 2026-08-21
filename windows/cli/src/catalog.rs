@@ -8,11 +8,14 @@ use serde::{Deserialize, Serialize};
 
 const LINUX_CATALOG_JSON: &str = include_str!("../../../profiles/linux.json");
 const WINDOWS_CATALOG_JSON: &str = include_str!("../../../profiles/windows.json");
+const LINUX_BLANK: &str = include_str!("../../../profiles/linux/blank.json");
 const LINUX_HOME: &str = include_str!("../../../profiles/linux/home.json");
 const LINUX_WORK: &str = include_str!("../../../profiles/linux/work.json");
+const WINDOWS_BLANK: &str = include_str!("../../../profiles/windows/blank.json");
 const WINDOWS_DEFAULT: &str = include_str!("../../../profiles/windows/default.json");
 const WINDOWS_HOME: &str = include_str!("../../../profiles/windows/home.json");
 const WINDOWS_WORK: &str = include_str!("../../../profiles/windows/work.json");
+const BUNDLE_BLANK: &str = include_str!("../../../profiles/bundles/blank.json");
 const BUNDLE_DEFAULT: &str = include_str!("../../../profiles/bundles/default.json");
 const BUNDLE_HOME: &str = include_str!("../../../profiles/bundles/home.json");
 const BUNDLE_WORK: &str = include_str!("../../../profiles/bundles/work.json");
@@ -143,21 +146,16 @@ pub struct Store {
     pub bundle_source: BTreeMap<String, &'static str>,
 }
 
-pub fn user_root() -> PathBuf {
-    let home = PathBuf::from(
+fn home_dir() -> PathBuf {
+    PathBuf::from(
         std::env::var_os("USERPROFILE")
             .or_else(|| std::env::var_os("HOME"))
             .unwrap_or_default(),
-    );
-    let neu = home.join(".wwm");
-    if neu.exists() {
-        return neu;
-    }
-    let old = home.join(".windows-wsl-setup");
-    if old.exists() {
-        return old;
-    }
-    neu
+    )
+}
+
+pub fn user_root() -> PathBuf {
+    home_dir().join(".wwm")
 }
 
 pub fn user_profiles() -> PathBuf {
@@ -208,11 +206,14 @@ impl Store {
             windows_source: BTreeMap::new(),
             bundle_source: BTreeMap::new(),
         };
+        s.insert_linux(LINUX_BLANK, "shipped")?;
         s.insert_linux(LINUX_HOME, "shipped")?;
         s.insert_linux(LINUX_WORK, "shipped")?;
+        s.insert_windows(WINDOWS_BLANK, "shipped")?;
         s.insert_windows(WINDOWS_DEFAULT, "shipped")?;
         s.insert_windows(WINDOWS_HOME, "shipped")?;
         s.insert_windows(WINDOWS_WORK, "shipped")?;
+        s.insert_bundle(BUNDLE_BLANK, "shipped")?;
         s.insert_bundle(BUNDLE_DEFAULT, "shipped")?;
         s.insert_bundle(BUNDLE_HOME, "shipped")?;
         s.insert_bundle(BUNDLE_WORK, "shipped")?;
@@ -221,6 +222,8 @@ impl Store {
 
     pub fn load() -> Result<Self, String> {
         let mut s = Self::shipped()?;
+        // Previous checkouts wrote user profiles under ~/.windows-wsl-setup.
+        s.merge_user_dir(&home_dir().join(".windows-wsl-setup").join("profiles"));
         s.merge_user_dir(&user_profiles());
         Ok(s)
     }
@@ -340,10 +343,15 @@ mod tests {
     #[test]
     fn shipped_parses() {
         let s = Store::shipped().expect("shipped json");
+        assert!(s.linux.contains_key("blank"));
         assert!(s.linux.contains_key("home"));
         assert!(s.linux.contains_key("work"));
+        assert!(s.windows.contains_key("blank"));
         assert!(s.windows.contains_key("default"));
+        assert!(s.bundles.contains_key("blank"));
         assert!(s.bundles.contains_key("home"));
+        assert!(s.linux["blank"].tools.is_empty());
+        assert!(s.windows["blank"].packages.is_empty());
         assert!(s.linux_tool("uv").is_some());
         assert_eq!(
             s.windows_pkg("Microsoft.AzureCLI")
@@ -373,6 +381,12 @@ mod tests {
         assert_eq!(s.linux_tool("astro").unwrap().kind, "npm");
         assert!(home.tools.contains(&"astro".into()));
         assert!(!work.tools.contains(&"astro".into()));
+    }
+
+    #[test]
+    fn user_root_is_dot_wwm() {
+        let p = user_root();
+        assert_eq!(p.file_name().and_then(|s| s.to_str()), Some(".wwm"));
     }
 
     #[test]

@@ -20,8 +20,9 @@ impl App {
         let store = Store::load().unwrap_or_else(|_| Store::shipped().expect("shipped"));
         let mut profiles: Vec<String> = store.linux.keys().cloned().collect();
         if profiles.is_empty() {
-            profiles = vec!["home".into(), "work".into()];
+            profiles = vec!["blank".into(), "home".into(), "work".into()];
         }
+        let profile = profiles.iter().position(|p| p == "home").unwrap_or(0);
         let distros = new_wsl::distro_choices();
         let distro = prefer
             .and_then(|p| new_wsl::parse_distro(p).ok())
@@ -48,12 +49,12 @@ impl App {
             .join(" · ");
         Self {
             profiles,
-            profile: 0,
+            profile,
             distros,
             distro,
             store,
             log: vec![have],
-            status: "j/k distro  ← → profile  Enter = install that distro + tools.".into(),
+            status: "j/k distro  ← → profile  Enter = install. blank = sudo only.".into(),
         }
     }
 
@@ -139,6 +140,11 @@ impl App {
         }) {
             return;
         }
+        let _ = self.step(term, "Windows Terminal profiles…", || {
+            crate::terminal::sync(None)
+                .map(|r| format!("{} — {}", r.profiles.join(", "), r.detail))
+                .or_else(|e| Ok(format!("terminal skipped: {e}")))
+        });
         if !self.step(term, "waiting for first boot…", || {
             new_wsl::wait_for_root(&distro)
         }) {
@@ -155,8 +161,24 @@ impl App {
             return;
         }
         if !self.step(term, "default WSL distro…", || {
-            new_wsl::set_default_distro(&distro)
+            match new_wsl::maybe_set_default_distro(&distro) {
+                Ok((changed, s)) => {
+                    if changed {
+                        let _ = crate::terminal::sync(Some(&distro));
+                    }
+                    Ok(s)
+                }
+                Err(e) => Err(e),
+            }
         }) {
+            return;
+        }
+        if new_wsl::is_blank_profile(&profile) {
+            if self.step(term, "blank profile (no Homebrew)…", || {
+                new_wsl::mark_blank_profile(&distro)
+            }) {
+                self.status = format!("done. {distro} is a plain distro (passwordless sudo).");
+            }
             return;
         }
         self.status = format!("installing {profile} tools inside {distro} (several minutes)…");

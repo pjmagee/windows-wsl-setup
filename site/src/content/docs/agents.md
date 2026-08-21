@@ -9,51 +9,53 @@ The skill teaches an agent to download the exe and run Collect, Restore, New WSL
 
 ## Install the skill
 
-The skill id is `windows-wsl-setup`. Pick **one** installer.
+The skill id is `wwm-cli`. Pick **one** installer.
 
 **GitHub CLI** 2.90+ — `--agent` is required; default is Copilot, not Grok:
 
 ```
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent claude-code
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent github-copilot
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent codex
+gh skill install pjmagee/wwm wwm-cli --scope user --agent grok
+gh skill install pjmagee/wwm wwm-cli --scope user --agent claude-code
+gh skill install pjmagee/wwm wwm-cli --scope user --agent github-copilot
+gh skill install pjmagee/wwm wwm-cli --scope user --agent codex
 ```
 
 **skills.sh** (any detected agent; needs Node):
 
 ```
-npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
+npx skills add pjmagee/wwm --skill wwm-cli -g -y
 ```
 
 **Grok plugin marketplace:**
 
 ```
-grok plugin marketplace add pjmagee/windows-wsl-manager
-grok plugin install windows-wsl-setup --trust
+grok plugin marketplace add pjmagee/wwm
+grok plugin install wwm-cli --trust
 ```
 
 **Claude Code plugin marketplace:**
 
 ```
-/plugin marketplace add pjmagee/windows-wsl-manager
-/plugin install windows-wsl-setup@windows-wsl-manager
+/plugin marketplace add pjmagee/wwm
+/plugin install wwm-cli@wwm
 ```
 
-Or ask the agent to read [SKILL.md](https://raw.githubusercontent.com/pjmagee/windows-wsl-manager/main/skills/windows-wsl-setup/SKILL.md).
+Or ask the agent to read [SKILL.md](https://raw.githubusercontent.com/pjmagee/wwm/main/skills/wwm-cli/SKILL.md).
 
 ## Drive
 
 1. Confirm Windows (not WSL, not Git Bash).
 2. Install `wwm.exe` into `~\.wwm` with the PowerShell block above.
-3. **Collect** on the used PC. **Restore** on the new PC. **New WSL** or **apply** if there is no kit.
+3. **Collect** on the used PC. **Restore** on the new PC. **New WSL** or **apply** if there is no kit. Linux profiles: `blank` (sudo only), `home`, `work`.
 4. Password manager first, then Brave.
-5. Do not format data drives. Do not unregister a distro unless the human confirms.
+5. Do not format data drives. Do not unregister a distro unless the human confirms (`wwm distro remove <name> --yes`).
 
 ```
+wwm spec
 wwm suggest
 wwm map <winget-id>
 wwm profile list
+wwm new-wsl --profile blank --distro Debian
 wwm apply default
 ```
 

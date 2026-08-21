@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "blank",
+  "name": "Blank (distro + passwordless sudo)",
+  "windows": "blank",
+  "linux": "blank",
+  "wsl": { "distro": "Ubuntu-26.04", "createIfMissing": true }
+}

@@ -4,7 +4,7 @@ Playbook for **Linux toolchain / work-laptop** agents.
 
 Home PC reset (**Collect** / **Restore**) and empty-Ubuntu (**New WSL**) are
 **not this file**. That is `wwm.exe`. See [README.md](README.md)
-and `.agents/skills/windows-wsl-setup/SKILL.md`.
+and `.agents/skills/wwm-cli/SKILL.md`.
 
 You are bootstrapping the **same WSL 2 Ubuntu 26.04 workstation** this repo
 defines — typically a **clean Windows 11 work laptop** that has none of the
@@ -31,7 +31,7 @@ Suggested first message (empty Ubuntu / no kit):
 
 > Run wwm → New WSL → home (or work). Always Ubuntu.
 
-The exe is Collect / Restore / New WSL. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/windows-wsl-setup/SKILL.md`.
+The exe is Collect / Restore / New WSL. Copilot on a work laptop must **not** run Collect/Restore unless the human asked. Skill: `.agents/skills/wwm-cli/SKILL.md`.
 
 ---
 
@@ -102,7 +102,7 @@ it at `~` from Windows Terminal, this repo lives on the **Linux** disk, and
 - Windows 11, virtualization enabled, user can elevate if `wsl --install` needs it.
 - Network can reach GitHub, Microsoft packages, and the other upstreams in `install.sh`.
 - First clone of **this** repo on Windows: **HTTPS**
-  (`https://github.com/pjmagee/windows-wsl-manager.git`). 1Password SSH is not ready yet.
+  (`https://github.com/pjmagee/wwm.git`). 1Password SSH is not ready yet.
 
 If `wsl --install` is blocked by policy, stop and tell the user IT must allow
 WSL 2. Do not try Hyper-V workarounds or a different distro.
@@ -130,11 +130,14 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
    uid-1000 user, via [`windows/ensure-user.sh`](windows/ensure-user.sh)
    as root (`wsl -u root`).
 5. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
-6. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wsl-setup\bin`).
+6. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wwm`).
 7. Adds PowerShell functions `wsl` / `ubuntu` (bare `wsl` → `wsl.exe ~`).
-8. Installs Windows Terminal fragment profiles **Ubuntu** and **wsl**, both
-   `wsl.exe -d Ubuntu-26.04 ~`, and sets **Ubuntu** as `defaultProfile`.
-9. Clones this repo to `~/code/windows-wsl-manager` **inside** the distro and runs
+8. Windows Terminal keeps the official **Microsoft.WSL** tabs. Do not
+   overwrite their `commandline` (that passed `/home/<user>` as a command).
+   WWM only disables the old penguin generator and adds a **wsl** launcher.
+   Work laptop still sets Ubuntu as `defaultProfile`. Sidecar distros do not
+   steal the default.
+9. Clones this repo to `~/code/wwm` **inside** the distro and runs
    `install.sh work`. If a required host step fails, the host script
    **throws** (no fake `Done.`).
 
@@ -165,7 +168,7 @@ wsl.exe -l -v
 | Leave other distros installed | Unregistering deletes their disk. Unused 24.04 can sit there. |
 | Never `wsl --unregister` unless the user asked | Copilot must not "clean up" the old Ubuntu. |
 | Default becomes `Ubuntu-26.04` | Bare `wsl` / new Terminal **Ubuntu** tab hit 26.04. Old Store/Terminal profiles may still launch 24.04. |
-| `ubuntu` in **cmd** may still be Store `ubuntu.exe` | `PATHEXT` tries `.EXE` before `.CMD`, so `%USERPROFILE%\.wsl-setup\bin\ubuntu.cmd` loses to `ubuntu.exe`. PowerShell's `ubuntu` function and the fragment profiles are the 26.04 launchers. |
+| `ubuntu` in **cmd** may still be Store `ubuntu.exe` | `PATHEXT` tries `.EXE` before `.CMD`, so `%USERPROFILE%\.wwm\ubuntu.cmd` loses to `ubuntu.exe`. PowerShell's `ubuntu` function and the fragment profiles are the 26.04 launchers. |
 | Docker Desktop WSL integration | Often still attached to 24.04. User must enable **Ubuntu-26.04** in Docker Desktop (leftover in §1.6). |
 
 Tell the user the old distro is still listed. Do not migrate files out of it
@@ -192,7 +195,8 @@ After a **new** Terminal window:
 | Action | Result |
 |---|---|
 | Open Windows Terminal | Ubuntu profile, cwd `~` (Linux home, not `/mnt/c`) |
-| Tab profile **Ubuntu** or **wsl** | Same |
+| Tab profile **Ubuntu-26.04** / **Debian** / … | Official Microsoft.WSL tabs. WWM does not replace them. |
+| Tab profile **wsl** | WSL default distro at `~` |
 | `ubuntu` in PowerShell (new session) | `wsl.exe -d Ubuntu-26.04 ~` |
 | `ubuntu` in cmd | 26.04 via `ubuntu.cmd`, unless Store `ubuntu.exe` wins (`PATHEXT`) |
 | `wsl` in PowerShell (new session) | `wsl.exe ~` (args still pass through) |
@@ -204,7 +208,7 @@ After a **new** Terminal window:
 ### 1.5 After bootstrap
 
 Tell the user to reopen
-`\\wsl$\Ubuntu-26.04\home\<user>\code\windows-wsl-manager` in VS Code
+`\\wsl$\Ubuntu-26.04\home\<user>\code\wwm` in VS Code
 (**WSL: Reopen Folder in WSL**). Further edits happen there.
 
 ### 1.6 Windows leftovers (this repo does not install them)
@@ -245,10 +249,10 @@ echo "$ID $VERSION_ID"    # must be ubuntu 26.04
 uname -m                  # must be x86_64
 sudo -n true
 mkdir -p ~/code
-if [ ! -d ~/code/windows-wsl-manager/.git ]; then
-  git clone https://github.com/pjmagee/windows-wsl-manager.git ~/code/windows-wsl-manager
+if [ ! -d ~/code/wwm/.git ]; then
+  git clone https://github.com/pjmagee/wwm.git ~/code/wwm
 fi
-cd ~/code/windows-wsl-manager
+cd ~/code/wwm
 # Work laptop (Copilot):
 ./install.sh work
 # Home machine (Grok / Claude):
@@ -257,10 +261,10 @@ cd ~/code/windows-wsl-manager
 
 Then open a **new** Ubuntu tab. From a Linux path: `code .`
 
-The chosen profile is saved in `~/.config/wsl-setup/profile`. Later updates:
+The chosen profile is saved in `~/.wwm/profile`. Later updates:
 
 ```bash
-cd ~/code/windows-wsl-manager && git pull && ./install.sh
+cd ~/code/wwm && git pull && ./install.sh
 brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
@@ -270,16 +274,21 @@ Profiles (there is no `universal`):
 
 | Profile | Steps | Homebrew |
 |---|---|---|
+| `blank` | distro + Linux user + passwordless sudo. No `install.sh` toolchain. | none |
 | `home` | [`profiles/base.txt`](profiles/base.txt) + [`profiles/home.txt`](profiles/home.txt) | IDs in [`profiles/linux/home.json`](profiles/linux/home.json) |
 | `work` | base + [`profiles/work.txt`](profiles/work.txt) | [`profiles/linux/work.json`](profiles/linux/work.json). Prunes IDs not on that list. |
-| custom | same script steps as the closest shipped name, or base only | `~/.config/wsl-setup/profiles/<name>.json` |
+| custom | same script steps as the closest shipped name, or base only | `~/.wwm/profiles/<name>.json` |
 
-Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux.json). Overlay `{ "tools": ["id", ...] }` at `~/.config/wsl-setup/linux-profile.json` replaces the ID list.
+Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux.json). Overlay `{ "tools": ["id", ...] }` at `~/.wwm/linux-profile.json` replaces the ID list.
 
 ---
 
 ## 3. Invariants (do not violate)
 
+- **Our state lives in `.wwm`.** Windows: `%USERPROFILE%\.wwm` (`wwm.exe`,
+  `ubuntu.cmd`, user profiles). Linux: `~/.wwm` (saved profile name, overlay,
+  custom linux profiles). Do not write `~/.config/wsl-setup` or
+  `%USERPROFILE%\.wsl-setup`.
 - **Linux binaries only.** `install.sh` ignores `/mnt/c/...` and `*.exe` via
   `is_linux_bin`. Do not "fix" a missing tool by putting a Windows copy on `PATH`.
 - **PATH is Linux-first.** Marked block `>>> wsl-linux-path >>>` in `~/.bashrc`.
@@ -384,6 +393,7 @@ windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
 windows/host/              # maintainer helpers for Windows WSL Manager
 windows/cli/               # wwm.exe (Collect / Restore / New WSL / Profiles)
 schema/kit.schema.json     # KIT.json
+schema/wwm.opencli.json    # OpenCLI description (`wwm spec`)
 README.md                  # human docs
 AGENTS.md                  # this playbook
 .github/copilot-instructions.md
@@ -394,9 +404,10 @@ Definition of done for a work-laptop bootstrap:
 1. `wsl -d Ubuntu-26.04 -- echo ok` works; `wsl -l` default is `Ubuntu-26.04`.
    Older distros may still be listed; that is OK.
 2. `sudo -n true` works inside the distro for the existing Linux user.
-3. Windows Terminal default profile is **Ubuntu** at `~`. Profiles **Ubuntu**
-   and **wsl** exist. PowerShell `ubuntu` launches the same session.
-4. `~/code/windows-wsl-manager` is a git checkout on the Linux disk.
+3. Windows Terminal default profile is **Ubuntu** at `~` on a work laptop.
+   Official Microsoft.WSL distro tabs remain. There is a **wsl** launcher.
+   PowerShell `ubuntu` launches Ubuntu-26.04.
+4. `~/code/wwm` is a git checkout on the Linux disk.
 5. `./install.sh work` finished; summary shows `profile work`, Homebrew,
    Copilot CLI, Linux versions, and `sudo passwordless`. No grok/claude/
    opencode/devtunnel/changie/hugo/stripe. Host bootstrap does not print

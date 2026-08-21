@@ -1,0 +1,231 @@
+{
+  "opencli": "0.1",
+  "info": {
+    "title": "wwm",
+    "summary": "Windows WSL Manager — collect, restore, New WSL, and named software profiles",
+    "description": "JSON on stdout for agent commands. Errors on stderr. Interactive TUI when a command is run with no subcommand flags that imply JSON.",
+    "version": "0.2.0",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "contact": {
+      "url": "https://github.com/pjmagee/wwm"
+    }
+  },
+  "conventions": {
+    "groupOptions": false,
+    "optionArgumentSeparator": " "
+  },
+  "command": {
+    "name": "wwm",
+    "description": "Collect / Restore / New WSL / Profiles",
+    "interactive": true,
+    "examples": [
+      "wwm",
+      "wwm new-wsl --profile blank --distro Debian",
+      "wwm new-wsl --profile home --distro Ubuntu-26.04",
+      "wwm apply home --linux-only --distro Debian",
+      "wwm spec"
+    ],
+    "exitCodes": [
+      { "code": 0, "description": "ok" },
+      { "code": 1, "description": "command failed" },
+      { "code": 2, "description": "unknown command or usage" }
+    ],
+    "options": [
+      {
+        "name": "--help",
+        "aliases": ["-h", "help"],
+        "description": "Print usage"
+      }
+    ],
+    "commands": [
+      {
+        "name": "collect",
+        "aliases": ["capture"],
+        "description": "Scan this PC and write a kit to a non-system drive",
+        "interactive": true
+      },
+      {
+        "name": "restore",
+        "description": "Install from a kit (optional path)",
+        "interactive": true,
+        "arguments": [
+          {
+            "name": "kit",
+            "required": false,
+            "description": "Path to a kit folder or KIT.json"
+          }
+        ]
+      },
+      {
+        "name": "new-wsl",
+        "aliases": ["new_wsl"],
+        "description": "Create a supported distro. blank = user + passwordless sudo only; home/work also run install.sh",
+        "interactive": true,
+        "options": [
+          {
+            "name": "--profile",
+            "description": "Linux profile: blank | home | work | custom id",
+            "arguments": [{ "name": "id", "acceptedValues": ["blank", "home", "work"] }]
+          },
+          {
+            "name": "--distro",
+            "description": "Ubuntu-26.04 | Debian | archlinux",
+            "arguments": [{ "name": "name", "acceptedValues": ["Ubuntu-26.04", "Debian", "archlinux"] }]
+          }
+        ],
+        "examples": [
+          "wwm new-wsl --profile blank --distro Debian",
+          "wwm new-wsl --profile home --distro Ubuntu-26.04"
+        ]
+      },
+      {
+        "name": "distros",
+        "description": "JSON: supported ∩ wsl --list --online, plus installed and default"
+      },
+      {
+        "name": "distro",
+        "description": "List, sync Terminal, or unregister a distro",
+        "commands": [
+          {
+            "name": "list",
+            "description": "Same JSON as `wwm distros`"
+          },
+          {
+            "name": "sync",
+            "description": "Refresh Windows Terminal. Does not overwrite Microsoft.WSL command lines"
+          },
+          {
+            "name": "remove",
+            "description": "Unregister a distro (deletes the disk) and drop leftover WWM Terminal tabs",
+            "arguments": [{ "name": "name", "required": true, "description": "WSL distro name" }],
+            "options": [
+              {
+                "name": "--yes",
+                "required": true,
+                "description": "Confirm unregister (required)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "profiles",
+        "aliases": ["profile"],
+        "description": "Edit / suggest / apply a named software profile",
+        "interactive": true,
+        "commands": [
+          {
+            "name": "list",
+            "description": "JSON of bundles, linux, and windows profiles"
+          },
+          {
+            "name": "show",
+            "description": "JSON for one profile id",
+            "arguments": [{ "name": "id", "required": true }]
+          },
+          {
+            "name": "new",
+            "description": "Create a user profile from a shipped one",
+            "arguments": [{ "name": "id", "required": true }],
+            "options": [
+              {
+                "name": "--from",
+                "arguments": [{ "name": "id" }],
+                "description": "Base profile (default: default)"
+              },
+              {
+                "name": "--name",
+                "arguments": [{ "name": "display" }],
+                "description": "Display name"
+              }
+            ]
+          },
+          {
+            "name": "add",
+            "description": "Add linux tools and/or windows packages",
+            "arguments": [{ "name": "id", "required": true }],
+            "options": [
+              { "name": "--linux", "arguments": [{ "name": "tool" }] },
+              { "name": "--windows", "arguments": [{ "name": "wingetId" }] }
+            ]
+          },
+          {
+            "name": "remove",
+            "description": "Remove linux tools and/or windows packages",
+            "arguments": [{ "name": "id", "required": true }],
+            "options": [
+              { "name": "--linux", "arguments": [{ "name": "tool" }] },
+              { "name": "--windows", "arguments": [{ "name": "wingetId" }] }
+            ]
+          },
+          {
+            "name": "save",
+            "arguments": [{ "name": "id", "required": true }]
+          },
+          {
+            "name": "delete",
+            "arguments": [{ "name": "id", "required": true }]
+          },
+          {
+            "name": "tui",
+            "interactive": true,
+            "description": "Same as `wwm profiles` with no subcommand"
+          }
+        ]
+      },
+      {
+        "name": "catalog",
+        "description": "Shipped linux and/or windows catalog JSON",
+        "arguments": [
+          {
+            "name": "which",
+            "acceptedValues": ["linux", "windows", "all"],
+            "description": "linux, windows, or omit for both"
+          }
+        ]
+      },
+      {
+        "name": "search",
+        "description": "Search linux catalog or winget",
+        "arguments": [
+          { "name": "kind", "required": true, "acceptedValues": ["linux", "winget", "windows"] },
+          { "name": "query", "required": false }
+        ]
+      },
+      {
+        "name": "map",
+        "description": "Linux equivalent for a winget id (preferLinux)",
+        "arguments": [{ "name": "winget-id", "required": true }]
+      },
+      {
+        "name": "suggest",
+        "description": "Draft a profile from what this PC has installed"
+      },
+      {
+        "name": "apply",
+        "description": "Install a bundle. blank installs no Windows apps and skips Homebrew",
+        "arguments": [{ "name": "id", "required": true, "description": "blank | default | home | work | custom" }],
+        "options": [
+          { "name": "--windows-only", "description": "Skip Linux" },
+          { "name": "--linux-only", "description": "Skip winget" },
+          {
+            "name": "--distro",
+            "arguments": [{ "name": "name", "acceptedValues": ["Ubuntu-26.04", "Debian", "archlinux"] }]
+          }
+        ]
+      },
+      {
+        "name": "inventory",
+        "description": "JSON snapshot of this PC (kit-shaped, no write)"
+      },
+      {
+        "name": "spec",
+        "aliases": ["opencli"],
+        "description": "Print this OpenCLI description (JSON) on stdout"
+      }
+    ]
+  }
+}

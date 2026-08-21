@@ -10,6 +10,7 @@ mod new_wsl;
 mod profile;
 mod restore;
 mod suggest;
+mod terminal;
 mod tui;
 mod tui_new_wsl;
 mod tui_profiles;
@@ -109,9 +110,8 @@ fn main() {
                 1
             }
         },
-        "catalog" | "profile" | "profiles" | "search" | "map" | "suggest" | "apply" | "distros" => {
-            cli::dispatch(&cmd, &args)
-        }
+        "catalog" | "profile" | "profiles" | "search" | "map" | "suggest" | "apply" | "distro"
+        | "distros" | "spec" | "opencli" => cli::dispatch(&cmd, &args),
         "-h" | "--help" | "help" => {
             eprintln!(
                 "wwm — Windows WSL Manager\n\n\
@@ -120,18 +120,24 @@ fn main() {
   wwm restore         install from a kit (optional path)\n\
   wwm new-wsl         pick a supported distro + linux profile\n\
   wwm new-wsl --profile home --distro Debian\n\
+  wwm new-wsl --profile blank --distro Debian\n\
   wwm distros         supported ∩ wsl --list --online\n\
+  wwm distro sync     Windows Terminal tabs for installed distros\n\
+  wwm distro remove <name> --yes  unregister + drop that Terminal tab\n\
   wwm profiles        edit / suggest / apply a profile\n\n\
   JSON (agents):\n\
   wwm catalog linux|windows\n\
   wwm distros\n\
+  wwm distro sync\n\
+  wwm distro remove <name> --yes\n\
   wwm profile list|show <id>|new <id> --from home [--name \"Media PC\"]\n\
   wwm profile add <id> --linux kubectl --windows Brave.Brave\n\
   wwm profile delete <id>\n\
   wwm search linux <q> | search winget <q>\n\
   wwm map <winget-id>\n\
   wwm suggest\n\
-  wwm apply <id> [--windows-only|--linux-only] [--distro Debian]\n"
+  wwm apply <id> [--windows-only|--linux-only] [--distro Debian]\n\
+  wwm spec            OpenCLI JSON (https://opencli.org/)\n"
             );
             0
         }

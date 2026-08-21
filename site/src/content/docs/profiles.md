@@ -11,6 +11,7 @@ Shipped bundles (Windows + Linux + Ubuntu):
 
 | Id | Windows | Linux |
 |---|---|---|
+| blank | none | none (distro + passwordless sudo only) |
 | default | Terminal, PowerShell, PowerToys, Brave, 1Password, VS Code, Docker Desktop, Git | home |
 | home | default + Grok, Claude, Cursor, Steam, Epic, VLC, Discord | home |
 | work | default + GitHub Copilot | work |

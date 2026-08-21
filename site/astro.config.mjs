@@ -34,7 +34,7 @@ function rehypeTableWrap() {
 
 export default defineConfig({
   site: 'https://pjmagee.github.io',
-  base: '/windows-wsl-manager',
+  base: '/wwm',
   trailingSlash: 'always',
   markdown: {
     rehypePlugins: [rehypeTableWrap],

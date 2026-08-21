@@ -26,4 +26,8 @@ Fedora, Kali, and openSUSE are restore-only. Requires x86_64.
 
 ```
 wwm distros
+wwm distro sync
+wwm distro remove Debian --yes
 ```
+
+Windows Terminal’s official Microsoft.WSL tabs stay (proper distro icons). WWM does not clone them. Remove unregisters the distro; Microsoft.WSL drops that tab. Docker Desktop distros are ignored.

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "windows-wsl-setup-site",
+      "name": "wwm-site",
       "dependencies": {
         "astro": "^5.13.2",
       },

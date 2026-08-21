@@ -10,7 +10,7 @@
   - leaves any other distro (Ubuntu-24.04, Store Ubuntu, docker-desktop) installed
   - NOPASSWD sudo for the user already on that distro (wsl -u root)
   - makes `wsl` and `ubuntu` open that distro at ~
-  - points Windows Terminal at those profiles (Ubuntu is the default)
+  - points Windows Terminal at a tab per WSL distro (Ubuntu is the default)
 
   Does not use cloud-init. Does not invent or lock a Linux user.
   Does not wsl --unregister anything.
@@ -231,19 +231,40 @@ function Get-UserPathEntries {
 
 function Ensure-UbuntuShim {
     Write-Step "ubuntu launcher on user PATH"
-    $bin = Join-Path $env:USERPROFILE '.wsl-setup\bin'
-    if (-not (Test-Path $bin)) { New-Item -ItemType Directory -Path $bin | Out-Null }
+    $root = Join-Path $env:USERPROFILE '.wwm'
+    if (-not (Test-Path $root)) { New-Item -ItemType Directory -Path $root | Out-Null }
     $src = Join-Path $PSScriptRoot 'ubuntu.cmd'
-    Copy-Item -LiteralPath $src -Destination (Join-Path $bin 'ubuntu.cmd') -Force
+    Copy-Item -LiteralPath $src -Destination (Join-Path $root 'ubuntu.cmd') -Force
 
-    $entries = @(Get-UserPathEntries)
-    if ($entries -notcontains $bin) {
-        $new = @($bin) + $entries
-        [Environment]::SetEnvironmentVariable('Path', ($new -join ';'), 'User')
+    $oldBin = Join-Path $env:USERPROFILE '.wsl-setup\bin'
+    $entries = @(Get-UserPathEntries | Where-Object { $_ -and $_ -ne $oldBin })
+    if ($entries -notcontains $root) {
+        $entries = @($root) + $entries
     }
-    if ($env:Path -notlike "*$bin*") {
-        $env:Path = "$bin;$env:Path"
+    [Environment]::SetEnvironmentVariable('Path', ($entries -join ';'), 'User')
+    if ($env:Path -notlike "*$root*") {
+        $env:Path = "$root;$env:Path"
     }
+}
+
+function Get-OfficialWslProfileGuid {
+    param([string] $Name)
+    foreach ($path in @(Get-TerminalSettingsPaths)) {
+        $raw = Get-Content -LiteralPath $path -Raw
+        try {
+            $j = $raw | ConvertFrom-Json
+        } catch {
+            continue
+        }
+        $list = @()
+        if ($j.profiles -and $j.profiles.list) { $list = @($j.profiles.list) }
+        foreach ($p in $list) {
+            if ($p.name -eq $Name -and $p.source -eq 'Microsoft.WSL' -and $p.guid) {
+                return [string]$p.guid
+            }
+        }
+    }
+    return ''
 }
 
 function Get-TerminalSettingsPaths {
@@ -255,33 +276,8 @@ function Get-TerminalSettingsPaths {
     $paths | Where-Object { Test-Path $_ }
 }
 
-function Ensure-WindowsTerminal {
-    Write-Step "Windows Terminal profiles (Ubuntu, wsl) + default"
-    $fragDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\wsl-setup'
-    if (-not (Test-Path $fragDir)) { New-Item -ItemType Directory -Path $fragDir | Out-Null }
-    $fragment = @{
-        profiles = @(
-            @{
-                guid              = $UbuntuProfileGuid
-                name              = 'Ubuntu'
-                commandline       = "wsl.exe -d $Distro ~"
-                startingDirectory = '~'
-                hidden            = $false
-                icon              = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
-            }
-            @{
-                guid              = $WslProfileGuid
-                name              = 'wsl'
-                commandline       = "wsl.exe -d $Distro ~"
-                startingDirectory = '~'
-                hidden            = $false
-                icon              = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
-            }
-        )
-    }
-    $json = $fragment | ConvertTo-Json -Depth 6
-    Set-Content -LiteralPath (Join-Path $fragDir 'profiles.json') -Value $json -Encoding UTF8
-
+function Set-TerminalDefaultProfile {
+    param([string] $Guid)
     $settings = @(Get-TerminalSettingsPaths)
     if ($settings.Count -eq 0) {
         $store = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState'
@@ -292,7 +288,8 @@ function Ensure-WindowsTerminal {
 {
     "`$help": "https://aka.ms/terminal-documentation",
     "`$schema": "https://aka.ms/terminal-profiles-schema",
-    "defaultProfile": "$UbuntuProfileGuid",
+    "defaultProfile": "$Guid",
+    "disabledProfileSources": [ "Windows.Terminal.Wsl" ],
     "profiles": { "defaults": {}, "list": [] }
 }
 "@
@@ -301,13 +298,53 @@ function Ensure-WindowsTerminal {
     }
     foreach ($path in $settings) {
         $raw = Get-Content -LiteralPath $path -Raw
+        if ($raw -notmatch 'disabledProfileSources') {
+            $raw = $raw -replace '\{', "{`r`n    `"disabledProfileSources`": [ `"Windows.Terminal.Wsl`" ],"
+        }
         if ($raw -match '"defaultProfile"\s*:') {
-            $raw = [regex]::Replace($raw, '"defaultProfile"\s*:\s*"[^"]*"', "`"defaultProfile`": `"$UbuntuProfileGuid`"")
+            $raw = [regex]::Replace($raw, '"defaultProfile"\s*:\s*"[^"]*"', "`"defaultProfile`": `"$Guid`"")
         } else {
-            $raw = $raw -replace '\{', "{`r`n    `"defaultProfile`": `"$UbuntuProfileGuid`","
+            $raw = $raw -replace '\{', "{`r`n    `"defaultProfile`": `"$Guid`","
         }
         Set-Content -LiteralPath $path -Value $raw -Encoding UTF8
     }
+}
+
+function Ensure-WindowsTerminal {
+    Write-Step "Windows Terminal profiles (one tab per WSL distro)"
+    $wwm = @(
+        (Join-Path $env:USERPROFILE '.wwm\wwm.exe'),
+        (Join-Path $PSScriptRoot 'cli\target\release\wwm.exe'),
+        (Join-Path $PSScriptRoot 'cli\target\debug\wwm.exe')
+    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    if ($wwm) {
+        & $wwm distro sync
+        if ($LASTEXITCODE -ne 0) { throw "wwm distro sync failed" }
+        $official = Get-OfficialWslProfileGuid $Distro
+        if ($official) { Set-TerminalDefaultProfile $official }
+        return
+    }
+    $fragDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\wwm'
+    if (-not (Test-Path $fragDir)) { New-Item -ItemType Directory -Path $fragDir | Out-Null }
+    $oldFrag = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\wsl-setup'
+    if (Test-Path $oldFrag) { Remove-Item -LiteralPath $oldFrag -Recurse -Force }
+    $penguin = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
+    $fragment = @{
+        profiles = @(
+            @{
+                guid              = $WslProfileGuid
+                name              = 'wsl'
+                commandline       = "$env:SystemRoot\System32\wsl.exe"
+                startingDirectory = '~'
+                hidden            = $false
+                icon              = $penguin
+            }
+        )
+    }
+    $json = $fragment | ConvertTo-Json -Depth 6
+    Set-Content -LiteralPath (Join-Path $fragDir 'profiles.json') -Value $json -Encoding UTF8
+    $official = Get-OfficialWslProfileGuid $Distro
+    if ($official) { Set-TerminalDefaultProfile $official }
 }
 
 function Update-PsProfile {
@@ -315,17 +352,20 @@ function Update-PsProfile {
     $dir = Split-Path -Parent $Path
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
     $block = @'
-# >>> wsl-setup >>>
+# >>> wwm >>>
 function wsl {
     if ($args.Count -eq 0) { & wsl.exe ~ } else { & wsl.exe @args }
 }
 function ubuntu { & wsl.exe -d Ubuntu-26.04 ~ @args }
-# <<< wsl-setup <<<
+# <<< wwm <<<
 '@
     $existing = ''
     if (Test-Path $Path) { $existing = Get-Content -LiteralPath $Path -Raw }
     if ($existing -match '>>> wsl-setup >>>') {
         $existing = [regex]::Replace($existing, '(?s)# >>> wsl-setup >>>.*?# <<< wsl-setup <<<\r?\n?', '')
+    }
+    if ($existing -match '>>> wwm >>>') {
+        $existing = [regex]::Replace($existing, '(?s)# >>> wwm >>>.*?# <<< wwm <<<\r?\n?', '')
     }
     $existing = $existing.TrimEnd()
     if ($existing) { $existing = $existing + "`r`n`r`n" }
@@ -345,9 +385,10 @@ function Invoke-LinuxInstall {
         return
     }
     Write-Step "clone/update repo on the Linux disk and run install.sh"
-    $linuxRepo = '~/code/windows-wsl-manager'
+    $linuxRepo = '~/code/wwm'
+    $legacyRepo = '~/code/windows-wsl-manager'
     $winRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-    $remote = 'https://github.com/pjmagee/windows-wsl-manager.git'
+    $remote = 'https://github.com/pjmagee/wwm.git'
     $wslWin = (wsl.exe -d $Distro -- wslpath -a $winRoot 2>$null)
     $wslWin = (("$wslWin" -replace [char]0, '').Trim())
     $setup = @"
@@ -356,7 +397,9 @@ sudo -n apt-get update -y
 sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y git curl
 mkdir -p `$HOME/code
 if [ ! -d $linuxRepo/.git ]; then
-  if [ -n '$wslWin' ] && [ -d '$wslWin/.git' ]; then
+  if [ -d $legacyRepo/.git ]; then
+    git clone $legacyRepo $linuxRepo
+  elif [ -n '$wslWin' ] && [ -d '$wslWin/.git' ]; then
     git clone '$wslWin' $linuxRepo
   else
     git clone $remote $linuxRepo
@@ -364,6 +407,7 @@ if [ ! -d $linuxRepo/.git ]; then
 else
   git -C $linuxRepo pull --ff-only || true
 fi
+git -C $linuxRepo remote set-url origin $remote 2>/dev/null || true
 chmod +x $linuxRepo/install.sh $linuxRepo/scripts/wsl-open $linuxRepo/windows/ensure-user.sh
 cd $linuxRepo
 ./install.sh work

@@ -82,20 +82,48 @@ run_step() {
   return 0
 }
 
-# Profile name → profiles/linux/<name>.json (or ~/.config/wsl-setup/profiles/).
-# Overlay ~/.config/wsl-setup/linux-profile.json { "tools": ["id", ...] } replaces the ID list.
+# Profile name → profiles/linux/<name>.json (or ~/.wwm/profiles/).
+# Overlay ~/.wwm/linux-profile.json { "tools": ["id", ...] } replaces the ID list.
 PROFILE=""
 PROFILE_FILE=""
 PROFILE_STEPS=()
-PROFILE_STATE="$HOME/.config/wsl-setup/profile"
-TOOLS_OVERLAY="$HOME/.config/wsl-setup/linux-profile.json"
-LEGACY_OVERLAY="$HOME/.config/wsl-setup/tools.json"
+WWM_DIR="$HOME/.wwm"
+LEGACY_WWM_DIR="$HOME/.config/wsl-setup"
+PROFILE_STATE="$WWM_DIR/profile"
+TOOLS_OVERLAY="$WWM_DIR/linux-profile.json"
+LEGACY_OVERLAY="$WWM_DIR/tools.json"
 
 usage() {
   echo "usage: ./install.sh [profile]"
+  echo "  blank  distro + passwordless sudo only (no Homebrew)"
   echo "  home   shipped home toolchain (default if nothing saved)"
   echo "  work   shipped work toolchain; drops home-only extras"
-  echo "  <name> profiles/linux/<name>.json or ~/.config/wsl-setup/profiles/<name>.json"
+  echo "  <name> profiles/linux/<name>.json or ~/.wwm/profiles/<name>.json"
+}
+
+copy_if_missing() {
+  local src="$1" dest="$2"
+  if [ -e "$src" ] && [ ! -e "$dest" ]; then
+    mkdir -p "$(dirname "$dest")"
+    cp -a "$src" "$dest"
+  fi
+}
+
+# Previous checkouts wrote state under ~/.config/wsl-setup.
+migrate_legacy_state() {
+  mkdir -p "$WWM_DIR"
+  [ -d "$LEGACY_WWM_DIR" ] || return 0
+  copy_if_missing "$LEGACY_WWM_DIR/profile" "$PROFILE_STATE"
+  copy_if_missing "$LEGACY_WWM_DIR/linux-profile.json" "$TOOLS_OVERLAY"
+  copy_if_missing "$LEGACY_WWM_DIR/tools.json" "$LEGACY_OVERLAY"
+  if [ -d "$LEGACY_WWM_DIR/profiles" ]; then
+    mkdir -p "$WWM_DIR/profiles"
+    local f
+    for f in "$LEGACY_WWM_DIR/profiles"/*.json; do
+      [ -f "$f" ] || continue
+      copy_if_missing "$f" "$WWM_DIR/profiles/$(basename "$f")"
+    done
+  fi
 }
 
 read_step_file() {
@@ -109,8 +137,12 @@ read_step_file() {
 
 find_profile_file() {
   local n="$1"
-  if [ -f "$HOME/.config/wsl-setup/profiles/${n}.json" ]; then
-    printf '%s\n' "$HOME/.config/wsl-setup/profiles/${n}.json"
+  if [ -f "$WWM_DIR/profiles/${n}.json" ]; then
+    printf '%s\n' "$WWM_DIR/profiles/${n}.json"
+    return 0
+  fi
+  if [ -f "$LEGACY_WWM_DIR/profiles/${n}.json" ]; then
+    printf '%s\n' "$LEGACY_WWM_DIR/profiles/${n}.json"
     return 0
   fi
   if [ -f "$ROOT/profiles/linux/${n}.json" ]; then
@@ -121,6 +153,7 @@ find_profile_file() {
 }
 
 resolve_profile() {
+  migrate_legacy_state
   local requested="${1:-${WSL_SETUP_PROFILE:-}}"
   if [ -z "$requested" ] && [ -f "$PROFILE_STATE" ]; then
     requested="$(tr -d '[:space:]' <"$PROFILE_STATE")"
@@ -141,6 +174,10 @@ resolve_profile() {
   PROFILE="$requested"
   mkdir -p "$(dirname "$PROFILE_STATE")"
   printf '%s\n' "$PROFILE" >"$PROFILE_STATE"
+  if [ "$PROFILE" = blank ]; then
+    echo "profile blank — no extra Linux tools (user + passwordless sudo come from wwm New WSL)"
+    exit 0
+  fi
 }
 
 collect_steps() {

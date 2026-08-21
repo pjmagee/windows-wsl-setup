@@ -1,5 +1,5 @@
 {
-  "name": "windows-wsl-manager-site",
+  "name": "wwm-site",
   "type": "module",
   "private": true,
   "scripts": {

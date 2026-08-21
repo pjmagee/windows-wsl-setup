@@ -83,7 +83,8 @@ pub fn dispatch(cmd: &str, args: &[String]) -> i32 {
         "map" => map_cmd(args),
         "suggest" => suggest_cmd(),
         "apply" => apply_cmd(args),
-        "distros" => distros_cmd(),
+        "distro" | "distros" => distro_cmd(cmd, args),
+        "spec" | "opencli" => spec_cmd(),
         _ => {
             eprintln!("unknown command {cmd}");
             2
@@ -260,6 +261,52 @@ fn apply_cmd(args: &[String]) -> i32 {
     }
 }
 
+fn spec_cmd() -> i32 {
+    let raw = include_str!("../../../schema/wwm.opencli.json");
+    print!("{raw}");
+    if !raw.ends_with('\n') {
+        println!();
+    }
+    0
+}
+
+fn distro_cmd(cmd: &str, args: &[String]) -> i32 {
+    if cmd == "distros" || args.is_empty() || args[0] == "list" {
+        return distros_cmd();
+    }
+    match args[0].as_str() {
+        "sync" => match crate::terminal::sync(None) {
+            Ok(r) => print_json(&r),
+            Err(e) => err(e),
+        },
+        "remove" => distro_remove(&args[1..]),
+        other => err(format!("distro list|sync|remove, not {other}")),
+    }
+}
+
+fn distro_remove(args: &[String]) -> i32 {
+    let pos = positional(args);
+    let Some(name) = pos.first() else {
+        return err("distro remove <name> --yes");
+    };
+    if !flag(args, "--yes") {
+        return err(format!(
+            "pass --yes to unregister {name} (deletes that Linux disk) and drop its Terminal profile"
+        ));
+    }
+    match crate::new_wsl::unregister_distro(name) {
+        Ok(unreg) => match crate::terminal::sync(None) {
+            Ok(r) => print_json(&serde_json::json!({
+                "ok": true,
+                "unregistered": unreg,
+                "terminal": r,
+            })),
+            Err(e) => err(format!("{unreg}; terminal sync failed: {e}")),
+        },
+        Err(e) => err(e),
+    }
+}
+
 fn distros_cmd() -> i32 {
     print_json(&serde_json::json!({
         "supported": crate::new_wsl::SUPPORTED.iter().map(|d| serde_json::json!({
@@ -269,5 +316,27 @@ fn distros_cmd() -> i32 {
         "online": crate::new_wsl::online_names(),
         "installed": crate::new_wsl::distro_names(),
         "choices": crate::new_wsl::distro_choices(),
+        "default": crate::new_wsl::default_distro_name(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn opencli_parses() {
+        let v: serde_json::Value =
+            serde_json::from_str(include_str!("../../../schema/wwm.opencli.json")).unwrap();
+        assert_eq!(v["opencli"], "0.1");
+        assert_eq!(v["command"]["name"], "wwm");
+        let cmds = v["command"]["commands"].as_array().unwrap();
+        assert!(cmds.iter().any(|c| c["name"] == "new-wsl"));
+        assert!(cmds.iter().any(|c| c["name"] == "spec"));
+        let new_wsl = cmds.iter().find(|c| c["name"] == "new-wsl").unwrap();
+        let opts = new_wsl["options"].as_array().unwrap();
+        let profile = opts.iter().find(|o| o["name"] == "--profile").unwrap();
+        let vals = profile["arguments"][0]["acceptedValues"]
+            .as_array()
+            .unwrap();
+        assert!(vals.iter().any(|v| v == "blank"));
+    }
 }

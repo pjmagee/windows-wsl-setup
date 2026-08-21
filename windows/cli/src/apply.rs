@@ -6,6 +6,7 @@ use crate::catalog::{LinuxProfileDoc, Store};
 use crate::new_wsl;
 use crate::profile::{self, Resolved};
 use crate::restore;
+use crate::terminal;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Step {
@@ -50,6 +51,13 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
                 return out;
             }
         }
+        match terminal::sync(None) {
+            Ok(r) => out.push(ok(
+                "terminal",
+                format!("{} ({})", r.profiles.join(", "), r.detail),
+            )),
+            Err(e) => out.push(fail("terminal", e)),
+        }
         match new_wsl::wait_for_root(distro) {
             Ok(s) => out.push(ok("boot", s)),
             Err(e) => {
@@ -71,10 +79,29 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
                 return out;
             }
         }
-        match new_wsl::set_default_distro(distro) {
-            Ok(s) => out.push(ok("default-distro", s)),
+        match new_wsl::maybe_set_default_distro(distro) {
+            Ok((changed, s)) => {
+                out.push(ok("default-distro", s));
+                if changed {
+                    match terminal::sync(Some(distro)) {
+                        Ok(r) => out.push(ok(
+                            "terminal-default",
+                            r.default_profile
+                                .unwrap_or_else(|| distro.to_string()),
+                        )),
+                        Err(e) => out.push(fail("terminal-default", e)),
+                    }
+                }
+            }
             Err(e) => out.push(fail("default-distro", e)),
         }
+    }
+    if new_wsl::is_blank_profile(&linux.id) {
+        match new_wsl::mark_blank_profile(distro) {
+            Ok(s) => out.push(ok("install.sh", s)),
+            Err(e) => out.push(fail("install.sh", e)),
+        }
+        return out;
     }
     let json = serde_json::to_string(linux).ok();
     match new_wsl::install_toolchain(distro, &linux.id, json.as_deref()) {

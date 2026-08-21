@@ -668,19 +668,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wwm"
-version = "0.2.0"
-dependencies = [
- "crossterm",
- "ratatui",
- "serde",
- "serde_json",
- "windows-sys 0.59.0",
- "winreg",
- "winresource",
-]
-
-[[package]]
 name = "windows_aarch64_gnullvm"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -752,6 +739,19 @@ checksum = "0986a8b1d586b7d3e4fe3d9ea39fb451ae22869dcea4aa109d287a374d866087"
 dependencies = [
  "toml",
  "version_check",
+]
+
+[[package]]
+name = "wwm"
+version = "0.2.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "windows-sys 0.59.0",
+ "winreg",
+ "winresource",
 ]
 
 [[package]]

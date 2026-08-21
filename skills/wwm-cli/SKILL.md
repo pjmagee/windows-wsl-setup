@@ -1,5 +1,5 @@
 ---
-name: windows-wsl-setup
+name: wwm-cli
 description: >
   Collect or restore a Windows 11 PC, create a new WSL distro (Ubuntu, Debian, or Arch),
   or apply a software profile. Use when the user has a messy PC, is about to reset
@@ -16,11 +16,11 @@ Humans and agents **do not clone** this repo to use it. Clone only if you are ch
 Install this skill at **user** scope (do not clone the repo). Pick **one**:
 
 ```
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+gh skill install pjmagee/wwm wwm-cli --scope user --agent grok
 ```
 
 ```
-npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
+npx skills add pjmagee/wwm --skill wwm-cli -g -y
 ```
 
 ## Install the CLI
@@ -29,7 +29,7 @@ Confirm the host is Windows (not WSL, not Git Bash). Install the latest exe into
 
 ```
 New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
 $env:Path = "$HOME\.wwm;$env:Path"
 wwm
 ```
@@ -38,18 +38,39 @@ If that 404s, stop. Do not clone as a substitute.
 
 JSON commands print JSON on stdout; errors on stderr.
 
+Machine-readable CLI map (OpenCLI, https://opencli.org/):
+
+```
+wwm spec
+```
+
 ## Modes
 
 | Mode | When |
 |---|---|
 | **Collect** | Used PC. Snapshot apps, Linux disks, data volumes to a non-system drive. |
 | **Restore** | Fresh Windows 11 + a kit. Install apps, remount disks, restore browser bookmarks. |
-| **New WSL** | No kit. User picks a **supported** distro still in `wsl --list --online` (Ubuntu-26.04, Debian, archlinux), then a linux profile. |
-| **Profiles / Apply** | Named software lists. Shipped `default` / `home` / `work`. |
+| **New WSL** | No kit. User picks a **supported** distro still in `wsl --list --online` (Ubuntu-26.04, Debian, archlinux), then a linux profile (`blank`, `home`, or `work`). |
+| **Profiles / Apply** | Named software lists. Shipped `blank` / `default` / `home` / `work`. |
 
 A **kit** is what this PC has. A **profile** is what they want. Restore wins when the Linux disk still exists. Apply does not remount disks.
 
-Never format data drives. Never `wsl --unregister` unless they confirm.
+Never format data drives. Never `wsl --unregister` unless they confirm (`wwm distro remove <name> --yes`).
+
+## Linux profiles
+
+| Id | What you get |
+|---|---|
+| `blank` | Distro + Linux user + passwordless sudo. No Homebrew, no `install.sh` toolchain. |
+| `home` | blank host steps, then Homebrew CLIs (grok, claude, opencode, hugo, stripe, …) |
+| `work` | blank host steps, then work CLIs (Copilot CLI; no grok/claude/opencode) |
+
+```
+wwm new-wsl --profile blank --distro Debian
+wwm new-wsl --profile home --distro Ubuntu-26.04
+```
+
+Adding a distro beside an existing one does not steal the WSL default.
 
 ## Install order (Windows)
 
@@ -67,13 +88,14 @@ Then ask them to unlock the password manager, open the browser, and click **Add*
 
 Official new-instance targets: **Ubuntu-26.04**, **Debian**. **archlinux** is offered; amd64 only; first boot may be root until we create a user.
 
-Homebrew installs the CLIs on all three. `apt` or `pacman` is only the bootstrap set.
+Homebrew installs the CLIs on `home` and `work`. `apt` or `pacman` is only the bootstrap set. `blank` skips that.
 
 Do not offer Fedora, Kali, or openSUSE as a new-instance target. Restoring a kit that already has them is fine.
 
 ## CLI
 
 ```
+wwm spec
 wwm suggest
 wwm map <winget-id>
 wwm search winget <query>
@@ -83,12 +105,18 @@ wwm profile list|show|new|add|remove|delete
 wwm profile new <id> [--from home] [--name "Media PC"]
 wwm profile delete <id>
 wwm apply <id>
+wwm apply blank --linux-only --distro Debian
 wwm apply <id> --windows-only|--linux-only --distro Debian
 wwm distros
+wwm distro sync
+wwm distro remove <name> --yes
 wwm collect
 wwm restore
+wwm new-wsl --profile blank --distro Debian
 wwm new-wsl --profile home --distro Ubuntu-26.04
 ```
+
+Windows Terminal is the host console. Official **Microsoft.WSL** tabs stay; do **not** overwrite their command line (that is what produced `/home/<user>: Is a directory`). WWM only adds a **wsl** launcher.
 
 Prefer Linux for SDKs and cloud CLIs (`map` / `preferLinux`). Games, browsers, editors, password managers, and Docker Desktop stay on Windows.
 

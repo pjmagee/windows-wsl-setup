@@ -4,7 +4,7 @@ People download `wwm.exe` from Releases, or:
 
 ```
 New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
 $env:Path = "$HOME\.wwm;$env:Path"
 wwm
 ```
@@ -17,6 +17,7 @@ wwm collect
 wwm restore
 wwm new-wsl
 wwm new-wsl --profile home --distro Debian
+wwm new-wsl --profile blank --distro Debian
 wwm distros
 wwm profiles
 wwm suggest

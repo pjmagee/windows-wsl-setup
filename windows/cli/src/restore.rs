@@ -98,7 +98,7 @@ if ($part.DriveLetter -ne 'D') {{
 "#,
         path.replace('\'', "''")
     );
-    let tmp = std::env::temp_dir().join("wsl-setup-mount-devdrive.ps1");
+    let tmp = std::env::temp_dir().join("wwm-mount-devdrive.ps1");
     fs::write(&tmp, ps).map_err(|e| e.to_string())?;
     let out = Command::new("powershell.exe")
         .args([
@@ -155,6 +155,10 @@ pub fn restore_wsl(kit: &LoadedKit) -> Result<String, String> {
                 String::from_utf8_lossy(&st.stderr).replace('\0', "")
             ));
         }
+    }
+    match crate::terminal::sync(None) {
+        Ok(r) => notes.push(format!("terminal: {}", r.profiles.join(", "))),
+        Err(e) => notes.push(format!("terminal: {e}")),
     }
     if notes.is_empty() {
         Ok("no WSL disks in kit".into())

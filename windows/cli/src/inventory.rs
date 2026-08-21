@@ -201,12 +201,12 @@ fn volume_guid(_: &str) -> Option<String> {
 }
 
 fn winget_apps() -> Vec<WingetApp> {
-    let tmp = std::env::temp_dir().join(format!("wsl-setup-winget-{}.json", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("wwm-winget-{}.json", std::process::id()));
     let _ = Command::new("winget")
         .args([
             "export",
             "--output",
-            tmp.to_str().unwrap_or("wsl-setup-winget.json"),
+            tmp.to_str().unwrap_or("wwm-winget.json"),
             "--accept-source-agreements",
             "--disable-interactivity",
         ])

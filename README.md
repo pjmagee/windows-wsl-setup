@@ -6,27 +6,27 @@ Download `wwm.exe` from **Releases**, or PowerShell:
 
 ```
 New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/windows-wsl-manager/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
+Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
 $env:Path = "$HOME\.wwm;$env:Path"
 wwm
 ```
 
-Do not clone this repo to use it. Site: <https://pjmagee.github.io/windows-wsl-manager/>
+Do not clone this repo to use it. Site: <https://pjmagee.github.io/wwm/>
 
 ## Agent-ready
 
-The skill id is `windows-wsl-setup`. Pick **one** installer.
+The skill id is `wwm-cli`. Pick **one** installer.
 
 GitHub CLI (this one is Grok only — pass `--agent claude-code`, `github-copilot`, or `codex` for those):
 
 ```
-gh skill install pjmagee/windows-wsl-manager windows-wsl-setup --scope user --agent grok
+gh skill install pjmagee/wwm wwm-cli --scope user --agent grok
 ```
 
 skills.sh (any detected agent; needs Node):
 
 ```
-npx skills add pjmagee/windows-wsl-manager --skill windows-wsl-setup -g -y
+npx skills add pjmagee/wwm --skill wwm-cli -g -y
 ```
 
 Then ask the agent to collect, restore, or apply a profile. The skill tells it how to download the exe.
@@ -43,5 +43,9 @@ wwm
 wwm collect
 wwm restore
 wwm new-wsl
+wwm new-wsl --profile blank --distro Debian
+wwm distro sync
+wwm distro remove Debian --yes
+wwm spec
 wwm profiles
 ```
