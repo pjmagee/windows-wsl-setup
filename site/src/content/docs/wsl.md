@@ -1,29 +1,62 @@
 ---
 title: WSL
-description: Restore existing WSL instances, or provision Ubuntu, Debian, or Arch.
-order: 6
+description: Backup and restore Linux disks, or create a new Ubuntu, Debian, or Arch.
+order: 5
 group: Use
 ---
 
-## Restore existing WSL instances
+`wwm` is still a Windows program. It talks to `wsl.exe`.
 
-If the kit includes a Linux disk, Restore imports that VHDX. Other distros on the machine stay installed.
+## Backup
 
-## New WSL
+**Collect** copies each ticked distro’s VHDX into the kit. That is the backup.
 
-Use this when there is no disk to restore.
+## Restore a disk
 
-1. Pick Ubuntu, Debian, or Arch, then a linux profile (`blank`, `home`, or `work`). `blank` is the distro plus a passwordless-sudo user — no Homebrew.
-2. Enables WSL if needed, installs the distro, creates the Linux user, auto-configures passwordless sudo, and applies the profile. Homebrew installations follow.
-3. Windows Terminal already gets an official tab from Microsoft.WSL. WWM does not overwrite that command line. It adds a **wsl** launcher only. Does not change the WSL / Terminal default if another distro is already default.
-4. `wwm distro remove <name> --yes` unregisters the distro (the official Terminal tab goes with it).
+**Restore** imports that VHDX (`wsl --import-in-place`). Distros already on the machine stay installed.
 
-Requires x86_64. Fedora, Kali, and openSUSE are restore-only.
+```
+wwm restore
+```
 
-## Apply
+Do not run New WSL if the kit already has the disk you want.
 
-**Profiles → Apply** installs Windows packages, then can run New WSL. It does not remount a VHDX.
+## New empty distro
 
-Linux **work** is Copilot CLI plus the shared toolchain. Linux **home** keeps grok, claude, opencode, hugo, and stripe.
+```
+wwm new-wsl --profile blank --distro Debian
+```
 
-Official targets: [Distros](../distros/).
+Installs Debian (or Ubuntu-26.04, or archlinux), creates the Linux user, and turns on passwordless sudo. No extra packages. JSON looks like:
+
+```
+[
+  { "step": "distro", "ok": true, "detail": "Debian installed." },
+  { "step": "user", "ok": true, "detail": "created patri (uid 1000, empty password)" },
+  { "step": "sudo", "ok": true, "detail": "ok user=patri" },
+  { "step": "linux", "ok": true, "detail": "blank: distro + passwordless sudo only" }
+]
+```
+
+If Ubuntu-26.04 is already the default, a new Debian is added **beside** it.
+
+## New distro with packages
+
+```
+wwm new-wsl --profile home --distro Ubuntu-26.04
+wwm apply work --linux-only --distro Debian
+```
+
+Same host steps as `blank`, then the Linux package list for that profile (Homebrew CLIs).
+
+`home` includes grok, claude, opencode, hugo, stripe. `work` is Copilot CLI plus the shared toolchain.
+
+## Remove
+
+```
+wwm distro remove Debian --yes
+```
+
+Unregisters the distro (deletes the disk). Requires `--yes`.
+
+x86_64 only. Fedora, Kali, and openSUSE are restore-only. [Distros](../distros/).

@@ -1,6 +1,6 @@
 # Site (Astro + Bun)
 
-Static GitHub Pages for **Windows WSL Manager**. First doc is Getting started (`/docs/getting-started/`). `/docs/welcome/` redirects there.
+Static GitHub Pages for **wwm**. First doc is Getting started (`/docs/getting-started/`). `/docs/welcome/` redirects there. The product is `wwm.exe` on Windows (winget, WSL disks, profiles).
 
 ```
 cd site

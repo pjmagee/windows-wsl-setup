@@ -7,7 +7,7 @@ const base = import.meta.env.BASE_URL;
 const fullTitle = title ? `${title} · Windows WSL Manager` : 'Windows WSL Manager';
 const desc =
   description ??
-  'Collect a kit and restore it on a new installation of Windows. Restore existing WSL instances or provision Ubuntu, Debian, or Arch.';
+  'wwm.exe installs Windows apps with winget, creates or restores WSL distros, and applies named software profiles.';
 ---
 <!doctype html>
 <html lang="en">
@@ -45,7 +45,7 @@ const desc =
     </header>
     <slot />
     <footer class="wrap footer">
-      <span>winget · WSL · Homebrew</span>
+      <span>winget · WSL · profiles</span>
       <span>
         <a href={REPO}>pjmagee/wwm</a>
       </span>

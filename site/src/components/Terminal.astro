@@ -1,8 +1,48 @@
 ---
 const sessions = [
   {
+    id: 'distros',
+    tab: 'Windows PowerShell',
+    kind: 'ps',
+    html: `Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm distros
+
+{
+  <span class="c-key">"choices"</span>: [
+    { <span class="c-key">"id"</span>: <span class="c-str">"Ubuntu-26.04"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">true</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
+    { <span class="c-key">"id"</span>: <span class="c-str">"Debian"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">true</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
+    { <span class="c-key">"id"</span>: <span class="c-str">"archlinux"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">false</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> }
+  ],
+  <span class="c-key">"default"</span>: <span class="c-str">"Ubuntu-26.04"</span>,
+  <span class="c-key">"installed"</span>: [<span class="c-str">"Ubuntu-26.04"</span>, <span class="c-str">"Debian"</span>, <span class="c-str">"docker-desktop"</span>]
+}
+
+<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
+  },
+  {
+    id: 'blank',
+    tab: 'Windows PowerShell',
+    kind: 'ps',
+    html: `Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm new-wsl --profile blank --distro Debian
+
+[
+  { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Debian installed."</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"user"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"created patri (uid 1000, empty password)"</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patri"</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"default-distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"left default as Ubuntu-26.04 (added Debian beside it)"</span> },
+  { <span class="c-key">"step"</span>: <span class="c-str">"linux"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"blank: distro + passwordless sudo only"</span> }
+]
+
+<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
+  },
+  {
     id: 'map',
-    profile: 'Windows PowerShell',
+    tab: 'Windows PowerShell',
     kind: 'ps',
     html: `Windows PowerShell
 Copyright (C) Microsoft Corporation. All rights reserved.
@@ -18,57 +58,6 @@ Copyright (C) Microsoft Corporation. All rights reserved.
 
 <span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
   },
-  {
-    id: 'suggest',
-    profile: 'Windows PowerShell',
-    kind: 'ps',
-    html: `Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm suggest
-
-{
-  <span class="c-key">"windows"</span>: [<span class="c-str">"Brave.Brave"</span>, <span class="c-str">"Valve.Steam"</span>],
-  <span class="c-key">"linux"</span>: [<span class="c-str">"uv"</span>, <span class="c-str">"azure-cli"</span>, <span class="c-str">"fnm"</span>],
-  <span class="c-key">"skippedPreferLinux"</span>: [
-    { <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>, <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span> }
-  ]
-}
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
-  },
-  {
-    id: 'apply',
-    profile: 'Windows PowerShell',
-    kind: 'ps',
-    html: `Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm apply default --linux-only
-
-[
-  { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Ubuntu-26.04 installed"</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patrick"</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"install.sh"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"profile home"</span> }
-]
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
-  },
-  {
-    id: 'ubuntu',
-    profile: 'Ubuntu-26.04',
-    kind: 'wsl',
-    html: `<span class="c-path">~/code/wwm</span> <span class="c-git">on main</span>
-<span class="c-ok">via</span> 🦀 1.88.0 <span class="c-ok">via</span> 🐍 uv <span class="c-ok">via</span> 🥟 bun
-<span class="c-prompt">❯</span> cat ~/.wwm/profile
-home
-<span class="c-prompt">❯</span> command -v uv rustc bun
-/home/linuxbrew/.linuxbrew/bin/uv
-/home/linuxbrew/.linuxbrew/bin/rustc
-/home/linuxbrew/.linuxbrew/bin/bun
-
-<span class="c-prompt">❯</span> <span class="caret"></span>`,
-  },
 ];
 ---
 
@@ -77,20 +66,11 @@ home
     <div class="wt-tabs" role="tablist">
       {sessions.map((s, i) => (
         <button type="button" class:list={['wt-tab', { on: i === 0 }]} data-i={i} role="tab">
-          {s.kind === 'ps' ? (
-            <svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z" />
-              <path d="M8.2 12.4h5.6v1.8H8.2z" />
-            </svg>
-          ) : (
-            <svg class="wt-ico ubu" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="8" cy="8" r="6.2" />
-              <circle cx="8" cy="4.1" r="1.15" fill="#fff" />
-              <circle cx="4.7" cy="10.1" r="1.15" fill="#fff" />
-              <circle cx="11.3" cy="10.1" r="1.15" fill="#fff" />
-            </svg>
-          )}
-          <span>{s.id === 'ubuntu' ? 'Ubuntu-26.04' : s.id}</span>
+          <svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z" />
+            <path d="M8.2 12.4h5.6v1.8H8.2z" />
+          </svg>
+          <span>{s.tab}</span>
         </button>
       ))}
       <span class="wt-new" aria-hidden="true">

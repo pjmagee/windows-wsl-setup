@@ -1,13 +1,14 @@
 ---
 title: Automate
-description: JSON CLI for catalog, profiles, suggest, apply, and New WSL.
+description: JSON CLI. Errors on stderr. wwm spec is OpenCLI.
 order: 8
 group: Reference
 ---
 
-These commands print JSON. Errors go to stderr. TUI modes do not.
+These print JSON on stdout. TUI modes (`wwm`, `wwm collect`, `wwm restore`, `wwm profiles` with no subcommand) do not.
 
 ```
+wwm spec
 wwm catalog linux
 wwm catalog windows
 wwm distros
@@ -20,15 +21,15 @@ wwm search linux kubectl
 wwm search winget terraform
 wwm map Microsoft.AzureCLI
 wwm suggest
-wwm apply home
 wwm apply home --windows-only
-wwm apply home --linux-only
-wwm new-wsl --profile home
-wwm new-wsl --profile home --distro Debian
+wwm apply blank --linux-only --distro Debian
+wwm new-wsl --profile blank --distro Debian
+wwm new-wsl --profile home --distro Ubuntu-26.04
+wwm distro remove Debian --yes
 ```
 
-`inventory` dumps a live scan of this PC as JSON.
+`wwm spec` dumps the [OpenCLI](https://opencli.org/) description (also at `schema/wwm.opencli.json`).
+
+`inventory` dumps a live scan of this PC as JSON (no kit write).
 
 Install the skill first: [Agents](../agents/).
-
-`apply` installs Windows packages in **priority** order, then can create the selected Linux distro and run the linux profile. It does not uninstall Windows apps.

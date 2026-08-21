@@ -98,8 +98,8 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
     }
     if new_wsl::is_blank_profile(&linux.id) {
         match new_wsl::mark_blank_profile(distro) {
-            Ok(s) => out.push(ok("install.sh", s)),
-            Err(e) => out.push(fail("install.sh", e)),
+            Ok(s) => out.push(ok("linux", s)),
+            Err(e) => out.push(fail("linux", e)),
         }
         return out;
     }
