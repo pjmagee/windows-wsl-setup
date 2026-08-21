@@ -6,3 +6,5 @@ windows/cli/target/
 site/node_modules/
 site/dist/
 site/.astro/
+site/public/install.ps1
+site/public/install.txt

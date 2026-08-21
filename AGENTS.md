@@ -55,7 +55,7 @@ else echo "windows"; fi
 |---|---|
 | Windows, human asked to **capture / backup** a used PC | **§0a**. `wwm.exe` **Collect**. Do not run `install.sh`. |
 | Windows, human pointed at a **kit** (`KIT.json` on a data drive) | **§0a**. `wwm.exe` **Restore**. Do not format data drives. Do not `wsl --unregister`. |
-| Windows, human wants a **new empty Linux** (no kit) | **§0a**. `wwm.exe` **New WSL**. User picks Ubuntu-26.04, Debian, or archlinux. |
+| Windows, human wants a **new empty Linux** (no kit) | **§0a**. `wwm.exe` **New WSL**. Work laptop: Ubuntu-26.04. Other create ids: [site distros](site/src/content/docs/distros.md). |
 | Windows, human wants a **default / custom software set** (no kit) | **§0a**. `wwm.exe` **Profiles** or `apply <id>`. |
 | Windows PowerShell / cmd / Git Bash (cloned repo, work laptop) | **§1**. Never run `install.sh` here. Git Bash: invoke `powershell.exe`, do not treat this as Linux. |
 | WSL, distro `Ubuntu-26.04` | **§2**. |
@@ -80,7 +80,7 @@ Do not tell the user to run PowerShell scripts or git clone for this. Maintainer
 
 Never write the kit on `C:`. Never unregister WSL. Restore brings the **existing** Linux disk back; do not run New WSL unless they have no disk to restore.
 
-New WSL asks which **supported** distro Microsoft still lists (`wsl --list --online`): Ubuntu-26.04 (default), Debian, or archlinux. Fedora / Kali / openSUSE are restore-only. apt or pacman bootstrap, then Homebrew.
+New WSL asks which **supported** distro Microsoft still lists (`wsl --list --online`): latest per family (Ubuntu-26.04 default). Pengwin is not a create target. apt, pacman, dnf, or zypper bootstrap, then Homebrew.
 
 `uname -m` must be `x86_64`. Homebrew bottles and Compass are amd64.
 Stop on ARM.
@@ -355,12 +355,14 @@ laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
+| Add a dnf / zypper package | [`packages/dnf.txt`](packages/dnf.txt) / [`packages/zypper.txt`](packages/zypper.txt) |
 | Add a CLI / runtime | Entry in [`profiles/linux.json`](profiles/linux.json) + id on the right `profiles/linux/<name>.json`, line in `print_summary` |
 | Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in the right [`profiles/*.txt`](profiles/) file |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
-| Link opener | [`scripts/wsl-open`](scripts/wsl-open) |
+| Link opener | [`scripts/wsl-open`](scripts/wsl-open) (`open` symlink). Clipboard: [`scripts/pbcopy`](scripts/pbcopy) / [`scripts/pbpaste`](scripts/pbpaste) (`clip.exe`) |
 | WSL / Terminal / passwordless user | [`windows/bootstrap.ps1`](windows/bootstrap.ps1), [`windows/ensure-user.sh`](windows/ensure-user.sh) |
+| Windows exe installer | [`windows/install.ps1`](windows/install.ps1) (`irm https://pjmagee.github.io/wwm/install.txt \| iex`) |
 
 Do not `brew install grok` (unrelated regex tool). xAI Grok Build is `cask "grok-build"`. Flux CD is `fluxcd`, not `flux`.
 Do not `brew install astro` (Astronomer). withastro is catalog kind `npm`, package `astro`.
@@ -374,7 +376,7 @@ Do not leave placeholders for unrelated work.
 
 ```
 .gitattributes             # LF for shell that runs in WSL
-install.sh                 # Linux toolchain; run only inside Ubuntu 26.04
+install.sh                 # Linux toolchain (work laptop: Ubuntu 26.04)
 profiles/linux.json        # Linux catalog (category + brew/cask)
 profiles/linux/*.json      # linux profile ID lists (home, work, …)
 profiles/windows.json      # curated winget catalog + linux equivalents
@@ -385,9 +387,15 @@ profiles/work.txt          # extra install_* for work
 profiles/home.txt          # extra install_* for home
 scripts/linux-tools.py     # renders Brewfile / prune list from catalog + profile
 packages/apt.txt           # apt packages (no language runtimes)
+packages/pacman.txt        # Arch bootstrap
+packages/dnf.txt           # Fedora / Alma / Oracle bootstrap
+packages/zypper.txt        # openSUSE Tumbleweed bootstrap
 scripts/wsl-open           # http(s)/mailto → Windows default browser
+scripts/pbcopy             # stdin → Windows clipboard (clip.exe)
+scripts/pbpaste            # Windows clipboard → stdout
 starship.toml              # seed config (scan_timeout for /mnt/c)
 windows/bootstrap.ps1      # host orchestrator (run from Windows)
+windows/install.ps1        # irm github.io/wwm/install.txt | iex
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
 windows/host/              # maintainer helpers for Windows WSL Manager

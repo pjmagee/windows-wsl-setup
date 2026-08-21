@@ -1,14 +1,11 @@
 # Windows WSL Manager
 
-Export a messy Windows 11 PC. Restore it after a clean install. Or stand up Linux (Ubuntu, Debian, or Arch) from a software profile.
+Export a messy Windows 11 PC. Restore it after a clean install. Or stand up Linux from a software profile.
 
 Download `wwm.exe` from **Releases**, or PowerShell:
 
 ```
-New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
-$env:Path = "$HOME\.wwm;$env:Path"
-wwm
+irm https://pjmagee.github.io/wwm/install.txt | iex
 ```
 
 Do not clone this repo to use it. Site: <https://pjmagee.github.io/wwm/>
@@ -35,7 +32,7 @@ Then ask the agent to collect, restore, or apply a profile. The skill tells it h
 
 1. **Collect** on the used PC (kit on a non-system drive).
 2. **Restore** on fresh Windows 11 — apps first (password manager, then your browser), then remount disks.
-3. **New WSL** if there is no Linux disk to bring back. Pick Ubuntu, Debian, or Arch + a profile.
+3. **New WSL** if there is no Linux disk to bring back. Pick a distro + a profile.
 4. **Profiles** when you want a named software list instead of a snapshot.
 
 ```
@@ -44,6 +41,8 @@ wwm collect
 wwm restore
 wwm new-wsl
 wwm new-wsl --profile blank --distro Debian
+wwm distro move Debian D:\WSL\Debian
+wwm distro clone Ubuntu-26.04 Ubuntu-dev --location D:\WSL\Ubuntu-dev
 wwm distro sync
 wwm distro remove Debian --yes
 wwm spec

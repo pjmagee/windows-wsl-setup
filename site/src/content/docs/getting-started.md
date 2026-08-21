@@ -11,7 +11,7 @@ group: Start
 |---|---|
 | Snapshot this PC and reinstall Windows 11 | [Collect a kit](#1-collect-a-kit-for-a-fresh-windows-pc) |
 | Keep or bring back a Linux disk | [Backup and restore WSL](#2-backup-and-restore-wsl) |
-| Empty Ubuntu / Debian / Arch, or one with packages | [New WSL](../wsl/) |
+| Empty official distro, or one with packages | [New WSL](../wsl/) |
 | Named Windows and Linux software lists | [Profiles](#3-profiles-for-windows-and-wsl) |
 | An agent that can drive the CLI | [Agents](#4-agents) |
 
@@ -45,6 +45,7 @@ There is no disk to bring back? Use **New WSL**:
 ```
 wwm new-wsl --profile blank --distro Debian
 wwm new-wsl --profile home --distro Ubuntu-26.04
+wwm new-wsl --profile blank --distro fedora --location D:\WSL\Fedora
 ```
 
 Details: [WSL](../wsl/), [Distros](../distros/).

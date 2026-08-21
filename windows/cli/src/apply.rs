@@ -30,7 +30,12 @@ pub fn apply_windows(store: &Store, ids: &[String]) -> Vec<Step> {
     out
 }
 
-pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> Vec<Step> {
+pub fn apply_linux(
+    linux: &LinuxProfileDoc,
+    create_wsl: bool,
+    distro: &str,
+    location: Option<&str>,
+) -> Vec<Step> {
     let distro = match new_wsl::parse_distro(distro) {
         Ok(d) => d,
         Err(e) => return vec![fail("distro", e)],
@@ -44,7 +49,7 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
                 return out;
             }
         }
-        match new_wsl::install_distro(distro) {
+        match new_wsl::install_distro_at(&distro, location) {
             Ok(s) => out.push(ok("distro", s)),
             Err(e) => {
                 out.push(fail("distro", e));
@@ -58,32 +63,32 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
             )),
             Err(e) => out.push(fail("terminal", e)),
         }
-        match new_wsl::wait_for_root(distro) {
+        match new_wsl::wait_for_root(&distro) {
             Ok(s) => out.push(ok("boot", s)),
             Err(e) => {
                 out.push(fail("boot", e));
                 return out;
             }
         }
-        match new_wsl::create_user_if_needed(distro) {
+        match new_wsl::create_user_if_needed(&distro) {
             Ok(s) => out.push(ok("user", s)),
             Err(e) => {
                 out.push(fail("user", e));
                 return out;
             }
         }
-        match new_wsl::ensure_passwordless_sudo(distro) {
+        match new_wsl::ensure_passwordless_sudo(&distro) {
             Ok(s) => out.push(ok("sudo", s)),
             Err(e) => {
                 out.push(fail("sudo", e));
                 return out;
             }
         }
-        match new_wsl::maybe_set_default_distro(distro) {
+        match new_wsl::maybe_set_default_distro(&distro) {
             Ok((changed, s)) => {
                 out.push(ok("default-distro", s));
                 if changed {
-                    match terminal::sync(Some(distro)) {
+                    match terminal::sync(Some(&distro)) {
                         Ok(r) => out.push(ok(
                             "terminal-default",
                             r.default_profile
@@ -97,14 +102,14 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
         }
     }
     if new_wsl::is_blank_profile(&linux.id) {
-        match new_wsl::mark_blank_profile(distro) {
+        match new_wsl::mark_blank_profile(&distro) {
             Ok(s) => out.push(ok("linux", s)),
             Err(e) => out.push(fail("linux", e)),
         }
         return out;
     }
     let json = serde_json::to_string(linux).ok();
-    match new_wsl::install_toolchain(distro, &linux.id, json.as_deref()) {
+    match new_wsl::install_toolchain(&distro, &linux.id, json.as_deref()) {
         Ok(s) => {
             let tail: String = s
                 .lines()
@@ -133,7 +138,13 @@ pub fn apply_linux(linux: &LinuxProfileDoc, create_wsl: bool, distro: &str) -> V
     out
 }
 
-pub fn apply_resolved(store: &Store, r: &Resolved, windows: bool, linux: bool) -> Vec<Step> {
+pub fn apply_resolved(
+    store: &Store,
+    r: &Resolved,
+    windows: bool,
+    linux: bool,
+    location: Option<&str>,
+) -> Vec<Step> {
     let mut out = Vec::new();
     if windows {
         out.extend(apply_windows(store, &r.windows.packages));
@@ -143,25 +154,27 @@ pub fn apply_resolved(store: &Store, r: &Resolved, windows: bool, linux: bool) -
             &r.linux,
             r.bundle.wsl.create_if_missing,
             &r.bundle.wsl.distro,
+            location,
         ));
     }
     out
 }
 
-pub fn apply_id(
+pub fn apply_id_at(
     store: &Store,
     id: &str,
     windows: bool,
     linux: bool,
     distro: Option<&str>,
+    location: Option<&str>,
 ) -> Result<Vec<Step>, String> {
     let mut r = profile::resolve(store, id)?;
     if let Some(d) = distro {
-        r.bundle.wsl.distro = new_wsl::parse_distro(d)?.to_string();
+        r.bundle.wsl.distro = new_wsl::parse_distro(d)?;
     } else {
-        r.bundle.wsl.distro = new_wsl::parse_distro(&r.bundle.wsl.distro)?.to_string();
+        r.bundle.wsl.distro = new_wsl::parse_distro(&r.bundle.wsl.distro)?;
     }
-    Ok(apply_resolved(store, &r, windows, linux))
+    Ok(apply_resolved(store, &r, windows, linux, location))
 }
 
 fn ok(step: &str, detail: String) -> Step {

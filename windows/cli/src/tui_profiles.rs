@@ -96,7 +96,7 @@ impl App {
     fn distro_id(&self) -> &str {
         self.distros
             .get(self.distro)
-            .map(|d| d.id)
+            .map(|d| d.id.as_str())
             .unwrap_or(new_wsl::DISTRO)
     }
 
@@ -360,7 +360,7 @@ impl App {
             self.distro_id()
         );
         let _ = term.draw(|f| draw(f, self));
-        let steps = apply::apply_resolved(&self.store, &r, true, true);
+        let steps = apply::apply_resolved(&self.store, &r, true, true, None);
         for st in &steps {
             self.log.push(format!(
                 "{} {} {}",

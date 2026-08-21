@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Idempotent WSL workstation bootstrap (Ubuntu/Debian apt, Arch pacman + Homebrew).
+# Idempotent WSL workstation bootstrap (apt / pacman / dnf / zypper + Homebrew).
 # Installs native Linux tools only. Does not use Windows interop copies.
 # Safe to re-run. Does not install Linux VS Code, Discord, or Oh My Posh.
-# apt = system packages. Homebrew = CLIs and language runtimes.
+# apt / pacman / dnf / zypper = system packages. Homebrew = CLIs and language runtimes.
 # Compass (Linux GUI) and Cloudflare cf stay as special steps.
 # Optional toolchain steps continue after a blocked host or installer error.
 # Profiles: ./install.sh <name>  (shipped: home|work — ID lists in profiles/linux/).
@@ -282,13 +282,14 @@ write_wsl_conf() {
   local conf=/etc/wsl.conf
   local tmp
   tmp="$(mktemp)"
+  # WSL sometimes writes NUL bytes into wsl.conf ("Invalid key name" on every shell).
   if [ -f "$conf" ]; then
-    awk '
+    tr -d '\0' <"$conf" | awk '
       /^\[user\]/ {skip=1; next}
       /^\[interop\]/ {skip=1; next}
       /^\[/ {skip=0}
       !skip {print}
-    ' "$conf" >"$tmp"
+    ' >"$tmp"
   else
     : >"$tmp"
   fi
@@ -310,33 +311,85 @@ ensure_passwordless_sudo() {
   write_wsl_conf "$u"
 }
 
+read_pkg_list() {
+  local file="$1"
+  tr -d '\r' <"$file" | grep -vE '^\s*(#|$)' || true
+}
+
 install_apt() {
   need_sudo
-  if command -v pacman >/dev/null 2>&1 && ! command -v apt-get >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    log "apt packages"
+    mapfile -t pkgs < <(read_pkg_list "$ROOT/packages/apt.txt")
+    apt_update
+    if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"; then
+      log "batch apt install failed; trying packages one by one"
+      local pkg
+      for pkg in "${pkgs[@]}"; do
+        if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"; then
+          echo "!! apt package $pkg failed; continuing" >&2
+          FAILED_STEPS+=("apt:$pkg")
+        fi
+      done
+    fi
+    if have fdfind && ! have fd; then
+      mkdir -p "$HOME/.local/bin"
+      ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"
+    fi
+    return 0
+  fi
+  if command -v pacman >/dev/null 2>&1; then
     log "pacman packages"
-    mapfile -t pkgs < <(tr -d '\r' <"$ROOT/packages/pacman.txt" | grep -vE '^\s*(#|$)' || true)
+    mapfile -t pkgs < <(read_pkg_list "$ROOT/packages/pacman.txt")
     if ((${#pkgs[@]})); then
       sudo pacman -Sy --noconfirm --needed "${pkgs[@]}" || true
     fi
     return 0
   fi
-  log "apt packages"
-  mapfile -t pkgs < <(tr -d '\r' <"$ROOT/packages/apt.txt" | grep -vE '^\s*(#|$)')
-  apt_update
-  if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"; then
-    log "batch apt install failed; trying packages one by one"
-    local pkg
-    for pkg in "${pkgs[@]}"; do
-      if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"; then
-        echo "!! apt package $pkg failed; continuing" >&2
-        FAILED_STEPS+=("apt:$pkg")
+  if command -v dnf >/dev/null 2>&1; then
+    log "dnf packages"
+    sudo dnf -y group install development-tools 2>/dev/null \
+      || sudo dnf -y groupinstall "Development Tools" 2>/dev/null \
+      || true
+    mapfile -t pkgs < <(read_pkg_list "$ROOT/packages/dnf.txt")
+    if ((${#pkgs[@]})); then
+      if ! sudo dnf install -y "${pkgs[@]}"; then
+        log "batch dnf install failed; trying packages one by one"
+        local pkg
+        for pkg in "${pkgs[@]}"; do
+          if ! sudo dnf install -y "$pkg"; then
+            echo "!! dnf package $pkg failed; continuing" >&2
+            FAILED_STEPS+=("dnf:$pkg")
+          fi
+        done
       fi
-    done
+    fi
+    if have fdfind && ! have fd; then
+      mkdir -p "$HOME/.local/bin"
+      ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"
+    fi
+    return 0
   fi
-  if have fdfind && ! have fd; then
-    mkdir -p "$HOME/.local/bin"
-    ln -sfn "$(command -v fdfind)" "$HOME/.local/bin/fd"
+  if command -v zypper >/dev/null 2>&1; then
+    log "zypper packages"
+    sudo zypper --non-interactive refresh || true
+    mapfile -t pkgs < <(read_pkg_list "$ROOT/packages/zypper.txt")
+    if ((${#pkgs[@]})); then
+      if ! sudo zypper --non-interactive install "${pkgs[@]}"; then
+        log "batch zypper install failed; trying packages one by one"
+        local pkg
+        for pkg in "${pkgs[@]}"; do
+          if ! sudo zypper --non-interactive install "$pkg"; then
+            echo "!! zypper package $pkg failed; continuing" >&2
+            FAILED_STEPS+=("zypper:$pkg")
+          fi
+        done
+      fi
+    fi
+    return 0
   fi
+  echo "!! no apt, pacman, dnf, or zypper on this distro" >&2
+  FAILED_STEPS+=("system-packages")
 }
 
 ensure_bashrc() {
@@ -363,7 +416,7 @@ ensure_bashrc() {
   cat >"$path_block" <<'EOF'
 # >>> wsl-linux-path >>>
 # Linux toolchains must precede the Windows PATH that WSL appends.
-# Homebrew owns CLIs. ~/.local/bin is wrappers (wsl-open, compass, python3.14).
+# Homebrew owns CLIs. ~/.local/bin is wrappers (wsl-open, pbcopy, pbpaste, compass, python3.14).
 if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
@@ -490,9 +543,12 @@ remove_oh_my_posh() {
 }
 
 install_wsl_open() {
-  log "wsl-open (Windows default browser)"
+  log "wsl-open + clipboard shims (Windows browser / clip.exe)"
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   install -m 0755 "$ROOT/scripts/wsl-open" "$HOME/.local/bin/wsl-open"
+  install -m 0755 "$ROOT/scripts/pbcopy" "$HOME/.local/bin/pbcopy"
+  install -m 0755 "$ROOT/scripts/pbpaste" "$HOME/.local/bin/pbpaste"
+  ln -sfn wsl-open "$HOME/.local/bin/open"
   rm -f "$HOME/.local/bin/xdg-open"
   cat >"$HOME/.local/share/applications/wsl-open.desktop" <<EOF
 [Desktop Entry]
@@ -940,7 +996,12 @@ print_summary() {
   else
     printf 'sudo       PASSWORD REQUIRED (run windows/bootstrap.ps1)\n'
   fi
-  printf 'wsl.conf   default=%s\n' "$(awk -F= '/^\[user\]/{s=1;next} /^\[/{s=0} s&&$1=="default"{print $2}' /etc/wsl.conf 2>/dev/null || echo unset)"
+  printf 'wsl.conf   default=%s\n' "$(tr -d '\0' </etc/wsl.conf 2>/dev/null | awk -F= '/^\[user\]/{s=1;next} /^\[/{s=0} s&&$1=="default"{print $2}' || echo unset)"
+  if [ -x "$HOME/.local/bin/pbcopy" ] && [ -x "$HOME/.local/bin/pbpaste" ]; then
+    printf 'clipboard  pbcopy/pbpaste -> clip.exe; open -> wsl-open\n'
+  else
+    printf 'clipboard  shims missing\n'
+  fi
   if ((${#FAILED_STEPS[@]} > 0)); then
     log "failed this run (re-run ./install.sh when the host is reachable)"
     local s

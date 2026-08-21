@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'windows/install.ps1'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

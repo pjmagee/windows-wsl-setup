@@ -408,7 +408,7 @@ else
   git -C $linuxRepo pull --ff-only || true
 fi
 git -C $linuxRepo remote set-url origin $remote 2>/dev/null || true
-chmod +x $linuxRepo/install.sh $linuxRepo/scripts/wsl-open $linuxRepo/windows/ensure-user.sh
+chmod +x $linuxRepo/install.sh $linuxRepo/scripts/wsl-open $linuxRepo/scripts/pbcopy $linuxRepo/scripts/pbpaste $linuxRepo/windows/ensure-user.sh
 cd $linuxRepo
 ./install.sh work
 "@

@@ -1,10 +1,10 @@
 ---
 name: wwm-cli
 description: >
-  Collect or restore a Windows 11 PC, create a new WSL distro (Ubuntu, Debian, or Arch),
-  or apply a software profile. Use when the user has a messy PC, is about to reset
-  Windows, just reinstalled, wants an agent to download the CLI and run collect/restore,
-  or mentions kits, profiles, WSL disks, or data volumes.
+  Collect or restore a Windows 11 PC, create a new WSL distro, or apply a software
+  profile. Use when the user has a messy PC, is about to reset Windows, just
+  reinstalled, wants an agent to download the CLI and run collect/restore, or
+  mentions kits, profiles, WSL disks, or data volumes.
 ---
 
 # Windows WSL Manager — agent skill
@@ -28,10 +28,7 @@ npx skills add pjmagee/wwm --skill wwm-cli -g -y
 Confirm the host is Windows (not WSL, not Git Bash). Install the latest exe into `~\.wwm` — do not clone and do not build unless developing:
 
 ```
-New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
-$env:Path = "$HOME\.wwm;$env:Path"
-wwm
+irm https://pjmagee.github.io/wwm/install.txt | iex
 ```
 
 If that 404s, stop. Do not clone as a substitute.
@@ -50,7 +47,7 @@ wwm spec
 |---|---|
 | **Collect** | Used PC. Snapshot apps, Linux disks, data volumes to a non-system drive. |
 | **Restore** | Fresh Windows 11 + a kit. Install apps, remount disks, restore browser bookmarks. |
-| **New WSL** | No kit. User picks a **supported** distro still in `wsl --list --online` (Ubuntu-26.04, Debian, archlinux), then a linux profile (`blank`, `home`, or `work`). |
+| **New WSL** | No kit. User picks a create target still in `wsl --list --online` (latest per family; Ubuntu-26.04 default), then a linux profile (`blank`, `home`, or `work`). |
 | **Profiles / Apply** | Named software lists. Shipped `blank` / `default` / `home` / `work`. |
 
 A **kit** is what this PC has. A **profile** is what they want. Restore wins when the Linux disk still exists. Apply does not remount disks.
@@ -68,6 +65,7 @@ Never format data drives. Never `wsl --unregister` unless they confirm (`wwm dis
 ```
 wwm new-wsl --profile blank --distro Debian
 wwm new-wsl --profile home --distro Ubuntu-26.04
+wwm new-wsl --profile blank --distro fedora --location D:\WSL\Fedora
 ```
 
 Adding a distro beside an existing one does not steal the WSL default.
@@ -86,11 +84,22 @@ Then ask them to unlock the password manager, open the browser, and click **Add*
 
 ## Linux
 
-Official new-instance targets: **Ubuntu-26.04**, **Debian**. **archlinux** is offered; amd64 only; first boot may be root until we create a user.
+Create targets (must still be in `wsl --list --online`; `wwm distros` for this PC):
 
-Homebrew installs the CLIs on `home` and `work`. `apt` or `pacman` is only the bootstrap set. `blank` skips that.
+| Alias | Id |
+|---|---|
+| ubuntu | Ubuntu-26.04 |
+| debian | Debian |
+| arch | archlinux |
+| kali | kali-linux |
+| fedora | FedoraLinux-44 (highest `FedoraLinux-*`) |
+| alma | AlmaLinux-10 (highest `AlmaLinux-*`, not Kitten) |
+| opensuse | openSUSE-Tumbleweed |
+| oracle | OracleLinux_9_5 |
 
-Do not offer Fedora, Kali, or openSUSE as a new-instance target. Restoring a kit that already has them is fine.
+amd64 only. First boot may be root until we create a user. Homebrew on `home`/`work`; apt, pacman, dnf, or zypper is the bootstrap. `blank` skips that.
+
+Pengwin is **not** a create target (paid Store app). If it is already installed, manage it like any distro. Do not `wsl --install Pengwin` or winget it.
 
 ## CLI
 
@@ -109,6 +118,8 @@ wwm apply blank --linux-only --distro Debian
 wwm apply <id> --windows-only|--linux-only --distro Debian
 wwm distros
 wwm distro sync
+wwm distro move <name> D:\WSL\name
+wwm distro clone <src> <new> [--location D:\WSL\new]
 wwm distro remove <name> --yes
 wwm collect
 wwm restore

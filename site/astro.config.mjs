@@ -1,4 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+const installPs1 = path.resolve(root, '../windows/install.ps1');
+fs.copyFileSync(installPs1, path.resolve(root, 'public/install.ps1'));
+// GitHub Pages (and some dev servers) treat .ps1 as bytes. .txt is text/plain for irm | iex.
+fs.copyFileSync(installPs1, path.resolve(root, 'public/install.txt'));
 
 function rehypeTableWrap() {
   return (tree) => {
@@ -41,5 +50,21 @@ export default defineConfig({
     shikiConfig: {
       theme: 'github-dark',
     },
+  },
+  vite: {
+    plugins: [
+      {
+        name: 'install-script-mime',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            const url = (req.url || '').split('?')[0];
+            if (url.endsWith('/install.ps1') || url.endsWith('/install.txt')) {
+              res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            }
+            next();
+          });
+        },
+      },
+    ],
   },
 });

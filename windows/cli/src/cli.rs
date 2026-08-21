@@ -63,6 +63,9 @@ fn positional(args: &[String]) -> Vec<&str> {
             || a == "--profile"
             || a == "--distro"
             || a == "--name"
+            || a == "--location"
+            || a == "--src"
+            || a == "--to"
         {
             skip = true;
             continue;
@@ -244,18 +247,19 @@ fn suggest_cmd() -> i32 {
 fn apply_cmd(args: &[String]) -> i32 {
     let pos = positional(args);
     let Some(id) = pos.first() else {
-        return err("apply <profile> [--windows-only|--linux-only] [--distro Ubuntu-26.04|Debian|archlinux]");
+        return err("apply <profile> [--windows-only|--linux-only] [--distro fedora] [--location D:\\WSL]");
     };
     let windows_only = flag(args, "--windows-only");
     let linux_only = flag(args, "--linux-only");
     let do_win = !linux_only;
     let do_lin = !windows_only;
     let distro = take_named(args, "--distro").into_iter().next();
+    let location = take_named(args, "--location").into_iter().next();
     let s = match store() {
         Ok(s) => s,
         Err(e) => return err(e),
     };
-    match crate::apply::apply_id(&s, id, do_win, do_lin, distro.as_deref()) {
+    match crate::apply::apply_id_at(&s, id, do_win, do_lin, distro.as_deref(), location.as_deref()) {
         Ok(steps) => print_json(&steps),
         Err(e) => err(e),
     }
@@ -280,7 +284,48 @@ fn distro_cmd(cmd: &str, args: &[String]) -> i32 {
             Err(e) => err(e),
         },
         "remove" => distro_remove(&args[1..]),
-        other => err(format!("distro list|sync|remove, not {other}")),
+        "move" => distro_move(&args[1..]),
+        "clone" => distro_clone(&args[1..]),
+        other => err(format!("distro list|sync|remove|move|clone, not {other}")),
+    }
+}
+
+fn distro_move(args: &[String]) -> i32 {
+    let pos = positional(args);
+    let Some(name) = pos.first() else {
+        return err("distro move <name> <dir>");
+    };
+    let dir = take_named(args, "--location")
+        .into_iter()
+        .next()
+        .or_else(|| pos.get(1).map(|s| (*s).to_string()));
+    let Some(dir) = dir else {
+        return err("distro move <name> <dir>");
+    };
+    match crate::new_wsl::move_distro(name, &dir) {
+        Ok(s) => match crate::terminal::sync(None) {
+            Ok(r) => print_json(&serde_json::json!({"ok": true, "detail": s, "terminal": r})),
+            Err(e) => err(format!("{s}; terminal sync failed: {e}")),
+        },
+        Err(e) => err(e),
+    }
+}
+
+fn distro_clone(args: &[String]) -> i32 {
+    let pos = positional(args);
+    let Some(src) = pos.first() else {
+        return err("distro clone <src> <new> [--location D:\\WSL\\name]");
+    };
+    let Some(new_name) = pos.get(1) else {
+        return err("distro clone <src> <new> [--location D:\\WSL\\name]");
+    };
+    let location = take_named(args, "--location").into_iter().next();
+    match crate::new_wsl::clone_distro(src, new_name, location.as_deref()) {
+        Ok(s) => match crate::terminal::sync(None) {
+            Ok(r) => print_json(&serde_json::json!({"ok": true, "detail": s, "terminal": r})),
+            Err(e) => err(format!("{s}; terminal sync failed: {e}")),
+        },
+        Err(e) => err(e),
     }
 }
 
@@ -308,14 +353,17 @@ fn distro_remove(args: &[String]) -> i32 {
 }
 
 fn distros_cmd() -> i32 {
+    let choices = crate::new_wsl::distro_choices();
     print_json(&serde_json::json!({
-        "supported": crate::new_wsl::SUPPORTED.iter().map(|d| serde_json::json!({
+        "supported": choices.iter().map(|d| serde_json::json!({
             "id": d.id,
             "label": d.label,
+            "family": d.family,
+            "bootstrap": d.bootstrap,
         })).collect::<Vec<_>>(),
         "online": crate::new_wsl::online_names(),
         "installed": crate::new_wsl::distro_names(),
-        "choices": crate::new_wsl::distro_choices(),
+        "choices": choices,
         "default": crate::new_wsl::default_distro_name(),
     }))
 }

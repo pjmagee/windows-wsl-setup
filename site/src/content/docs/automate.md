@@ -25,6 +25,9 @@ wwm apply home --windows-only
 wwm apply blank --linux-only --distro Debian
 wwm new-wsl --profile blank --distro Debian
 wwm new-wsl --profile home --distro Ubuntu-26.04
+wwm new-wsl --profile blank --distro fedora --location D:\\WSL\\Fedora
+wwm distro move Debian D:\\WSL\\Debian
+wwm distro clone Ubuntu-26.04 Ubuntu-dev --location D:\\WSL\\Ubuntu-dev
 wwm distro remove Debian --yes
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: WSL
-description: Backup and restore Linux disks, or create a new Ubuntu, Debian, or Arch.
+description: Backup and restore Linux disks, or create a new official distro.
 order: 5
 group: Use
 ---
@@ -27,7 +27,7 @@ Do not run New WSL if the kit already has the disk you want.
 wwm new-wsl --profile blank --distro Debian
 ```
 
-Installs Debian (or Ubuntu-26.04, or archlinux), creates the Linux user, and turns on passwordless sudo. No extra packages. JSON looks like:
+Installs that distro (must still be in `wsl --list --online`), creates the Linux user, and turns on passwordless sudo. No extra packages. JSON looks like:
 
 ```
 [
@@ -59,4 +59,4 @@ wwm distro remove Debian --yes
 
 Unregisters the distro (deletes the disk). Requires `--yes`.
 
-x86_64 only. Fedora, Kali, and openSUSE are restore-only. [Distros](../distros/).
+x86_64 only. Create ids: [Distros](../distros/). Disk on another drive: `--location` / `wwm distro move`.

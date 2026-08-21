@@ -232,7 +232,7 @@ enum HomeChoice {
 const HOME_ITEMS: [&str; 4] = [
     "Collect    snapshot this PC (apps, Linux disks, data volumes) onto a data drive",
     "Restore    read a kit, install apps, remount disks, restore browser bookmarks",
-    "New WSL    Ubuntu, Debian, or Arch + a linux profile",
+    "New WSL    latest Ubuntu / Debian / Arch / Kali / Fedora / Alma / openSUSE / Oracle + a linux profile",
     "Profiles   named software lists — suggest, save, apply (no kit)",
 ];
 

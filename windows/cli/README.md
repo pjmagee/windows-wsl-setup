@@ -3,10 +3,7 @@
 People download `wwm.exe` from Releases, or:
 
 ```
-New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
-$env:Path = "$HOME\.wwm;$env:Path"
-wwm
+irm https://pjmagee.github.io/wwm/install.txt | iex
 ```
 
 They never clone this folder.
@@ -17,8 +14,10 @@ wwm collect
 wwm restore
 wwm new-wsl
 wwm new-wsl --profile home --distro Debian
-wwm new-wsl --profile blank --distro Debian
+wwm new-wsl --profile blank --distro fedora --location D:\WSL\Fedora
 wwm distros
+wwm distro move Debian D:\WSL\Debian
+wwm distro clone Ubuntu-26.04 Ubuntu-dev --location D:\WSL\Ubuntu-dev
 wwm profiles
 wwm suggest
 wwm apply default --distro Ubuntu-26.04

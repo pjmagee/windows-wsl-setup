@@ -5,14 +5,7 @@ order: 2
 group: Start
 ---
 
-Download `wwm.exe` from [Releases](https://github.com/pjmagee/wwm/releases). Put it in `~\.wwm` on **Windows** (that is the install folder for the exe, not a Linux path).
-
-```
-New-Item $HOME\.wwm -ItemType Directory -Force | Out-Null
-Invoke-WebRequest -UseBasicParsing https://github.com/pjmagee/wwm/releases/latest/download/wwm.exe -OutFile $HOME\.wwm\wwm.exe
-$env:Path = "$HOME\.wwm;$env:Path"
-wwm
-```
+The one-liner above runs [`install.ps1`](https://pjmagee.github.io/wwm/install.ps1): `wwm.exe` goes in `~\.wwm` on **Windows**, and that folder is added to your user PATH. Or take the exe from [Releases](https://github.com/pjmagee/wwm/releases).
 
 ```
 wwm collect

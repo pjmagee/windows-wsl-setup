@@ -31,13 +31,14 @@ fi
 
 conf=/etc/wsl.conf
 tmp="$(mktemp)"
+# WSL sometimes writes NUL bytes into wsl.conf ("Invalid key name" on every shell).
 if [ -f "$conf" ]; then
-  awk '
+  tr -d '\0' <"$conf" | awk '
     /^\[user\]/ {skip=1; next}
     /^\[interop\]/ {skip=1; next}
     /^\[/ {skip=0}
     !skip {print}
-  ' "$conf" >"$tmp"
+  ' >"$tmp"
 else
   : >"$tmp"
 fi

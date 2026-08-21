@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Write the Windows clipboard to stdout. Do not use wslu/wslclip.
+set -euo pipefail
+
+ps=""
+if [ -x /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe ]; then
+  ps=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+elif command -v powershell.exe >/dev/null 2>&1; then
+  ps="$(command -v powershell.exe)"
+fi
+if [ -z "$ps" ]; then
+  echo "pbpaste: powershell.exe not available (Windows interop)" >&2
+  exit 1
+fi
+"$ps" -NoProfile -NonInteractive -Command 'try { Get-Clipboard } catch { }' 2>/dev/null | tr -d '\r'

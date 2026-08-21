@@ -72,13 +72,19 @@
           },
           {
             "name": "--distro",
-            "description": "Ubuntu-26.04 | Debian | archlinux",
-            "arguments": [{ "name": "name", "acceptedValues": ["Ubuntu-26.04", "Debian", "archlinux"] }]
+            "description": "Create target or alias (ubuntu, debian, arch, kali, fedora, alma, opensuse, oracle)",
+            "arguments": [{ "name": "name" }]
+          },
+          {
+            "name": "--location",
+            "description": "Install the VHDX on this folder (not C:)",
+            "arguments": [{ "name": "dir" }]
           }
         ],
         "examples": [
           "wwm new-wsl --profile blank --distro Debian",
-          "wwm new-wsl --profile home --distro Ubuntu-26.04"
+          "wwm new-wsl --profile home --distro Ubuntu-26.04",
+          "wwm new-wsl --profile blank --distro fedora --location D:\\WSL\\Fedora"
         ]
       },
       {
@@ -87,7 +93,7 @@
       },
       {
         "name": "distro",
-        "description": "List, sync Terminal, or unregister a distro",
+        "description": "List, sync Terminal, move, clone, or unregister a distro",
         "commands": [
           {
             "name": "list",
@@ -96,6 +102,29 @@
           {
             "name": "sync",
             "description": "Refresh Windows Terminal. Does not overwrite Microsoft.WSL command lines"
+          },
+          {
+            "name": "move",
+            "description": "wsl --manage --move. Not C:. Any installed distro, including Pengwin.",
+            "arguments": [
+              { "name": "name", "required": true, "description": "Installed WSL distro name" },
+              { "name": "dir", "required": true, "description": "Destination folder" }
+            ]
+          },
+          {
+            "name": "clone",
+            "description": "Export VHD and import as a new name. Not C: unless --location is elsewhere.",
+            "arguments": [
+              { "name": "src", "required": true },
+              { "name": "new", "required": true }
+            ],
+            "options": [
+              {
+                "name": "--location",
+                "arguments": [{ "name": "dir" }],
+                "description": "Install folder for the clone (not C:)"
+              }
+            ]
           },
           {
             "name": "remove",
@@ -213,7 +242,13 @@
           { "name": "--linux-only", "description": "Skip winget" },
           {
             "name": "--distro",
-            "arguments": [{ "name": "name", "acceptedValues": ["Ubuntu-26.04", "Debian", "archlinux"] }]
+            "arguments": [{ "name": "name" }],
+            "description": "Create target or alias"
+          },
+          {
+            "name": "--location",
+            "arguments": [{ "name": "dir" }],
+            "description": "VHDX folder (not C:)"
           }
         ]
       },

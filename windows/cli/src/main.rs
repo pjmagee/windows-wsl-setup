@@ -61,8 +61,9 @@ fn main() {
         "new-wsl" | "new_wsl" => {
             let profile = named(&args, "--profile");
             let distro = named(&args, "--distro");
+            let location = named(&args, "--location");
             if let Some(p) = profile {
-                match crate::apply::apply_id(
+                match crate::apply::apply_id_at(
                     &match crate::catalog::Store::load() {
                         Ok(s) => s,
                         Err(e) => {
@@ -74,6 +75,7 @@ fn main() {
                     false,
                     true,
                     distro.as_deref(),
+                    location.as_deref(),
                 ) {
                     Ok(steps) => {
                         println!(
@@ -120,15 +122,19 @@ fn main() {
   wwm restore         install from a kit (optional path)\n\
   wwm new-wsl         pick a supported distro + linux profile\n\
   wwm new-wsl --profile home --distro Debian\n\
-  wwm new-wsl --profile blank --distro Debian\n\
+  wwm new-wsl --profile blank --distro fedora --location D:\\WSL\\Fedora\n\
   wwm distros         supported ∩ wsl --list --online\n\
   wwm distro sync     Windows Terminal tabs for installed distros\n\
+  wwm distro move <name> D:\\WSL\\name\n\
+  wwm distro clone <src> <new> [--location D:\\WSL\\new]\n\
   wwm distro remove <name> --yes  unregister + drop that Terminal tab\n\
   wwm profiles        edit / suggest / apply a profile\n\n\
   JSON (agents):\n\
   wwm catalog linux|windows\n\
   wwm distros\n\
   wwm distro sync\n\
+  wwm distro move <name> <dir>\n\
+  wwm distro clone <src> <new> [--location <dir>]\n\
   wwm distro remove <name> --yes\n\
   wwm profile list|show <id>|new <id> --from home [--name \"Media PC\"]\n\
   wwm profile add <id> --linux kubectl --windows Brave.Brave\n\
@@ -136,7 +142,7 @@ fn main() {
   wwm search linux <q> | search winget <q>\n\
   wwm map <winget-id>\n\
   wwm suggest\n\
-  wwm apply <id> [--windows-only|--linux-only] [--distro Debian]\n\
+  wwm apply <id> [--windows-only|--linux-only] [--distro fedora] [--location D:\\WSL]\n\
   wwm spec            OpenCLI JSON (https://opencli.org/)\n"
             );
             0

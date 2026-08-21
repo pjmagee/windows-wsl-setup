@@ -68,7 +68,7 @@ impl App {
     fn distro_id(&self) -> &str {
         self.distros
             .get(self.distro)
-            .map(|s| s.id)
+            .map(|s| s.id.as_str())
             .unwrap_or(new_wsl::DISTRO)
     }
 
@@ -266,7 +266,7 @@ fn mint() -> Color {
 
 fn draw(f: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
-        Constraint::Length(9),
+        Constraint::Length(14),
         Constraint::Min(6),
         Constraint::Length(2),
     ])
@@ -303,7 +303,7 @@ fn draw(f: &mut Frame, app: &App) {
         .collect::<Vec<_>>()
         .join("\n         ");
     let head = format!(
-        "Pick a supported distro (Ubuntu / Debian / Arch). Fedora is restore-only.\n\
+        "Create targets (latest per family). Pengwin is manage-only if already installed.\n\
          {distros}\n\
          {names}     ← → profile"
     );
