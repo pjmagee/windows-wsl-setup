@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "note": "Linux catalog. Profiles are ID lists in profiles/linux/<id>.json. apt is packages/apt.txt, not here. kind npm is not Homebrew — do not brew install astro (that is Astronomer).",
+  "note": "Linux catalog. Profiles are ID lists in linux/profiles/<id>.json. apt is linux/packages/apt.txt, not here. kind npm is not Homebrew — do not brew install astro (that is Astronomer).",
   "tools": [
     { "id": "starship", "name": "Starship", "kind": "brew", "pkg": "starship", "category": "environment" },
     { "id": "zoxide", "name": "zoxide", "kind": "brew", "pkg": "zoxide", "category": "environment" },

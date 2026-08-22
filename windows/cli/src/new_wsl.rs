@@ -311,7 +311,7 @@ pub fn distro_choices_against(online: &[String], listed: &[String]) -> Vec<Distr
 const LINUX_REPO: &str = "$HOME/code/wwm";
 const GIT_REMOTE: &str = "https://github.com/pjmagee/wwm.git";
 
-const ENSURE_USER: &str = include_str!("../../ensure-user.sh");
+const ENSURE_USER: &str = include_str!("../../../linux/ensure-user.sh");
 
 fn decode(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).replace('\0', "")
@@ -400,7 +400,7 @@ fn windows_checkout() -> Option<PathBuf> {
     }
     for mut dir in starts {
         for _ in 0..12 {
-            if dir.join("install.sh").is_file() {
+            if dir.join("linux/install.sh").is_file() {
                 return Some(dir);
             }
             if !dir.pop() {
@@ -953,11 +953,11 @@ mkdir -p "$HOME/code"
 {fetch}
 git -C {repo} remote set-url origin {remote} 2>/dev/null || true
 if [ -f "$HOME/.wwm/profiles/{profile}.json" ]; then
-  mkdir -p {repo}/profiles/linux
-  cp "$HOME/.wwm/profiles/{profile}.json" {repo}/profiles/linux/{profile}.json
+  mkdir -p {repo}/linux/profiles
+  cp "$HOME/.wwm/profiles/{profile}.json" {repo}/linux/profiles/{profile}.json
 fi
-chmod +x {repo}/install.sh {repo}/scripts/wsl-open {repo}/scripts/pbcopy {repo}/scripts/pbpaste {repo}/windows/ensure-user.sh
-cd {repo}
+chmod +x {repo}/linux/install.sh {repo}/linux/scripts/wsl-open {repo}/linux/scripts/pbcopy {repo}/linux/scripts/pbpaste {repo}/linux/ensure-user.sh
+cd {repo}/linux
 ./install.sh {profile}
 "#,
         repo = LINUX_REPO,
@@ -1036,9 +1036,10 @@ OracleLinux_7_9                 Oracle Linux 7.9\n",
 
     #[test]
     fn checkout_has_install_sh() {
-        let root = windows_checkout().expect("repo root with install.sh");
-        assert!(root.join("install.sh").is_file());
-        assert!(root.join("profiles").is_dir());
+        let root = windows_checkout().expect("repo root with linux/install.sh");
+        assert!(root.join("linux/install.sh").is_file());
+        assert!(root.join("linux/profiles").is_dir());
+        assert!(root.join("windows/catalog.json").is_file());
     }
 
     #[test]

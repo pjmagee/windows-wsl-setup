@@ -149,7 +149,7 @@ pub fn default_keep_app(id: &str) -> bool {
 pub fn repo_root() -> Option<std::path::PathBuf> {
     if let Ok(p) = std::env::var("WWM_ROOT") {
         let p = std::path::PathBuf::from(p);
-        if p.join("profiles/linux.json").is_file() {
+        if p.join("linux/catalog.json").is_file() {
             return Some(p);
         }
     }
@@ -165,7 +165,7 @@ pub fn repo_root() -> Option<std::path::PathBuf> {
     for start in dirs {
         let mut cur = start;
         for _ in 0..8 {
-            if cur.join("profiles/linux.json").is_file() {
+            if cur.join("linux/catalog.json").is_file() {
                 return Some(cur);
             }
             if !cur.pop() {

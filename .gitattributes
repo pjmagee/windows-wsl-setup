@@ -1,10 +1,10 @@
 # Shell that runs inside WSL. Windows checkouts with core.autocrlf=true
-# must not turn these into CRLF — bootstrap pipes ensure-user.sh to bash.
+# must not turn these into CRLF — bootstrap pipes linux/ensure-user.sh to bash.
 *.sh text eol=lf
 *.py text eol=lf
 *.ico binary
-scripts/wsl-open text eol=lf
-scripts/pbcopy text eol=lf
-scripts/pbpaste text eol=lf
-packages/*.txt text eol=lf
-profiles/*.txt text eol=lf
+linux/scripts/wsl-open text eol=lf
+linux/scripts/pbcopy text eol=lf
+linux/scripts/pbpaste text eol=lf
+linux/packages/*.txt text eol=lf
+linux/*.txt text eol=lf

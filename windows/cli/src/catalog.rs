@@ -6,19 +6,19 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-const LINUX_CATALOG_JSON: &str = include_str!("../../../profiles/linux.json");
-const WINDOWS_CATALOG_JSON: &str = include_str!("../../../profiles/windows.json");
-const LINUX_BLANK: &str = include_str!("../../../profiles/linux/blank.json");
-const LINUX_HOME: &str = include_str!("../../../profiles/linux/home.json");
-const LINUX_WORK: &str = include_str!("../../../profiles/linux/work.json");
-const WINDOWS_BLANK: &str = include_str!("../../../profiles/windows/blank.json");
-const WINDOWS_DEFAULT: &str = include_str!("../../../profiles/windows/default.json");
-const WINDOWS_HOME: &str = include_str!("../../../profiles/windows/home.json");
-const WINDOWS_WORK: &str = include_str!("../../../profiles/windows/work.json");
-const BUNDLE_BLANK: &str = include_str!("../../../profiles/bundles/blank.json");
-const BUNDLE_DEFAULT: &str = include_str!("../../../profiles/bundles/default.json");
-const BUNDLE_HOME: &str = include_str!("../../../profiles/bundles/home.json");
-const BUNDLE_WORK: &str = include_str!("../../../profiles/bundles/work.json");
+const LINUX_CATALOG_JSON: &str = include_str!("../../../linux/catalog.json");
+const WINDOWS_CATALOG_JSON: &str = include_str!("../../catalog.json");
+const LINUX_BLANK: &str = include_str!("../../../linux/profiles/blank.json");
+const LINUX_HOME: &str = include_str!("../../../linux/profiles/home.json");
+const LINUX_WORK: &str = include_str!("../../../linux/profiles/work.json");
+const WINDOWS_BLANK: &str = include_str!("../../profiles/blank.json");
+const WINDOWS_DEFAULT: &str = include_str!("../../profiles/default.json");
+const WINDOWS_HOME: &str = include_str!("../../profiles/home.json");
+const WINDOWS_WORK: &str = include_str!("../../profiles/work.json");
+const BUNDLE_BLANK: &str = include_str!("../../bundles/blank.json");
+const BUNDLE_DEFAULT: &str = include_str!("../../bundles/default.json");
+const BUNDLE_HOME: &str = include_str!("../../bundles/home.json");
+const BUNDLE_WORK: &str = include_str!("../../bundles/work.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LinuxTool {

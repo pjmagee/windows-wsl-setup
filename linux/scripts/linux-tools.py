@@ -5,7 +5,7 @@
   linux-tools.py npm      <profile> [catalog.json] [profile.json] [overlay.json]
   linux-tools.py prune    <profile> [catalog.json] [profile.json] [overlay.json]
 
-Profile files are ID lists (profiles/linux/<id>.json). Overlay, if present:
+Profile files are ID lists (linux/profiles/<id>.json). Overlay, if present:
   { "tools": ["id", ...] }  replaces the profile ID list
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def resolve_ids(profile: str, catalog: dict, profile_doc: dict | None, overlay: 
 def brewfile(catalog: dict, ids: list[str], profile: str) -> str:
     wanted = set(ids)
     lines = [
-        f"# Generated for profile={profile} from profiles/linux.json. Do not edit.",
+        f"# Generated for profile={profile} from linux/catalog.json. Do not edit.",
         "",
     ]
     for t in catalog.get("tools", []):
@@ -84,8 +84,8 @@ def main() -> int:
         print(f"profile must be a name, not {profile!r}", file=sys.stderr)
         return 2
     root = Path(__file__).resolve().parent.parent
-    catalog_path = Path(sys.argv[3]) if len(sys.argv) > 3 else root / "profiles" / "linux.json"
-    profile_path = Path(sys.argv[4]) if len(sys.argv) > 4 else root / "profiles" / "linux" / f"{profile}.json"
+    catalog_path = Path(sys.argv[3]) if len(sys.argv) > 3 else root / "catalog.json"
+    profile_path = Path(sys.argv[4]) if len(sys.argv) > 4 else root / "profiles" / f"{profile}.json"
     overlay_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
     catalog = load(catalog_path)
     profile_doc = load(profile_path) if profile_path.is_file() else None

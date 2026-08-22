@@ -31,7 +31,7 @@ pub fn winget_apps_pub() -> Vec<WingetApp> {
 
 fn load_linux_tools() -> LinuxToolsFile {
     if let Some(root) = repo_root() {
-        let p = root.join("profiles/linux.json");
+        let p = root.join("linux/catalog.json");
         if let Ok(raw) = fs::read_to_string(&p) {
             if let Ok(v) = serde_json::from_str::<LinuxToolsFile>(&raw) {
                 return v;

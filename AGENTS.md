@@ -12,12 +12,12 @@ home toolchain. Clone this repo, then **execute** the playbook. Do not invent
 a second Linux installer.
 
 At work, **Copilot is the operator**. Do not tell the user to run Grok or
-Claude there. Run the **work** profile (`./install.sh work` /
+Claude there. Run the **work** profile (`linux/install.sh work` /
 `windows/bootstrap.ps1`). That profile installs Copilot CLI and **does not**
 install grok, claude, opencode, devtunnel, changie, hugo, or stripe. If those
 binaries are already present, `install.sh work` removes them.
 
-At home, run `./install.sh home`.
+At home, run `./linux/install.sh home`.
 
 Suggested first message (work laptop / first WSL):
 
@@ -127,7 +127,7 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
    prompt once ([Microsoft](https://learn.microsoft.com/en-us/windows/wsl/setup/environment#set-up-your-linux-username-and-password));
    after that WSL auto-signs-in. Then re-run this script.
 4. NOPASSWD sudo + `/etc/wsl.conf` `[user] default=` for the **existing**
-   uid-1000 user, via [`windows/ensure-user.sh`](windows/ensure-user.sh)
+   uid-1000 user, via [`linux/ensure-user.sh`](linux/ensure-user.sh)
    as root (`wsl -u root`).
 5. `wsl --set-default Ubuntu-26.04` so a bare `wsl` hits this distro.
 6. Puts `ubuntu.cmd` on the user PATH (`%USERPROFILE%\.wwm`).
@@ -138,7 +138,7 @@ It does **not** use cloud-init and does **not** create or lock a Linux user.
    Work laptop still sets Ubuntu as `defaultProfile`. Sidecar distros do not
    steal the default.
 9. Clones this repo to `~/code/wwm` **inside** the distro and runs
-   `install.sh work`. If a required host step fails, the host script
+   `linux/install.sh work`. If a required host step fails, the host script
    **throws** (no fake `Done.`).
 
 If WSL was just enabled, Windows may ask for a **reboot**. Re-run the same
@@ -240,7 +240,7 @@ Expect `core.sshCommand=ssh.exe`, `ssh` aliased to `ssh.exe`, `sudo-ok`.
 
 Passwordless sudo must already work. If `sudo -n true` fails, go back to
 Windows and run `windows/bootstrap.ps1` (or
-`wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh "$(id -un)"`
+`wsl -d Ubuntu-26.04 -u root -- bash linux/ensure-user.sh "$(id -un)"`
 from the repo on `/mnt/c`).
 
 ```bash
@@ -254,9 +254,9 @@ if [ ! -d ~/code/wwm/.git ]; then
 fi
 cd ~/code/wwm
 # Work laptop (Copilot):
-./install.sh work
+./linux/install.sh work
 # Home machine (Grok / Claude):
-./install.sh home
+./linux/install.sh home
 ```
 
 Then open a **new** Ubuntu tab. From a Linux path: `code .`
@@ -264,27 +264,31 @@ Then open a **new** Ubuntu tab. From a Linux path: `code .`
 The chosen profile is saved in `~/.wwm/profile`. Later updates:
 
 ```bash
-cd ~/code/wwm && git pull && ./install.sh
+cd ~/code/wwm && git pull && ./linux/install.sh
 brew update && brew upgrade    # already-installed Homebrew CLIs
 ```
 
-Bare `./install.sh` reuses the saved profile, or **home** if none is saved.
+Bare `./linux/install.sh` reuses the saved profile, or **home** if none is saved.
 
 Profiles:
 
 | Profile | Steps | Homebrew |
 |---|---|---|
-| `blank` | distro + Linux user + passwordless sudo. No `install.sh` toolchain. | none |
-| `home` | [`profiles/base.txt`](profiles/base.txt) | IDs in [`profiles/linux/home.json`](profiles/linux/home.json) |
-| `work` | same `base.txt` steps | [`profiles/linux/work.json`](profiles/linux/work.json). Prunes IDs not on that list. |
-| custom | `base.txt`, plus `profiles/<id>.txt` if you add extra `install_*` | `~/.wwm/profiles/<name>.json` |
+| `blank` | distro + Linux user + passwordless sudo. No `linux/install.sh` toolchain. | none |
+| `home` | [`linux/base.txt`](linux/base.txt) | IDs in [`linux/profiles/home.json`](linux/profiles/home.json) |
+| `work` | same `base.txt` steps | [`linux/profiles/work.json`](linux/profiles/work.json). Prunes IDs not on that list. |
+| custom | `base.txt`, plus `linux/<id>.txt` if you add extra `install_*` | `~/.wwm/profiles/<name>.json` |
 
-Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux.json). Overlay `{ "tools": ["id", ...] }` at `~/.wwm/linux-profile.json` replaces the ID list.
+Catalog (categories, no home/work flags): [`linux/catalog.json`](linux/catalog.json). Overlay `{ "tools": ["id", ...] }` at `~/.wwm/linux-profile.json` replaces the ID list.
 
 ---
 
 ## 3. Invariants (do not violate)
 
+- **Layout.** `linux/` is the in-distro toolchain (`install.sh`, packages,
+  Starship, wsl-open). `windows/` is the host product (`wwm.exe`, winget
+  catalogs, `install.ps1`, bootstrap). Do not put Linux installers or
+  Starship config at the repo root.
 - **No migration. No compatibility shims. No tech debt.** This product has
   no installed user base. Do not copy from old paths, accept old names, or
   keep both the old and new thing. If you rename a file, dir, env var, profile
@@ -307,15 +311,15 @@ Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux
   Do not add a third package manager. Compass (Linux GUI) and Cloudflare `cf`
   are not in Homebrew; those stay as special `install_*` steps.
 - **Shipped linux profiles are `home` and `work`.** They are ID lists in
-  `profiles/linux/`. Custom names are allowed (file must exist). Categories
+  `linux/profiles/`. Custom names are allowed (file must exist). Categories
   live on the catalog, not on the profile.
 - **Do not reinstall `wslu` / `wslview`.** Ubuntu 26.04 dropped them. Links go
-  through `scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
+  through `linux/scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
 - **Do not move the Linux toolchain into PowerShell.**
   [`windows/bootstrap.ps1`](windows/bootstrap.ps1) is host-only (WSL,
   Terminal, launchers, NOPASSWD for the existing user).
-  [`install.sh`](install.sh) is the only toolchain installer (it installs
+  [`linux/install.sh`](linux/install.sh) is the only toolchain installer (it installs
   Homebrew and runs the Brewfiles).
 - **Do not add cloud-init.** The work laptop already exists; first-run
   user creation is the normal WSL prompt if Ubuntu is new.
@@ -323,7 +327,8 @@ Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux
   `Ubuntu` stay installed unless the user asks to remove them.
 - **Do not use `apt` for language runtimes** (Node, Go, Rust, .NET, modern Python).
   Those come from Homebrew, then uv / fnm / rustup for the versioned
-  runtimes. System packages only in [`packages/apt.txt`](packages/apt.txt).
+  runtimes. System packages only in [`linux/packages/apt.txt`](linux/packages/apt.txt)
+  (or dnf/pacman/zypper next to it).
 
 ---
 
@@ -350,7 +355,7 @@ Smoke test after §1.6: `ssh-add -l` then `ssh -T git@github.com`.
 
 ## 5. Changing this repo
 
-Keep `install.sh` **idempotent** (`set -euo pipefail`). Re-runs must be safe.
+Keep `linux/install.sh` **idempotent** (`set -euo pipefail`). Re-runs must be safe.
 Optional `install_*` steps go through `run_step` so a blocked GitHub / vendor
 host cannot abort the rest of the run. Required host steps (bashrc, sudo,
 `wsl-open`) still fail the script.
@@ -364,14 +369,14 @@ is not.
 
 | Change | Where |
 |---|---|
-| Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
-| Add a dnf / zypper package | [`packages/dnf.txt`](packages/dnf.txt) / [`packages/zypper.txt`](packages/zypper.txt) |
-| Add a CLI / runtime | Entry in [`profiles/linux.json`](profiles/linux.json) + id on the right `profiles/linux/<name>.json`, line in `print_summary` |
-| Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in [`profiles/base.txt`](profiles/base.txt) (or `profiles/<id>.txt` for one profile) |
+| Add an apt package | [`linux/packages/apt.txt`](linux/packages/apt.txt) only |
+| Add a dnf / zypper package | [`linux/packages/dnf.txt`](linux/packages/dnf.txt) / [`linux/packages/zypper.txt`](linux/packages/zypper.txt) |
+| Add a CLI / runtime | Entry in [`linux/catalog.json`](linux/catalog.json) + id on the right `linux/profiles/<name>.json`, line in `print_summary` |
+| Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in [`linux/base.txt`](linux/base.txt) (or `linux/<id>.txt` for one profile) |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
-| Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
-| Link opener | [`scripts/wsl-open`](scripts/wsl-open) (`open` symlink). Clipboard: [`scripts/pbcopy`](scripts/pbcopy) / [`scripts/pbpaste`](scripts/pbpaste) (`clip.exe`) |
-| WSL / Terminal / passwordless user | [`windows/bootstrap.ps1`](windows/bootstrap.ps1), [`windows/ensure-user.sh`](windows/ensure-user.sh) |
+| Starship defaults | [`linux/starship.toml`](linux/starship.toml) — only copied if `~/.config/starship.toml` is absent |
+| Link opener | [`linux/scripts/wsl-open`](linux/scripts/wsl-open) (`open` symlink). Clipboard: [`linux/scripts/pbcopy`](linux/scripts/pbcopy) / [`linux/scripts/pbpaste`](linux/scripts/pbpaste) |
+| WSL / Terminal / passwordless user | [`windows/bootstrap.ps1`](windows/bootstrap.ps1), [`linux/ensure-user.sh`](linux/ensure-user.sh) |
 | Windows exe installer | [`windows/install.ps1`](windows/install.ps1) (`irm https://pjmagee.github.io/wwm/install.txt \| iex`) |
 
 Do not `brew install grok` (unrelated regex tool). xAI Grok Build is `cask "grok-build"`. Flux CD is `fluxcd`, not `flux`.
@@ -386,33 +391,27 @@ Do not leave empty folders or files whose only content is “do not put X here�
 ## 6. File map
 
 ```
-.gitattributes             # LF for shell that runs in WSL
-install.sh                 # Linux toolchain (work laptop: Ubuntu 26.04)
-profiles/linux.json        # Linux catalog (category + brew/cask)
-profiles/linux/*.json      # linux profile ID lists (home, work, …)
-profiles/windows.json      # curated winget catalog + linux equivalents
-profiles/windows/*.json    # windows profile ID lists
-profiles/bundles/*.json    # windows + linux + Ubuntu-26.04
-profiles/base.txt          # shared install_* steps (apt, brew, post-steps)
-scripts/linux-tools.py     # renders Brewfile / prune list from catalog + profile
-packages/apt.txt           # apt packages (no language runtimes)
-packages/pacman.txt        # Arch bootstrap
-packages/dnf.txt           # Fedora / Alma / Oracle bootstrap
-packages/zypper.txt        # openSUSE Tumbleweed bootstrap
-scripts/wsl-open           # http(s)/mailto → Windows default browser
-scripts/pbcopy             # stdin → Windows clipboard (clip.exe)
-scripts/pbpaste            # Windows clipboard → stdout
-starship.toml              # seed config (scan_timeout for /mnt/c)
-windows/bootstrap.ps1      # host orchestrator (run from Windows)
+linux/install.sh           # Linux toolchain (run inside the distro)
+linux/ensure-user.sh       # root: NOPASSWD + /etc/wsl.conf
+linux/starship.toml        # seed config (scan_timeout for /mnt/c)
+linux/catalog.json         # Linux catalog (category + brew/cask)
+linux/profiles/*.json      # linux profile ID lists (home, work, …)
+linux/base.txt             # shared install_* steps
+linux/packages/            # apt / dnf / pacman / zypper bootstrap
+linux/scripts/             # linux-tools.py, wsl-open, pbcopy, pbpaste
 windows/install.ps1        # irm github.io/wwm/install.txt | iex
-windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
+windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
+windows/catalog.json       # curated winget catalog
+windows/profiles/*.json    # windows profile ID lists
+windows/bundles/*.json     # windows + linux + distro
 windows/cli/               # wwm.exe (Collect / Restore / New WSL / Profiles)
 schema/kit.schema.json     # KIT.json
 schema/wwm.opencli.json    # OpenCLI description (`wwm spec`)
-README.md                  # human docs
-AGENTS.md                  # this playbook
-.github/copilot-instructions.md
+site/                      # GitHub Pages
+skills/                    # wwm-cli skill
+README.md
+AGENTS.md
 ```
 
 Definition of done for a work-laptop bootstrap:
@@ -424,10 +423,10 @@ Definition of done for a work-laptop bootstrap:
    Official Microsoft.WSL distro tabs remain. There is a **wsl** launcher.
    PowerShell `ubuntu` launches Ubuntu-26.04.
 4. `~/code/wwm` is a git checkout on the Linux disk.
-5. `./install.sh work` finished; summary shows `profile work`, Homebrew,
+5. `./linux/install.sh work` finished; summary shows `profile work`, Homebrew,
    Copilot CLI, Linux versions, and `sudo passwordless`. No grok/claude/
    opencode/devtunnel/changie/hugo/stripe. Host bootstrap does not print
-   `Done.` if `install.sh` failed a required host step.
+   `Done.` if `linux/install.sh` failed a required host step.
 6. `1p-ssh` aliases → `ssh.exe`; `git-ssh` is `ssh.exe`.
 7. User knows the Windows leftovers (Docker integration for **26.04**, VS Code
    WSL, 1Password agent) and that unused 24.04 was left installed.

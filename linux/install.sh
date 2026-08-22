@@ -5,7 +5,7 @@
 # apt / pacman / dnf / zypper = system packages. Homebrew = CLIs and language runtimes.
 # Compass (Linux GUI) and Cloudflare cf stay as special steps.
 # Optional toolchain steps continue after a blocked host or installer error.
-# Profiles: ./install.sh <name>  (shipped: home|work — ID lists in profiles/linux/).
+# Profiles: ./install.sh <name>  (shipped: home|work — ID lists in profiles/).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,7 +38,7 @@ need_sudo() {
   if ! sudo -n true 2>/dev/null; then
     echo "sudo is required and must be passwordless (sudo -n)." >&2
     echo "From Windows:  wwm.exe  (New WSL), or  powershell -NoProfile -ExecutionPolicy Bypass -File windows\\bootstrap.ps1" >&2
-    echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash windows/ensure-user.sh \"\$(id -un)\"" >&2
+    echo "Or as root:    wsl -d Ubuntu-26.04 -u root -- bash \"$ROOT/ensure-user.sh\" \"\$(id -un)\"" >&2
     exit 1
   fi
 }
@@ -81,7 +81,7 @@ run_step() {
   return 0
 }
 
-# Profile name → profiles/linux/<name>.json (or ~/.wwm/profiles/).
+# Profile name → profiles/<name>.json (or ~/.wwm/profiles/).
 # Overlay ~/.wwm/linux-profile.json { "tools": ["id", ...] } replaces the ID list.
 PROFILE=""
 PROFILE_FILE=""
@@ -95,7 +95,7 @@ usage() {
   echo "  blank  distro + passwordless sudo only (no Homebrew)"
   echo "  home   shipped home toolchain (default if nothing saved)"
   echo "  work   shipped work toolchain; drops home-only extras"
-  echo "  <name> profiles/linux/<name>.json or ~/.wwm/profiles/<name>.json"
+  echo "  <name> profiles/<name>.json or ~/.wwm/profiles/<name>.json"
 }
 
 read_step_file() {
@@ -113,8 +113,8 @@ find_profile_file() {
     printf '%s\n' "$WWM_DIR/profiles/${n}.json"
     return 0
   fi
-  if [ -f "$ROOT/profiles/linux/${n}.json" ]; then
-    printf '%s\n' "$ROOT/profiles/linux/${n}.json"
+  if [ -f "$ROOT/profiles/${n}.json" ]; then
+    printf '%s\n' "$ROOT/profiles/${n}.json"
     return 0
   fi
   return 1
@@ -131,7 +131,7 @@ resolve_profile() {
     -h|--help|help) usage; exit 0 ;;
   esac
   if ! PROFILE_FILE="$(find_profile_file "$requested")"; then
-    echo "unknown profile: $requested (no profiles/linux/${requested}.json)" >&2
+    echo "unknown profile: $requested (no profiles/${requested}.json)" >&2
     usage >&2
     exit 1
   fi
@@ -150,8 +150,8 @@ collect_steps() {
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     PROFILE_STEPS+=("$line")
-  done < <(read_step_file "$ROOT/profiles/base.txt")
-  extra="$ROOT/profiles/${PROFILE}.txt"
+  done < <(read_step_file "$ROOT/base.txt")
+  extra="$ROOT/${PROFILE}.txt"
   if [ -f "$extra" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] || continue
@@ -188,7 +188,7 @@ prune_unselected_extras() {
   if [ -f "$TOOLS_OVERLAY" ]; then
     overlay="$TOOLS_OVERLAY"
   fi
-  local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
+  local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/catalog.json" "$PROFILE_FILE")
   if [ -n "$overlay" ]; then
     args+=("$overlay")
   fi
@@ -596,9 +596,9 @@ install_brew() {
     overlay="$TOOLS_OVERLAY"
   fi
   if [ -n "$overlay" ]; then
-    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE" "$overlay" >"$generated"
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/catalog.json" "$PROFILE_FILE" "$overlay" >"$generated"
   else
-    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE" >"$generated"
+    python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/catalog.json" "$PROFILE_FILE" >"$generated"
   fi
   bundle_brewfile "$generated"
   rm -f "$generated"
@@ -646,7 +646,7 @@ install_npm_tools() {
   if [ -f "$TOOLS_OVERLAY" ]; then
     overlay="$TOOLS_OVERLAY"
   fi
-  args=("$ROOT/scripts/linux-tools.py" npm "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
+  args=("$ROOT/scripts/linux-tools.py" npm "$PROFILE" "$ROOT/catalog.json" "$PROFILE_FILE")
   if [ -n "$overlay" ]; then
     args+=("$overlay")
   fi
@@ -886,7 +886,7 @@ main() {
   local fn
   for fn in "${PROFILE_STEPS[@]}"; do
     if ! declare -F "$fn" >/dev/null; then
-      echo "!! unknown step $fn (check profiles/${PROFILE}.txt)" >&2
+      echo "!! unknown step $fn (check ${PROFILE}.txt)" >&2
       FAILED_STEPS+=("$fn")
       continue
     fi
@@ -903,10 +903,10 @@ main() {
   echo "CLIs update with:  brew update && brew upgrade"
   case "$PROFILE" in
     work)
-      echo "Work profile: profiles/linux/work.json (Copilot CLI; no grok/claude/opencode)."
+      echo "Work profile: profiles/work.json (Copilot CLI; no grok/claude/opencode)."
       ;;
     home)
-      echo "Home profile: profiles/linux/home.json (grok/claude/opencode)."
+      echo "Home profile: profiles/home.json (grok/claude/opencode)."
       ;;
   esac
   if ((${#FAILED_STEPS[@]} > 0)); then

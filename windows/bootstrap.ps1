@@ -196,7 +196,7 @@ function Ensure-Distro {
 function Ensure-PasswordlessSudo {
     param([string] $LinuxUser)
     Write-Step "NOPASSWD sudo for existing user ($LinuxUser)"
-    $script = Join-Path $PSScriptRoot 'ensure-user.sh'
+    $script = Join-Path $PSScriptRoot '..\linux\ensure-user.sh'
     if (-not (Test-Path $script)) { throw "missing $script" }
     $raw = Get-Content -LiteralPath $script -Raw
     if ([string]::IsNullOrWhiteSpace($raw)) { throw "empty $script" }
@@ -399,13 +399,13 @@ else
   git -C $linuxRepo pull --ff-only || true
 fi
 git -C $linuxRepo remote set-url origin $remote 2>/dev/null || true
-chmod +x $linuxRepo/install.sh $linuxRepo/scripts/wsl-open $linuxRepo/scripts/pbcopy $linuxRepo/scripts/pbpaste $linuxRepo/windows/ensure-user.sh
-cd $linuxRepo
+chmod +x $linuxRepo/linux/install.sh $linuxRepo/linux/scripts/wsl-open $linuxRepo/linux/scripts/pbcopy $linuxRepo/linux/scripts/pbpaste $linuxRepo/linux/ensure-user.sh
+cd $linuxRepo/linux
 ./install.sh work
 "@
     wsl.exe -d $Distro --cd '~' -- bash -lc $setup
     if ($LASTEXITCODE -ne 0) {
-        throw "install.sh failed inside $Distro. Windows clone is $winRoot. Fix inside WSL and re-run ./install.sh (or re-run this script)."
+        throw "linux/install.sh failed inside $Distro. Windows clone is $winRoot. Fix inside WSL and re-run linux/install.sh (or re-run this script)."
     }
 }
 
