@@ -32,13 +32,13 @@ Installs that distro (must still be in `wsl --list --online`), creates the Linux
 ```
 [
   { "step": "distro", "ok": true, "detail": "Debian installed." },
-  { "step": "user", "ok": true, "detail": "created patri (uid 1000, empty password)" },
-  { "step": "sudo", "ok": true, "detail": "ok user=patri" },
+  { "step": "user", "ok": true, "detail": "created alex (uid 1000, empty password)" },
+  { "step": "sudo", "ok": true, "detail": "ok user=alex" },
   { "step": "linux", "ok": true, "detail": "blank: distro + passwordless sudo only" }
 ]
 ```
 
-If Ubuntu-26.04 is already the default, a new Debian is added **beside** it.
+The new distro sits **beside** whatever is already the WSL default. It does not become default.
 
 ## New distro with packages
 

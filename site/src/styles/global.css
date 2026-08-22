@@ -287,32 +287,29 @@ h1 {
   flex: 1;
   min-width: 0;
   padding: 4px 4px 0 8px;
-  overflow-x: auto;
+  overflow: hidden;
 }
 .wt-tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  max-width: 160px;
+  justify-content: center;
+  flex: none;
+  width: 36px;
   height: 28px;
-  padding: 0 0.55rem;
+  padding: 0;
   border: 0;
   border-radius: 6px 6px 0 0;
   background: transparent;
   color: #d4d4d4;
-  font-family: "Segoe UI", var(--font);
-  font-size: 0.72rem;
   cursor: pointer;
-  white-space: nowrap;
 }
 .wt-tab:hover { background: #2d2d2d; }
 .wt-tab.on {
   background: #0c0c0c;
   color: #f3f3f3;
 }
-.wt-ico { width: 14px; height: 14px; flex: none; }
+.wt-ico { width: 14px; height: 14px; flex: none; display: block; }
 .wt-ico.ps { fill: #5391fe; }
-.wt-ico.ubu { fill: #e95420; }
 .wt-new {
   display: inline-flex;
   align-items: center;
@@ -350,18 +347,56 @@ h1 {
 }
 .copy:hover { background: #3a3a3a; }
 .wt-install { box-shadow: none; margin: 0 0 1.7rem; }
-.wt-install-body { min-height: 0; }
 .doc .install .cta-row { margin-top: 0; }
 .wt-body {
-  padding: 0.65rem 0.85rem 0.9rem;
-  min-height: 17rem;
+  padding: 0.7rem 0.85rem 0.85rem;
+  min-height: 13.25rem;
   font-family: "Cascadia Code", "Cascadia Mono", var(--mono);
   font-size: 0.74rem;
-  line-height: 1.55;
-  white-space: pre;
-  overflow-x: auto;
+  line-height: 1.5;
+  overflow: hidden;
   color: #cccccc;
 }
+pre.wt-body {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.wt-install-body {
+  min-height: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wt-cmd { overflow-wrap: anywhere; }
+.wt-cmd:first-child { margin-bottom: 0.5rem; }
+.wt-log + .wt-cmd,
+.wt-distros + .wt-cmd { margin-top: 0.65rem; }
+.wt-log { margin: 0.12rem 0; }
+.wt-distros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.18rem 0.75rem;
+  margin: 0 0 0.7rem;
+  padding: 0;
+  list-style: none;
+}
+.wt-distros li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wt-distros .star {
+  flex: none;
+  width: 0.7rem;
+  color: var(--mint);
+  text-align: center;
+}
+.wt-distros .def { color: #f3f3f3; }
 .caret {
   display: inline-block;
   width: 0.55em;
@@ -513,6 +548,10 @@ h1 {
     align-items: stretch;
   }
   .cta-row .btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 480px) {
+  .wt-distros { grid-template-columns: 1fr; }
+  .hero .wt-body { min-height: 16.5rem; }
 }
 @media (max-width: 560px) {
   .cards { grid-template-columns: 1fr; }

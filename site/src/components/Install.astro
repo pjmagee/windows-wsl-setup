@@ -13,12 +13,11 @@ const lines = INSTALL_PS.split('\n');
   <div class="wt wt-install" data-install>
     <div class="wt-bar">
       <div class="wt-tabs" aria-hidden="true">
-        <span class="wt-tab on">
+        <span class="wt-tab on" title="PowerShell" aria-label="PowerShell">
           <svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z" />
             <path d="M8.2 12.4h5.6v1.8H8.2z" />
           </svg>
-          <span>PowerShell</span>
         </span>
       </div>
       <button type="button" class="copy" data-copy>Copy</button>
@@ -26,7 +25,7 @@ const lines = INSTALL_PS.split('\n');
     <pre class="wt-body wt-install-body">{lines.map((line, i) => (
         <>
           {i > 0 && '\n'}
-          <span class="c-ps">PS C:\Users\patrick&gt;</span> {line}
+          <span class="c-ps">PS C:\Users\alex&gt;</span> {line}
         </>
       ))}</pre>
     <textarea hidden data-copy-text>{INSTALL_PS}</textarea>

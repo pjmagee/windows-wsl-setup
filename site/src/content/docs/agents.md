@@ -53,6 +53,6 @@ wwm new-wsl --profile blank --distro Debian
 wwm apply home --windows-only
 ```
 
-Do not format data drives. Do not unregister a distro unless the human confirms (`wwm distro remove NAME --yes`).
+Do not format data drives. Do not unregister a distro unless you intend to delete that disk (`wwm distro remove NAME --yes`).
 
 Command list: [Automate](../automate/).

@@ -1,64 +1,53 @@
 ---
-const sessions = [
+const ico = {
+  grid: `<svg class="wt-ico" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6.2" height="6.2" rx="1.2" fill="#e95420"/><rect x="8.8" y="1" width="6.2" height="6.2" rx="1.2" fill="#a80030"/><rect x="1" y="8.8" width="6.2" height="6.2" rx="1.2" fill="#1793d1"/><rect x="8.8" y="8.8" width="6.2" height="6.2" rx="1.2" fill="#294172"/></svg>`,
+  ubu: `<svg class="wt-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#e95420"/><circle cx="8" cy="3.5" r="1.4" fill="#fff"/><circle cx="4.1" cy="10.5" r="1.4" fill="#fff"/><circle cx="11.9" cy="10.5" r="1.4" fill="#fff"/></svg>`,
+  ps: `<svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z"/><path d="M8.2 12.4h5.6v1.8H8.2z"/></svg>`,
+};
+
+const distros = [
+  { id: 'Ubuntu-26.04', def: true },
+  { id: 'Debian', def: false },
+  { id: 'archlinux', def: false },
+  { id: 'kali-linux', def: false },
+  { id: 'FedoraLinux-44', def: false },
+  { id: 'AlmaLinux-10', def: false },
+  { id: 'openSUSE-Tumbleweed', def: false },
+  { id: 'OracleLinux_9_5', def: false },
+];
+
+const sessions: { id: string; label: string; ico: keyof typeof ico; html: string }[] = [
   {
     id: 'distros',
-    tab: 'Windows PowerShell',
-    kind: 'ps',
-    html: `Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm distros
-
-{
-  <span class="c-key">"choices"</span>: [
-    { <span class="c-key">"id"</span>: <span class="c-str">"Ubuntu-26.04"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">true</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
-    { <span class="c-key">"id"</span>: <span class="c-str">"Debian"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">true</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
-    { <span class="c-key">"id"</span>: <span class="c-str">"archlinux"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">false</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
-    { <span class="c-key">"id"</span>: <span class="c-str">"kali-linux"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">false</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> },
-    { <span class="c-key">"id"</span>: <span class="c-str">"FedoraLinux-44"</span>, <span class="c-key">"installed"</span>: <span class="c-bool">false</span>, <span class="c-key">"online"</span>: <span class="c-bool">true</span> }
-  ],
-  <span class="c-key">"default"</span>: <span class="c-str">"Ubuntu-26.04"</span>,
-  <span class="c-key">"installed"</span>: [<span class="c-str">"Ubuntu-26.04"</span>, <span class="c-str">"Debian"</span>, <span class="c-str">"docker-desktop"</span>]
-}
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
+    label: 'Distros',
+    ico: 'grid',
+    html: `<div class="wt-cmd"><span class="c-ps">PS&gt;</span> wwm distros</div>
+<ul class="wt-distros">${distros
+      .map(
+        (d) =>
+          `<li${d.def ? ' class="def"' : ''}><span class="star">${d.def ? '*' : ''}</span>${d.id}</li>`,
+      )
+      .join('')}</ul>
+<div class="wt-cmd"><span class="c-ps">PS&gt;</span> <span class="caret"></span></div>`,
   },
   {
-    id: 'blank',
-    tab: 'Windows PowerShell',
-    kind: 'ps',
-    html: `Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm new-wsl --profile blank --distro Debian
-
-[
-  { <span class="c-key">"step"</span>: <span class="c-str">"distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"Debian installed."</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"user"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"created patri (uid 1000, empty password)"</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"sudo"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"ok user=patri"</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"default-distro"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"left default as Ubuntu-26.04 (added Debian beside it)"</span> },
-  { <span class="c-key">"step"</span>: <span class="c-str">"linux"</span>, <span class="c-key">"ok"</span>: <span class="c-bool">true</span>, <span class="c-key">"detail"</span>: <span class="c-str">"blank: distro + passwordless sudo only"</span> }
-]
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
+    id: 'new-wsl',
+    label: 'New WSL',
+    ico: 'ubu',
+    html: `<div class="wt-cmd"><span class="c-ps">PS&gt;</span> wwm new-wsl --profile blank --distro Debian</div>
+<div class="wt-log"><span class="c-ok">ok</span> Debian installed</div>
+<div class="wt-log"><span class="c-ok">ok</span> user alex</div>
+<div class="wt-log"><span class="c-ok">ok</span> passwordless sudo</div>
+<div class="wt-log"><span class="c-ok">ok</span> beside Ubuntu-26.04</div>
+<div class="wt-cmd"><span class="c-ps">PS&gt;</span> <span class="caret"></span></div>`,
   },
   {
     id: 'map',
-    tab: 'Windows PowerShell',
-    kind: 'ps',
-    html: `Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> wwm map Microsoft.AzureCLI
-
-{
-  <span class="c-key">"windows"</span>: <span class="c-str">"Microsoft.AzureCLI"</span>,
-  <span class="c-key">"category"</span>: <span class="c-str">"cloud"</span>,
-  <span class="c-key">"preferLinux"</span>: <span class="c-bool">true</span>,
-  <span class="c-key">"linux"</span>: <span class="c-str">"azure-cli"</span>
-}
-
-<span class="c-ps">PS C:\\Users\\patrick&gt;</span> <span class="caret"></span>`,
+    label: 'Map',
+    ico: 'ps',
+    html: `<div class="wt-cmd"><span class="c-ps">PS&gt;</span> wwm map Microsoft.AzureCLI</div>
+<div class="wt-log">Azure CLI  →  <span class="c-str">azure-cli</span>  on Linux</div>
+<div class="wt-cmd"><span class="c-ps">PS&gt;</span> <span class="caret"></span></div>`,
   },
 ];
 ---
@@ -67,12 +56,16 @@ Copyright (C) Microsoft Corporation. All rights reserved.
   <div class="wt-bar">
     <div class="wt-tabs" role="tablist">
       {sessions.map((s, i) => (
-        <button type="button" class:list={['wt-tab', { on: i === 0 }]} data-i={i} role="tab">
-          <svg class="wt-ico ps" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M2.2 3.2 7.3 8 2.2 12.8l1.3 1.4L10.2 8 3.5 1.8z" />
-            <path d="M8.2 12.4h5.6v1.8H8.2z" />
-          </svg>
-          <span>{s.tab}</span>
+        <button
+          type="button"
+          class:list={['wt-tab', { on: i === 0 }]}
+          data-i={i}
+          role="tab"
+          aria-selected={i === 0}
+          aria-label={s.label}
+          title={s.label}
+        >
+          <Fragment set:html={ico[s.ico]} />
         </button>
       ))}
       <span class="wt-new" aria-hidden="true">
@@ -96,7 +89,11 @@ Copyright (C) Microsoft Corporation. All rights reserved.
     const buttons = [...root.querySelectorAll('.wt-tab')];
     const show = (i) => {
       out.innerHTML = sessions[i].html;
-      buttons.forEach((b, n) => b.classList.toggle('on', n === i));
+      buttons.forEach((b, n) => {
+        const on = n === i;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
     };
     buttons.forEach((b) => b.addEventListener('click', () => show(Number(b.dataset.i))));
   }

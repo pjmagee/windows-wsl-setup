@@ -31,7 +31,7 @@ wwm distro clone Ubuntu-26.04 Ubuntu-dev --location D:\\WSL\\Ubuntu-dev
 wwm distro remove Debian --yes
 ```
 
-`wwm spec` dumps the [OpenCLI](https://opencli.org/) description (also at `schema/wwm.opencli.json`).
+`wwm spec` prints the [OpenCLI](https://opencli.org/) description of every command.
 
 `inventory` dumps a live scan of this PC as JSON (no kit write).
 

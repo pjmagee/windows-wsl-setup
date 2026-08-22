@@ -30,4 +30,3 @@ wwm distro clone Ubuntu-26.04 Ubuntu-dev --location D:\WSL\Ubuntu-dev
 wwm distro remove Debian --yes
 ```
 
-Work laptops stay on **Ubuntu-26.04**. Extra distros sit beside it and do not steal the WSL default.
