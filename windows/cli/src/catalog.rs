@@ -222,8 +222,6 @@ impl Store {
 
     pub fn load() -> Result<Self, String> {
         let mut s = Self::shipped()?;
-        // Previous checkouts wrote user profiles under ~/.windows-wsl-setup.
-        s.merge_user_dir(&home_dir().join(".windows-wsl-setup").join("profiles"));
         s.merge_user_dir(&user_profiles());
         Ok(s)
     }

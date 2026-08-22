@@ -310,7 +310,6 @@ pub fn distro_choices_against(online: &[String], listed: &[String]) -> Vec<Distr
 }
 const LINUX_REPO: &str = "$HOME/code/wwm";
 const GIT_REMOTE: &str = "https://github.com/pjmagee/wwm.git";
-const LEGACY_LINUX_REPO: &str = "$HOME/code/windows-wsl-manager";
 
 const ENSURE_USER: &str = include_str!("../../ensure-user.sh");
 
@@ -909,18 +908,13 @@ fi
             r#"
 if [ ! -d {repo}/.git ]; then
   echo "wwm installer git clone {remote}"
-  if [ -d {legacy}/.git ]; then
-    git clone {legacy} {repo}
-  else
-    git clone {remote} {repo}
-  fi
+  git clone {remote} {repo}
 else
   echo "wwm installer git pull"
   git -C {repo} pull --ff-only || true
 fi
 "#,
             repo = LINUX_REPO,
-            legacy = LEGACY_LINUX_REPO,
             remote = GIT_REMOTE,
         )
     } else {

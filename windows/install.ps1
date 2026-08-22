@@ -44,11 +44,10 @@
         $fs.Close()
     }
 
-    $oldBin = Join-Path $env:USERPROFILE '.wsl-setup\bin'
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     $entries = @()
     if ($userPath) {
-        $entries = @($userPath.Split(';') | Where-Object { $_ -and $_ -ne $oldBin })
+        $entries = @($userPath.Split(';') | Where-Object { $_ })
     }
     if ($entries -notcontains $root) {
         $entries = @($root) + $entries

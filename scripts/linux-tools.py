@@ -39,18 +39,8 @@ def resolve_ids(profile: str, catalog: dict, profile_doc: dict | None, overlay: 
         if tools and all(isinstance(t, str) for t in tools):
             return profile_ids_from_doc(overlay)
     if profile_doc:
-        ids = profile_ids_from_doc(profile_doc)
-        if ids:
-            return ids
-    # Last resort: old catalog with home/work booleans + layer=base.
-    out: list[str] = []
-    for t in catalog.get("tools", []):
-        tid = t.get("id")
-        if not tid:
-            continue
-        if t.get("layer") == "base" or bool(t.get(profile, False)):
-            out.append(tid)
-    return out
+        return profile_ids_from_doc(profile_doc)
+    return []
 
 
 def brewfile(catalog: dict, ids: list[str], profile: str) -> str:

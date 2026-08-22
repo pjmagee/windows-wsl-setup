@@ -55,8 +55,7 @@ curl() {
     "$@"
 }
 
-# Extra apt sources from a previous run can 404/timeout on a locked-down
-# network. Fetch what is reachable and keep going.
+# A blocked extra apt source must not abort the run. Fetch what is reachable.
 apt_update() {
   need_sudo
   if ! sudo apt-get \
@@ -88,10 +87,8 @@ PROFILE=""
 PROFILE_FILE=""
 PROFILE_STEPS=()
 WWM_DIR="$HOME/.wwm"
-LEGACY_WWM_DIR="$HOME/.config/wsl-setup"
 PROFILE_STATE="$WWM_DIR/profile"
 TOOLS_OVERLAY="$WWM_DIR/linux-profile.json"
-LEGACY_OVERLAY="$WWM_DIR/tools.json"
 
 usage() {
   echo "usage: ./install.sh [profile]"
@@ -99,31 +96,6 @@ usage() {
   echo "  home   shipped home toolchain (default if nothing saved)"
   echo "  work   shipped work toolchain; drops home-only extras"
   echo "  <name> profiles/linux/<name>.json or ~/.wwm/profiles/<name>.json"
-}
-
-copy_if_missing() {
-  local src="$1" dest="$2"
-  if [ -e "$src" ] && [ ! -e "$dest" ]; then
-    mkdir -p "$(dirname "$dest")"
-    cp -a "$src" "$dest"
-  fi
-}
-
-# Previous checkouts wrote state under ~/.config/wsl-setup.
-migrate_legacy_state() {
-  mkdir -p "$WWM_DIR"
-  [ -d "$LEGACY_WWM_DIR" ] || return 0
-  copy_if_missing "$LEGACY_WWM_DIR/profile" "$PROFILE_STATE"
-  copy_if_missing "$LEGACY_WWM_DIR/linux-profile.json" "$TOOLS_OVERLAY"
-  copy_if_missing "$LEGACY_WWM_DIR/tools.json" "$LEGACY_OVERLAY"
-  if [ -d "$LEGACY_WWM_DIR/profiles" ]; then
-    mkdir -p "$WWM_DIR/profiles"
-    local f
-    for f in "$LEGACY_WWM_DIR/profiles"/*.json; do
-      [ -f "$f" ] || continue
-      copy_if_missing "$f" "$WWM_DIR/profiles/$(basename "$f")"
-    done
-  fi
 }
 
 read_step_file() {
@@ -141,10 +113,6 @@ find_profile_file() {
     printf '%s\n' "$WWM_DIR/profiles/${n}.json"
     return 0
   fi
-  if [ -f "$LEGACY_WWM_DIR/profiles/${n}.json" ]; then
-    printf '%s\n' "$LEGACY_WWM_DIR/profiles/${n}.json"
-    return 0
-  fi
   if [ -f "$ROOT/profiles/linux/${n}.json" ]; then
     printf '%s\n' "$ROOT/profiles/linux/${n}.json"
     return 0
@@ -153,14 +121,10 @@ find_profile_file() {
 }
 
 resolve_profile() {
-  migrate_legacy_state
-  local requested="${1:-${WSL_SETUP_PROFILE:-}}"
+  mkdir -p "$WWM_DIR"
+  local requested="${1:-}"
   if [ -z "$requested" ] && [ -f "$PROFILE_STATE" ]; then
     requested="$(tr -d '[:space:]' <"$PROFILE_STATE")"
-  fi
-  # Old checkouts saved "universal". That profile is gone; treat as home.
-  if [ "$requested" = "universal" ]; then
-    requested="home"
   fi
   requested="${requested:-home}"
   case "$requested" in
@@ -223,8 +187,6 @@ prune_unselected_extras() {
   local line kind pkg overlay=""
   if [ -f "$TOOLS_OVERLAY" ]; then
     overlay="$TOOLS_OVERLAY"
-  elif [ -f "$LEGACY_OVERLAY" ]; then
-    overlay="$LEGACY_OVERLAY"
   fi
   local args=("$ROOT/scripts/linux-tools.py" prune "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
   if [ -n "$overlay" ]; then
@@ -500,20 +462,6 @@ upsert_marked_block() {
   rm -f "$stripped"
 }
 
-# Drop an older unmarked copy of the two aliases. No-op once the
-# marked block is present.
-strip_unmarked_1password_ssh() {
-  local file="$1"
-  local begin="$2"
-  [ -f "$file" ] || return 0
-  grep -q "$begin" "$file" && return 0
-  local tmp
-  tmp="$(mktemp)"
-  grep -vE "^alias ssh='ssh\\.exe'$|^alias ssh-add='ssh-add\\.exe'$|^# 1Password SSH agent|^# https://www.1password.dev/ssh/integrations/wsl$" \
-    "$file" >"$tmp" || true
-  mv "$tmp" "$file"
-}
-
 ensure_1password_ssh() {
   log "1Password SSH agent (ssh.exe aliases)"
   local begin='>>> wsl-1password-ssh >>>'
@@ -527,8 +475,6 @@ alias ssh-add='ssh-add.exe'
 # <<< wsl-1password-ssh <<<
 EOF
 )"
-  strip_unmarked_1password_ssh "$HOME/.bash_aliases" "$begin"
-  strip_unmarked_1password_ssh "$HOME/.zshrc" "$begin"
   upsert_marked_block "$HOME/.bash_aliases" "$begin" "$end" "$block"
   upsert_marked_block "$HOME/.zshrc" "$begin" "$end" "$block"
 
@@ -543,13 +489,12 @@ remove_oh_my_posh() {
 }
 
 install_wsl_open() {
-  log "wsl-open + clipboard shims (Windows browser / clip.exe)"
+  log "wsl-open + clipboard (Windows browser / clip.exe)"
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   install -m 0755 "$ROOT/scripts/wsl-open" "$HOME/.local/bin/wsl-open"
   install -m 0755 "$ROOT/scripts/pbcopy" "$HOME/.local/bin/pbcopy"
   install -m 0755 "$ROOT/scripts/pbpaste" "$HOME/.local/bin/pbpaste"
   ln -sfn wsl-open "$HOME/.local/bin/open"
-  rm -f "$HOME/.local/bin/xdg-open"
   cat >"$HOME/.local/share/applications/wsl-open.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -636,85 +581,6 @@ bundle_brewfile() {
   done < <(read_brewfile_entries "$file")
 }
 
-# Drop leftover tarball / vendor-apt copies so they cannot shadow brew.
-# Only removes a path after brew actually provides that command.
-migrate_legacy_clis() {
-  local prefix="${HOMEBREW_PREFIX:-$BREW_PREFIX}"
-  brew_bin() { [ -x "$prefix/bin/$1" ]; }
-
-  if brew_bin gh; then rm -f "$HOME/.local/bin/gh"; fi
-  if brew_bin dagger; then rm -f "$HOME/.local/bin/dagger"; fi
-  if brew_bin starship; then rm -f "$HOME/.local/bin/starship"; fi
-  if brew_bin zoxide; then rm -f "$HOME/.local/bin/zoxide"; fi
-  if brew_bin atuin; then rm -f "$HOME/.local/bin/atuin" "$HOME/.atuin/bin/atuin"; fi
-  if brew_bin bun; then rm -f "$HOME/.bun/bin/bun"; fi
-  if brew_bin uv; then rm -f "$HOME/.local/bin/uv"; fi
-  if brew_bin fnm; then rm -f "$HOME/.local/share/fnm/fnm"; fi
-  if brew_bin go; then rm -rf "$HOME/.local/go"; fi
-  if brew_bin saml2aws; then rm -f "$HOME/.local/bin/saml2aws"; fi
-  if brew_bin helm; then rm -f "$HOME/.local/bin/helm"; fi
-  if brew_bin 7zz; then
-    rm -f "$HOME/.local/bin/7zz"
-    # Keep a 7z name if brew did not provide one.
-    if [ ! -x "$prefix/bin/7z" ]; then
-      ln -sfn "$prefix/bin/7zz" "$HOME/.local/bin/7z"
-    else
-      rm -f "$HOME/.local/bin/7z"
-    fi
-  fi
-  if brew_bin mongosh; then
-    rm -f "$HOME/.local/bin/mongosh"
-    rm -rf "$HOME/.local/opt/mongosh"
-  fi
-  if brew_bin flux; then rm -f "$HOME/.local/bin/flux"; fi
-  if brew_bin opencode; then rm -f "$HOME/.local/bin/opencode" "$HOME/.opencode/bin/opencode"; fi
-  if brew_bin changie; then rm -f "$HOME/.local/bin/changie"; fi
-  if brew_bin hugo; then rm -f "$HOME/.local/bin/hugo"; fi
-  if brew_bin copilot; then rm -f "$HOME/.local/bin/copilot"; fi
-  if brew_bin claude; then rm -f "$HOME/.local/bin/claude" "$HOME/.claude/bin/claude"; fi
-  if brew_bin grok; then rm -f "$HOME/.local/bin/grok" "$HOME/.grok/bin/grok"; fi
-  if brew_bin devtunnel; then rm -f "$HOME/.local/bin/devtunnel" "$HOME/bin/devtunnel"; fi
-  if brew_bin azd; then rm -f "$HOME/.local/bin/azd"; fi
-
-  if brew_bin wrangler && is_linux_bin npm; then
-    npm uninstall -g wrangler >/dev/null 2>&1 || true
-  fi
-
-  if brew_bin aws && [ -x /usr/local/bin/aws ]; then
-    need_sudo
-    sudo rm -f /usr/local/bin/aws /usr/local/bin/aws_completer
-    sudo rm -rf /usr/local/aws-cli
-  fi
-  if brew_bin pwsh && [ -L /usr/local/bin/pwsh ]; then
-    need_sudo
-    sudo rm -f /usr/local/bin/pwsh
-  fi
-
-  if ! sudo -n true 2>/dev/null; then
-    return 0
-  fi
-  local pkg
-  for pkg in 1password-cli azure-cli google-cloud-cli cloudflared stripe powershell; do
-    case "$pkg" in
-      1password-cli) brew_bin op || continue ;;
-      azure-cli) brew_bin az || continue ;;
-      google-cloud-cli) brew_bin gcloud || continue ;;
-      cloudflared) brew_bin cloudflared || continue ;;
-      stripe) brew_bin stripe || continue ;;
-      powershell) brew_bin pwsh || continue ;;
-    esac
-    if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
-      sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y "$pkg" || true
-    fi
-  done
-  sudo rm -f \
-    /etc/apt/sources.list.d/1password.list \
-    /etc/apt/sources.list.d/azure-cli.sources \
-    /etc/apt/sources.list.d/google-cloud-sdk.list \
-    /etc/apt/sources.list.d/cloudflared.list \
-    /etc/apt/sources.list.d/stripe.list
-}
-
 install_brew() {
   log "Homebrew packages (profile=$PROFILE)"
   if ! ensure_brew_env; then
@@ -728,8 +594,6 @@ install_brew() {
   local overlay=""
   if [ -f "$TOOLS_OVERLAY" ]; then
     overlay="$TOOLS_OVERLAY"
-  elif [ -f "$LEGACY_OVERLAY" ]; then
-    overlay="$LEGACY_OVERLAY"
   fi
   if [ -n "$overlay" ]; then
     python3 "$ROOT/scripts/linux-tools.py" brewfile "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE" "$overlay" >"$generated"
@@ -738,7 +602,6 @@ install_brew() {
   fi
   bundle_brewfile "$generated"
   rm -f "$generated"
-  migrate_legacy_clis
 }
 
 install_uv_python() {
@@ -782,8 +645,6 @@ install_npm_tools() {
   local overlay="" args=() pkg
   if [ -f "$TOOLS_OVERLAY" ]; then
     overlay="$TOOLS_OVERLAY"
-  elif [ -f "$LEGACY_OVERLAY" ]; then
-    overlay="$LEGACY_OVERLAY"
   fi
   args=("$ROOT/scripts/linux-tools.py" npm "$PROFILE" "$ROOT/profiles/linux.json" "$PROFILE_FILE")
   if [ -n "$overlay" ]; then
@@ -1000,7 +861,7 @@ print_summary() {
   if [ -x "$HOME/.local/bin/pbcopy" ] && [ -x "$HOME/.local/bin/pbpaste" ]; then
     printf 'clipboard  pbcopy/pbpaste -> clip.exe; open -> wsl-open\n'
   else
-    printf 'clipboard  shims missing\n'
+    printf 'clipboard  wrappers missing\n'
   fi
   if ((${#FAILED_STEPS[@]} > 0)); then
     log "failed this run (re-run ./install.sh when the host is reachable)"

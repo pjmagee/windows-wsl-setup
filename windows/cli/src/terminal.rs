@@ -3,7 +3,7 @@
 //! Official distro tabs come from **Microsoft.WSL** (icons, names, `--cd`).
 //! WWM must not overwrite their `commandline` — that is what broke Debian
 //! (`/home/patri: Is a directory`). We only:
-//! - disable the *legacy* `Windows.Terminal.Wsl` generator
+//! - disable Microsoft's old `Windows.Terminal.Wsl` generator (not a WWM name)
 //! - add a **wsl** launcher that follows the WSL default
 //!
 //! Adding/removing a distro is enough for Microsoft.WSL to add/drop its tab.
@@ -16,8 +16,8 @@ use serde_json::{json, Value};
 
 use crate::new_wsl;
 
-/// Legacy Terminal generator. Microsoft.WSL is the current, proper source.
-const LEGACY_WSL_SOURCE: &str = "Windows.Terminal.Wsl";
+/// Microsoft's old penguin generator. Microsoft.WSL is the current source.
+const OLD_TERMINAL_WSL_GENERATOR: &str = "Windows.Terminal.Wsl";
 const OFFICIAL_WSL_SOURCE: &str = "Microsoft.WSL";
 const WWM_SOURCE: &str = "wwm";
 
@@ -95,12 +95,6 @@ pub fn sync(set_default: Option<&str>) -> Result<SyncReport, String> {
 
     let dir = fragment_dir().ok_or_else(|| "LOCALAPPDATA missing".to_string())?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let old = dir.parent().map(|p| p.join("wsl-setup"));
-    if let Some(old) = old {
-        if old.is_dir() {
-            let _ = fs::remove_dir_all(&old);
-        }
-    }
     let path = dir.join("profiles.json");
     let body = json!({ "profiles": profiles });
     let raw = serde_json::to_string_pretty(&body).map_err(|e| e.to_string())? + "\n";
@@ -206,7 +200,7 @@ fn patch_settings(default_guid: Option<&str>) -> Result<(), String> {
             }
             serde_json::to_string_pretty(&v).map_err(|e| e.to_string())? + "\n"
         } else {
-            let mut next = ensure_legacy_wsl_disabled(&raw);
+            let mut next = disable_old_terminal_wsl_generator(&raw);
             next = strip_microsoft_wsl_disabled(&next);
             if let Some(guid) = default_guid {
                 next = set_default_profile(&next, guid);
@@ -232,8 +226,8 @@ fn keep_official_wsl_tabs(v: &mut Value) {
             }
         }
     }
-    if !sources.iter().any(|e| e == LEGACY_WSL_SOURCE) {
-        sources.push(LEGACY_WSL_SOURCE.into());
+    if !sources.iter().any(|e| e == OLD_TERMINAL_WSL_GENERATOR) {
+        sources.push(OLD_TERMINAL_WSL_GENERATOR.into());
     }
     if let Some(obj) = v.as_object_mut() {
         obj.insert("disabledProfileSources".into(), json!(sources));
@@ -266,8 +260,8 @@ fn keep_official_wsl_tabs(v: &mut Value) {
     }
 }
 
-fn ensure_legacy_wsl_disabled(raw: &str) -> String {
-    if raw.contains(LEGACY_WSL_SOURCE) {
+fn disable_old_terminal_wsl_generator(raw: &str) -> String {
+    if raw.contains(OLD_TERMINAL_WSL_GENERATOR) {
         return raw.to_string();
     }
     if raw.contains("disabledProfileSources") {

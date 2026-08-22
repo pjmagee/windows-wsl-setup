@@ -1,3 +1,0 @@
-# Extra install_* steps for work (on top of profiles/base.txt).
-# Homebrew extras for this profile live in profiles/linux/work.json.
-# Default work extra is Copilot CLI; home-only extras are pruned.

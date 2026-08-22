@@ -31,7 +31,7 @@ jobs:
           body: |
             **wwm.exe** — Windows WSL Manager.
 
-            Collect a kit and restore it on a new installation of Windows. Restore existing WSL instances or provision Ubuntu, Debian, or Arch.
+            Collect a kit and restore it on a new installation of Windows. Restore existing WSL instances or provision a new official distro.
 
             ```
             irm https://pjmagee.github.io/wwm/install.txt | iex

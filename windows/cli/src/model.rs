@@ -147,7 +147,7 @@ pub fn default_keep_app(id: &str) -> bool {
 }
 
 pub fn repo_root() -> Option<std::path::PathBuf> {
-    if let Ok(p) = std::env::var("WSL_SETUP_ROOT") {
+    if let Ok(p) = std::env::var("WWM_ROOT") {
         let p = std::path::PathBuf::from(p);
         if p.join("profiles/linux.json").is_file() {
             return Some(p);

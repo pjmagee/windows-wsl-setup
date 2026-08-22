@@ -270,14 +270,14 @@ brew update && brew upgrade    # already-installed Homebrew CLIs
 
 Bare `./install.sh` reuses the saved profile, or **home** if none is saved.
 
-Profiles (there is no `universal`):
+Profiles:
 
 | Profile | Steps | Homebrew |
 |---|---|---|
 | `blank` | distro + Linux user + passwordless sudo. No `install.sh` toolchain. | none |
-| `home` | [`profiles/base.txt`](profiles/base.txt) + [`profiles/home.txt`](profiles/home.txt) | IDs in [`profiles/linux/home.json`](profiles/linux/home.json) |
-| `work` | base + [`profiles/work.txt`](profiles/work.txt) | [`profiles/linux/work.json`](profiles/linux/work.json). Prunes IDs not on that list. |
-| custom | same script steps as the closest shipped name, or base only | `~/.wwm/profiles/<name>.json` |
+| `home` | [`profiles/base.txt`](profiles/base.txt) | IDs in [`profiles/linux/home.json`](profiles/linux/home.json) |
+| `work` | same `base.txt` steps | [`profiles/linux/work.json`](profiles/linux/work.json). Prunes IDs not on that list. |
+| custom | `base.txt`, plus `profiles/<id>.txt` if you add extra `install_*` | `~/.wwm/profiles/<name>.json` |
 
 Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux.json). Overlay `{ "tools": ["id", ...] }` at `~/.wwm/linux-profile.json` replaces the ID list.
 
@@ -285,10 +285,16 @@ Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux
 
 ## 3. Invariants (do not violate)
 
-- **Our state lives in `.wwm`.** Windows: `%USERPROFILE%\.wwm` (`wwm.exe`,
-  `ubuntu.cmd`, user profiles). Linux: `~/.wwm` (saved profile name, overlay,
-  custom linux profiles). Do not write `~/.config/wsl-setup` or
-  `%USERPROFILE%\.wsl-setup`.
+- **No migration. No compatibility shims. No tech debt.** This product has
+  no installed user base. Do not copy from old paths, accept old names, or
+  keep both the old and new thing. If you rename a file, dir, env var, profile
+  id, or git remote, **delete the old name**. Do not add README-only
+  directories, unused files, or comments that exist only to warn about a path
+  that is gone.
+- **One state dir: `.wwm`.** Windows `%USERPROFILE%\.wwm` (`wwm.exe`,
+  `ubuntu.cmd`, user profiles). Linux `~/.wwm` (saved profile, overlay,
+  custom linux profiles). Repo on the Linux disk: `~/code/wwm`. Env override
+  for the repo root: `WWM_ROOT` only.
 - **Linux binaries only.** `install.sh` ignores `/mnt/c/...` and `*.exe` via
   `is_linux_bin`. Do not "fix" a missing tool by putting a Windows copy on `PATH`.
 - **PATH is Linux-first.** Marked block `>>> wsl-linux-path >>>` in `~/.bashrc`.
@@ -301,9 +307,8 @@ Catalog (categories, no home/work flags): [`profiles/linux.json`](profiles/linux
   Do not add a third package manager. Compass (Linux GUI) and Cloudflare `cf`
   are not in Homebrew; those stay as special `install_*` steps.
 - **Shipped linux profiles are `home` and `work`.** They are ID lists in
-  `profiles/linux/`. Custom names are allowed (file must exist). Do not
-  reintroduce a `universal` profile. Categories live on the catalog, not on
-  the profile.
+  `profiles/linux/`. Custom names are allowed (file must exist). Categories
+  live on the catalog, not on the profile.
 - **Do not reinstall `wslu` / `wslview`.** Ubuntu 26.04 dropped them. Links go
   through `scripts/wsl-open` (`BROWSER` / `GH_BROWSER`).
 - **Do not configure Linux `~/.ssh/config` for 1Password.** That belongs on Windows.
@@ -352,12 +357,17 @@ host cannot abort the rest of the run. Required host steps (bashrc, sudo,
 Keep `windows/bootstrap.ps1` **Windows PowerShell 5.1 compatible** (work
 laptops may not have PS7 yet). No `&&` / `??` / `$IsWindows` in that script.
 
+Do not add migrate_*, copy-from-old-dir, “if the old name exists”, or env
+aliases for renamed variables. Idempotent re-runs of **current** files are
+fine (upsert marked blocks, brew upgrade). Cleaning a previous product name
+is not.
+
 | Change | Where |
 |---|---|
 | Add an apt package | [`packages/apt.txt`](packages/apt.txt) only |
 | Add a dnf / zypper package | [`packages/dnf.txt`](packages/dnf.txt) / [`packages/zypper.txt`](packages/zypper.txt) |
 | Add a CLI / runtime | Entry in [`profiles/linux.json`](profiles/linux.json) + id on the right `profiles/linux/<name>.json`, line in `print_summary` |
-| Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in the right [`profiles/*.txt`](profiles/) file |
+| Post-brew step (uv/fnm/rustup, Compass, `cf`) | New `install_*` function, line in [`profiles/base.txt`](profiles/base.txt) (or `profiles/<id>.txt` for one profile) |
 | Shell snippet | Marked block via `upsert_marked_block` (`>>> name >>>` / `<<< name <<<`) |
 | Starship defaults | [`starship.toml`](starship.toml) — only copied if `~/.config/starship.toml` is absent |
 | Link opener | [`scripts/wsl-open`](scripts/wsl-open) (`open` symlink). Clipboard: [`scripts/pbcopy`](scripts/pbcopy) / [`scripts/pbpaste`](scripts/pbpaste) (`clip.exe`) |
@@ -369,6 +379,7 @@ Do not `brew install astro` (Astronomer). withastro is catalog kind `npm`, packa
 
 Comments: short, factual, only for non-obvious constraints.
 Do not leave placeholders for unrelated work.
+Do not leave empty folders or files whose only content is “do not put X here”.
 
 ---
 
@@ -383,8 +394,6 @@ profiles/windows.json      # curated winget catalog + linux equivalents
 profiles/windows/*.json    # windows profile ID lists
 profiles/bundles/*.json    # windows + linux + Ubuntu-26.04
 profiles/base.txt          # shared install_* steps (apt, brew, post-steps)
-profiles/work.txt          # extra install_* for work
-profiles/home.txt          # extra install_* for home
 scripts/linux-tools.py     # renders Brewfile / prune list from catalog + profile
 packages/apt.txt           # apt packages (no language runtimes)
 packages/pacman.txt        # Arch bootstrap
@@ -398,7 +407,6 @@ windows/bootstrap.ps1      # host orchestrator (run from Windows)
 windows/install.ps1        # irm github.io/wwm/install.txt | iex
 windows/ensure-user.sh     # root: user + NOPASSWD + /etc/wsl.conf
 windows/ubuntu.cmd         # ubuntu → wsl.exe -d Ubuntu-26.04 ~
-windows/host/              # maintainer helpers for Windows WSL Manager
 windows/cli/               # wwm.exe (Collect / Restore / New WSL / Profiles)
 schema/kit.schema.json     # KIT.json
 schema/wwm.opencli.json    # OpenCLI description (`wwm spec`)

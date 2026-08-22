@@ -6,6 +6,5 @@
 scripts/wsl-open text eol=lf
 scripts/pbcopy text eol=lf
 scripts/pbpaste text eol=lf
-packages/apt.txt text eol=lf
+packages/*.txt text eol=lf
 profiles/*.txt text eol=lf
-profiles/tools.json text eol=lf

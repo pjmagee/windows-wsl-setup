@@ -236,8 +236,7 @@ function Ensure-UbuntuShim {
     $src = Join-Path $PSScriptRoot 'ubuntu.cmd'
     Copy-Item -LiteralPath $src -Destination (Join-Path $root 'ubuntu.cmd') -Force
 
-    $oldBin = Join-Path $env:USERPROFILE '.wsl-setup\bin'
-    $entries = @(Get-UserPathEntries | Where-Object { $_ -and $_ -ne $oldBin })
+    $entries = @(Get-UserPathEntries)
     if ($entries -notcontains $root) {
         $entries = @($root) + $entries
     }
@@ -326,8 +325,6 @@ function Ensure-WindowsTerminal {
     }
     $fragDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\wwm'
     if (-not (Test-Path $fragDir)) { New-Item -ItemType Directory -Path $fragDir | Out-Null }
-    $oldFrag = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\wsl-setup'
-    if (Test-Path $oldFrag) { Remove-Item -LiteralPath $oldFrag -Recurse -Force }
     $penguin = 'ms-appx:///ProfileIcons/{9acb9455-ca41-5af7-950f-6bca1bc9722f}.png'
     $fragment = @{
         profiles = @(
@@ -361,9 +358,6 @@ function ubuntu { & wsl.exe -d Ubuntu-26.04 ~ @args }
 '@
     $existing = ''
     if (Test-Path $Path) { $existing = Get-Content -LiteralPath $Path -Raw }
-    if ($existing -match '>>> wsl-setup >>>') {
-        $existing = [regex]::Replace($existing, '(?s)# >>> wsl-setup >>>.*?# <<< wsl-setup <<<\r?\n?', '')
-    }
     if ($existing -match '>>> wwm >>>') {
         $existing = [regex]::Replace($existing, '(?s)# >>> wwm >>>.*?# <<< wwm <<<\r?\n?', '')
     }
@@ -386,7 +380,6 @@ function Invoke-LinuxInstall {
     }
     Write-Step "clone/update repo on the Linux disk and run install.sh"
     $linuxRepo = '~/code/wwm'
-    $legacyRepo = '~/code/windows-wsl-manager'
     $winRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
     $remote = 'https://github.com/pjmagee/wwm.git'
     $wslWin = (wsl.exe -d $Distro -- wslpath -a $winRoot 2>$null)
@@ -397,9 +390,7 @@ sudo -n apt-get update -y
 sudo -n DEBIAN_FRONTEND=noninteractive apt-get install -y git curl
 mkdir -p `$HOME/code
 if [ ! -d $linuxRepo/.git ]; then
-  if [ -d $legacyRepo/.git ]; then
-    git clone $legacyRepo $linuxRepo
-  elif [ -n '$wslWin' ] && [ -d '$wslWin/.git' ]; then
+  if [ -n '$wslWin' ] && [ -d '$wslWin/.git' ]; then
     git clone '$wslWin' $linuxRepo
   else
     git clone $remote $linuxRepo

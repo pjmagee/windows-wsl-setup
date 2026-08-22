@@ -1,2 +1,0 @@
-# Extra install_* steps for home (on top of profiles/base.txt).
-# Homebrew extras for this profile live in profiles/linux/home.json.
